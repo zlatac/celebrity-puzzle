@@ -5,19 +5,26 @@ var serviceProvider = {
         return {
             modalInstance: null,
             modalData: {},
-            name: ''
+            leadList: [2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 17],
+            url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg',
+            name: '',
+            profileTimeout: null,
+            inputProfile: ''
         };
     },
     computed: {
         instaName: function instaName() {
             return this.$store.state.instaName;
+        },
+        previousChampion: function previousChampion() {
+            return this.leadList.slice(0, 3);
         }
     },
     mounted: function mounted() {
-        var elem = document.querySelector('.modal');
-        if (elem) {
-            this.modalInstance = M.Modal.init(elem);
-        }
+        var modal = document.querySelector('.modal');
+        var tooltip = document.querySelector('.tooltipped');
+        if (modal) this.modalInstance = M.Modal.init(modal);
+        if (tooltip) M.Tooltip.init(tooltip);
     },
     methods: {
         safe: function safe(a) {
@@ -71,6 +78,35 @@ var serviceProvider = {
         },
         insta: function insta() {
             this.$store.commit('insertName', this.name);
+        },
+        getProfile: function getProfile() {
+            var _this = this;
+
+            if (this.profileTimeout !== null) {
+                clearTimeout(this.profileTimeout);
+            }
+            this.profileTimeout = setTimeout(function () {
+                console.log(_this.inputProfile);
+                var profile = _this.inputProfile.replace('@', '').toLowerCase();
+                _this.fetchInstaProfile(profile);
+            }, 1200);
+        },
+        fetchInstaProfile: function fetchInstaProfile(profile) {
+            var _this2 = this;
+
+            fetch('https://www.instagram.com/' + profile + '/').then(function (res) {
+                if (res.status === 200) {
+                    return res.text();
+                } else {
+                    return 'failed';
+                }
+            }).then(function (data) {
+                if (data !== 'failed') {
+                    var sift = data.match(/og:image.+(http.+)"/i)[1];
+                    _this2.url = sift;
+                }
+            });
+            //this.url = profile;
         }
     }
 };
@@ -85,15 +121,14 @@ var landing = Vue.component('landing', {
     }
 });
 var container = Vue.component('container', {
-    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:category="modalData"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <!--<div class="row">\n                    <div class="col s12">\n                        <div class="card" v-if="show !== true">\n                            <div class="card-content">\n                                    <p>{{message}}</p>\n                            </div>\n                        </div>\n                    </div>\n                </div>-->\n                <div class="row"></div>\n                <div class="row animated bounceInLeft" v-for="x in category">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <input type="text" @keyup="insta" v-model="name">\n            </div>\n        </div>\n    ',
+    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:category="modalData"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-for="(x, index) in previousChampion" :url="url" :index="index"></champion>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <input type="text" @keyup="insta" v-model="name">\n            </div>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            url: null,
-            category: [{ name: 'FASHION', color: '#e68213' }, { name: 'MUSIC', color: '#136ee6' }, { name: 'MOVIES', color: '#b9499f' }, { name: 'SPORTS', color: '#e61313' }]
+            category: [{ name: 'fashion', color: '#e68213' }, { name: 'music', color: '#136ee6' }, { name: 'movies', color: '#b9499f' }, { name: 'sports', color: '#e61313' }]
         };
     },
     created: function created() {
@@ -121,7 +156,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;" \n                >\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <!-- <div class="btn list-me" v-on:click="setUp(375,501)">Run</div> -->\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n                <!-- <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog == 100}">\n                        Puzzlegram\n                </div> -->\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <!-- <div class="btn list-me" v-on:click="setUp(375,501)">Run</div> -->\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n                <!-- <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog == 100}">\n                        Puzzlegram\n                </div> -->\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -175,7 +210,8 @@ var game = Vue.component('game', {
             }
         },
         isLevelCompleted: function isLevelCompleted() {
-            var self = this;
+            var _this3 = this;
+
             if (this.correct.length === this.picBoxes) {
                 //$scope.draw.text('you win').move(50,50);
                 this.output = 'Completed';
@@ -183,7 +219,7 @@ var game = Vue.component('game', {
                 this.tones('f', 5, 500);
                 //$scope.mocha.vibrate(2000);
                 setTimeout(function () {
-                    self.levelUp();
+                    _this3.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
@@ -276,7 +312,7 @@ var game = Vue.component('game', {
             });
         },
         setUp: function setUp(w, h) {
-            var _this = this;
+            var _this4 = this;
 
             this.picBoxes = this.picColumn * this.picRow;
             this.footnote_hide = false;
@@ -284,48 +320,48 @@ var game = Vue.component('game', {
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
             this.drawCanvas(w, h).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!_this.safe(_this.draw)) {
-                    _this.svg = document.getElementById('svg');
-                    _this.draw = SVG(_this.svg).size(w, h);
+                if (!_this4.safe(_this4.draw)) {
+                    _this4.svg = document.getElementById('svg');
+                    _this4.draw = SVG(_this4.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
                 var z = 0;
-                _this.basket.forEach(function (item) {
+                _this4.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    var elem = _this.draw.image(item.img, _this.dw, Math.round(_this.sh * _this.dw / _this.sw));
-                    elem.x(_this.shuffle[z].x);
-                    elem.y(_this.shuffle[z].y);
+                    var elem = _this4.draw.image(item.img, _this4.dw, Math.round(_this4.sh * _this4.dw / _this4.sw));
+                    elem.x(_this4.shuffle[z].x);
+                    elem.y(_this4.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     elem.click(function () {
-                        _this.isStarted();
-                        _this.tones('e', 5, 10, null, 'sine');
-                        elem.animate(100).width(_this.dw - _this.dw * 0.3);
-                        if (_this.waste.length < 2) {
-                            _this.waste.push(elem);
+                        _this4.isStarted();
+                        _this4.tones('e', 5, 10, null, 'sine');
+                        elem.animate(100).width(_this4.dw - _this4.dw * 0.3);
+                        if (_this4.waste.length < 2) {
+                            _this4.waste.push(elem);
                         }
-                        if (_this.waste.length === 2 && _this.waste[0].node.id !== _this.waste[1].node.id) {
-                            var a = { x: _this.waste[0].node.x.baseVal.value,
-                                y: _this.waste[0].node.y.baseVal.value,
-                                truth: _this.waste[0].truth
+                        if (_this4.waste.length === 2 && _this4.waste[0].node.id !== _this4.waste[1].node.id) {
+                            var a = { x: _this4.waste[0].node.x.baseVal.value,
+                                y: _this4.waste[0].node.y.baseVal.value,
+                                truth: _this4.waste[0].truth
                             };
-                            var b = { x: _this.waste[1].node.x.baseVal.value,
-                                y: _this.waste[1].node.y.baseVal.value,
-                                truth: _this.waste[1].truth
+                            var b = { x: _this4.waste[1].node.x.baseVal.value,
+                                y: _this4.waste[1].node.y.baseVal.value,
+                                truth: _this4.waste[1].truth
                             };
-                            SVG.get(_this.waste[0].node.id).animate(500).move(b.x, b.y).animate(100).width(_this.dw);
-                            SVG.get(_this.waste[1].node.id).animate(500).move(a.x, a.y).animate(100).width(_this.dw);
-                            _this.checker(a, b);
-                            _this.checker(b, a);
-                            _this.progressFunc();
-                            _this.waste = [];
+                            SVG.get(_this4.waste[0].node.id).animate(500).move(b.x, b.y).animate(100).width(_this4.dw);
+                            SVG.get(_this4.waste[1].node.id).animate(500).move(a.x, a.y).animate(100).width(_this4.dw);
+                            _this4.checker(a, b);
+                            _this4.checker(b, a);
+                            _this4.progressFunc();
+                            _this4.waste = [];
 
                             //console.log(a,b)
-                        } else if (_this.waste.length === 2 && _this.waste[0].node.id == _this.waste[1].node.id) {
+                        } else if (_this4.waste.length === 2 && _this4.waste[0].node.id == _this4.waste[1].node.id) {
                             //this is the situation where the same box is touched
-                            elem.animate(100).width(_this.dw);
-                            _this.waste = [];
+                            elem.animate(100).width(_this4.dw);
+                            _this4.waste = [];
                         }
                         //console.log(elem);
                     });
@@ -336,16 +372,16 @@ var game = Vue.component('game', {
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            _this.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this4.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        _this.progressFunc();
-                        _this.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this4.progressFunc();
+                        _this4.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                M.toast({ html: '<div class="center-align full-width">' + _this.footnote_msg + '</div>', displayLength: 2000000 });
+                M.toast({ html: '<div class="center-align full-width">' + _this4.footnote_msg + '</div>', displayLength: 2000000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -357,13 +393,13 @@ var leaderboard = Vue.component('leaderboard', {
     mixins: [serviceProvider],
     data: function data() {
         return {
-            leadList: [2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 17],
-            movingHearts: [],
-            url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg'
+            movingHearts: []
         };
     },
     methods: {
         makeHeart: function makeHeart() {
+            var _this5 = this;
+
             var b = Math.floor(Math.random() * 100 + 1);
             var d = ["flowOne", "flowTwo", "flowThree"];
             var a = ["colOne", "colTwo", "colThree", "colFour", "colFive", "colSix"];
@@ -375,36 +411,37 @@ var leaderboard = Vue.component('leaderboard', {
             bucket.flow = d[Math.floor(Math.random() * 3)];
             bucket.seconds = c;
             this.movingHearts.push(bucket);
-            var self = this;
             setTimeout(function () {
-                var index = self.movingHearts.findIndex(function (i) {
+                var index = _this5.movingHearts.findIndex(function (i) {
                     return i.id === b;
                 });
-                self.movingHearts.splice(index, 1);
+                _this5.movingHearts.splice(index, 1);
             }, c * 1200);
         }
     },
     mounted: function mounted() {
-        var self = this;
+        var _this6 = this;
+
         setInterval(function () {
-            self.makeHeart();
+            _this6.makeHeart();
         }, 900);
     }
 });
 
 Vue.component('modal', {
     props: ['category'],
-    template: '\n        <!-- Modal Structure -->\n        <div id="modal1" class="modal modal-fixed-footer">\n        <div class="modal-content">\n            <h4>Modal Header{{category.name}}</h4>\n            <p>A bunch of text</p>\n        </div>\n        <div class="modal-footer">\n            <span class="modal-action modal-close waves-effect waves-green btn-flat ">Agree</span>\n        </div>\n        </div>\n    ',
-    mixins: [serviceProvider]
-});
-
-Vue.directive('buzz', {
-    bind: function bind(el) {
-        console.log(el);
-        el.onclick = function () {
-            app.$children[0];
+    template: '#comp-modal',
+    mixins: [serviceProvider],
+    data: function data() {
+        return {
+            whyme: 'heloo'
         };
     }
+});
+
+Vue.component('champion', {
+    props: ['index', 'url'],
+    template: '\n        <div style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead">\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>\n            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>\n        </div>\n    '
 });
 Vue.directive('prog', {
     update: function update(el, binding) {
@@ -439,7 +476,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: container }, { path: '/game', component: game }, { path: '/', component: landing }, { path: '', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: container }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

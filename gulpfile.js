@@ -11,7 +11,7 @@ gulp.task('default', ['build']);
 gulp.task('es5', function(){
     return gulp.src(['scripts/main.js'])
     .pipe(babel())
-    .pipe(rename("main.es6.js"))
+    .pipe(rename("main.es5.js"))
     .pipe(gulp.dest('scripts'));
 });
 

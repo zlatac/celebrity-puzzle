@@ -112,6 +112,9 @@ div.progress{height: 20px !important;}
 .container{
     padding-bottom: 75px;
 }
+.modal i.material-icons, .modal i.fa{
+    font-size: 45px;
+}
 
 /*moving hearts*/
 div.hearts {

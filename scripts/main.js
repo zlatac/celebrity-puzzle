@@ -3,19 +3,27 @@ const serviceProvider = {
         return{
             modalInstance:null,
             modalData:{},
+            leadList:[2,3,4,5,6,7,8,9,11,12,13,14,15,17],
+            url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg',
             name:'',
+            profileTimeout:null,
+            inputProfile:''
         }
     },
     computed:{
         instaName(){
             return this.$store.state.instaName;
+        },
+        previousChampion(){
+            return this.leadList.slice(0,3)
         }
     },
     mounted: function(){
-        let elem = document.querySelector('.modal');
-        if(elem){
-            this.modalInstance = M.Modal.init(elem);
-        }                    
+        let modal = document.querySelector('.modal');
+        let tooltip = document.querySelector('.tooltipped');
+        if (modal) this.modalInstance = M.Modal.init(modal);
+        if (tooltip) M.Tooltip.init(tooltip);
+                            
     },
     methods:{
         safe : function safe (a){
@@ -59,6 +67,33 @@ const serviceProvider = {
         },
         insta:function(){
             this.$store.commit('insertName',this.name);
+        },
+        getProfile:function(){
+            if(this.profileTimeout !== null){
+                clearTimeout(this.profileTimeout)
+            }
+            this.profileTimeout = setTimeout(()=>{
+                console.log(this.inputProfile)
+                let profile = this.inputProfile.replace('@','').toLowerCase()
+                this.fetchInstaProfile(profile)
+            },1200)
+        },
+        fetchInstaProfile: function(profile){
+            fetch(`https://www.instagram.com/${profile}/`)
+            .then((res)=>{
+                if(res.status === 200){
+                    return  res.text();
+                }else{
+                    return 'failed'
+                }      
+            })
+            .then((data)=>{
+                if(data !== 'failed'){
+                    let sift = data.match(/og:image.+(http.+)"/i)[1];
+                    this.url = sift;
+                }
+            });
+            //this.url = profile;
         }
     }
 }
@@ -102,16 +137,13 @@ const container = Vue.component('container', {
                         <i class="fa fa-trophy" style="font-size:34px;color:white"></i>
                     </div>
                 </router-link>
-                <!--<div class="row">
+                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday's Champions">
                     <div class="col s12">
-                        <div class="card" v-if="show !== true">
-                            <div class="card-content">
-                                    <p>{{message}}</p>
-                            </div>
+                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">
+                            <champion class="col s4" v-for="(x, index) in previousChampion" :url="url" :index="index"></champion>
                         </div>
                     </div>
-                </div>-->
-                <div class="row"></div>
+                </div>
                 <div class="row animated bounceInLeft" v-for="x in category">
                     <div class="col s12">
                         <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">
@@ -134,12 +166,11 @@ const container = Vue.component('container', {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            url: null,
             category:[
-                {name:'FASHION',color:'#e68213'},
-                {name:'MUSIC',color:'#136ee6'},
-                {name:'MOVIES',color:'#b9499f'},
-                {name:'SPORTS',color:'#e61313'},
+                {name:'fashion',color:'#e68213'},
+                {name:'music',color:'#136ee6'},
+                {name:'movies',color:'#b9499f'},
+                {name:'sports',color:'#e61313'},
             ]
         }
     },
@@ -173,8 +204,7 @@ const game = Vue.component('game',{
     template:`
         <div class="background center-align">
             <div style="background-color:white; width:100%;" >
-                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;" 
-                >
+                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">
                     <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
                     <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>
                 </div>
@@ -247,7 +277,6 @@ const game = Vue.component('game',{
             }
         },
         isLevelCompleted : function(){
-            let self = this;
             if(this.correct.length === this.picBoxes){
                 //$scope.draw.text('you win').move(50,50);
                 this.output = 'Completed'
@@ -255,7 +284,7 @@ const game = Vue.component('game',{
                 this.tones('f',5,500);
                 //$scope.mocha.vibrate(2000);
                 setTimeout(()=>{
-                    self.levelUp();
+                    this.levelUp();
                 },2000);
                 //console.log('THE END FAM')
             }
@@ -433,9 +462,7 @@ const leaderboard = Vue.component('leaderboard',{
     mixins: [serviceProvider],
     data: function(){
         return{
-            leadList:[2,3,4,5,6,7,8,9,11,12,13,14,15,17],
             movingHearts:[],
-            url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg'
         }
     },
     methods:{
@@ -451,45 +478,41 @@ const leaderboard = Vue.component('leaderboard',{
             bucket.flow = d[Math.floor((Math.random() * 3))];
             bucket.seconds = c;
             this.movingHearts.push(bucket);
-            let self  = this;
-            setTimeout(function(){
-                let index = self.movingHearts.findIndex(i => i.id === b);
-                self.movingHearts.splice(index,1);
+            setTimeout(()=>{
+                let index = this.movingHearts.findIndex(i => i.id === b);
+                this.movingHearts.splice(index,1);
             },c * 1200)
         }
     },
     mounted:function(){
-        let self = this
-        setInterval(function(){
-            self.makeHeart();
+        setInterval(()=>{
+            this.makeHeart();
         },900)
     }
 })
 
 Vue.component('modal',{
     props:['category'],
-    template:`
-        <!-- Modal Structure -->
-        <div id="modal1" class="modal modal-fixed-footer">
-        <div class="modal-content">
-            <h4>Modal Header{{category.name}}</h4>
-            <p>A bunch of text</p>
-        </div>
-        <div class="modal-footer">
-            <span class="modal-action modal-close waves-effect waves-green btn-flat ">Agree</span>
-        </div>
-        </div>
-    `,
-    mixins: [serviceProvider]
-})
-
-Vue.directive('buzz', {
-    bind: function(el){
-        console.log(el);
-        el.onclick = function(){
-            app.$children[0];
+    template:'#comp-modal',
+    mixins: [serviceProvider],
+    data: function(){
+        return{
+            whyme:'heloo'
         }
     }
+})
+
+Vue.component('champion',{
+    props:['index','url'],
+    template:`
+        <div style="position: relative;">
+            <img :src="url" alt="" class="circle responsive-img img-lead">
+            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>
+            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>
+            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
+            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>
+        </div>
+    `
 });
 Vue.directive('prog', {
     update: function(el,binding){
@@ -528,7 +551,7 @@ const store = new Vuex.Store({
 const routes = [
   { path: '/leaderboard', component: leaderboard },
   { path: '/dash', component: container },
-  { path: '/game', component: game },
+  { path: '/game/:category', component: game },
   { path: '/', component: landing },
   { path: '', redirect: '/' },
 ];
