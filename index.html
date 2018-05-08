@@ -20,6 +20,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
     <script src="scripts/tones.js"></script>
 </head>
 <body>
@@ -36,14 +37,14 @@
                 </div>
             </router-link>
             <div class="col s12 animated fadeInUp" style="margin-top: 30px;">
-                <div class="card-panel z-depth-4 center-align waves-effect waves-block" style="margin:0.5rem 0 0.1rem 0;">
+                <div class="card-panel z-depth-4 center-align waves-effect waves-block" @click="getLeaderboard" style="margin:0.5rem 0 0.1rem 0;">
                     <div class="row " style="margin-bottom:0px">
                         <span class="left"><i class="material-icons">refresh</i></span>World Ranking (Today) {{instaName}}
                         <span class="right"><i class="material-icons" style="color: rgb(108, 163, 205);">people</i>1k</span>
                     </div>
                 </div>
             </div>
-            <div class="col s12 animated fadeInUp" v-for="(x, index) in leadList">
+            <div class="col s12 animated fadeInUp" v-for="(x, index) in leaderboardList">
                 <div class="card-panel z-depth-2" style="padding:9px;margin:0.5rem 0 0.1rem 0;">
                 <div class="row valign-wrapper" style="margin-bottom:0px">
                     <!-- <div class="col s3" style="position: relative;" @click="makeHeart()">
@@ -53,15 +54,15 @@
                     <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
                     <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>
                     </div> -->
-                    <champion class="col s3" :index="index" :url="url" @click.native="makeHeart()"></champion>
+                    <champion class="col s3" :index="index" :url="x.profile_url" @click.native="makeHeart()"></champion>
                     <div class="col s4 truncate">
-                        <span>mochanow</span>
+                        <span>{{x.name}}</span>
                     </div>
                     <div class="col s3">
-                        <span>02:34:25</span>
+                        <span>{{x.realtime}}</span>
                     </div>
                     <div class="col s2 center-align">
-                        <a href="https://www.instagram.com/shaelamiller/" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
+                        <a :href="'https://www.instagram.com/' + x.name" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
                             <span><i class="fa fa-instagram" style="font-size: 23px;"></i></span>
                         </a>
                     </div>
@@ -81,30 +82,36 @@
     <div id="modal1" class="modal">
         <div class="modal-content">
             <!--<h4>Modal Header{{category.name}}</h4>-->
-            <div class="hide">
+            <div v-if="modalPage.page === 'game'" v-show="!modalPage.insta">
                 <!-- Game ended -->
-                <div class="row">
-                    <div class="col s12">Time: 03:23:45</div>
-                    <div class="col s12">Best Time: 02:23:45</div>
+                <div class="row left-align">
+                    <div class="col s12">Time: {{test.timePlayed}}</div>
+                <div class="col s12">Best Time: {{test.timePlayed}}</div>
                     <div class="col s12">World Rank (Today): Submit to find out</div>
                 </div>
                 
                 <div class="row valign-wrapper">
-                    <div class="center col s4"><i class="material-icons">home</i> Home</div>
-                    <div class="center col s4"><i class="material-icons">refresh</i> Retry</div>
-                    <div class="center col s4"><i class="fa fa-trophy"></i> Submit</div>                
+                    <div class="center col s4">
+                        <router-link to="/dash" class="modal-action modal-close"><i class="material-icons">home</i> Home</router-link>
+                    </div>
+                    <div class="center col s4">
+                        <div @click="$emit('replay')" class="modal-action modal-close">
+                        <i class="material-icons">refresh</i> Retry
+                        </div>
+                    </div>
+                    <div class="center col s4" @click="modalPage.insta = true"><i class="fa fa-trophy"></i> Submit</div>                
                 </div>
             </div>
 
-            <div class="hide">
+            <div v-if="modalPage.page === 'dash'">
                 <!-- Start a game -->
                 <div class="row">
                     <div class="col s12">Instruction: play and give me money please</div>
                 </div>
                 <div class="row">
                     <div class="col s4 push-s9">
-                        <router-link :to="{ path: 'game/' + category.name }" class="modal-action modal-close">
-                            <div class="btn btn-floating btn-large pulse" :style="{'background-color':category.color}">
+                        <router-link :to="{ path: 'game/' + modalData.name }" class="modal-action modal-close">
+                            <div class="btn btn-floating btn-large pulse" :style="{'background-color':modalData.color}">
                                 <i class="material-icons">play_arrow</i>
                             </div>
                         </router-link>
@@ -112,14 +119,18 @@
                 </div>
             </div>
                 
-            <div>
+            <div v-if="modalPage.page === 'game'" v-show="modalPage.insta === true">
                 <div class="row">
                     <div class="col s8">
                         <input type="text" placeholder="Instagram handle" :value="inputProfile"
                          @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" @keyup="getProfile">
                     </div>
                     <div class="col s4"><img :src="url" alt="" class="circle responsive-img img-lead"></div>
-                    {{inputProfile}}
+                </div>
+                <div class="row">
+                    <div class="col s12">
+                        <div class="btn btn-block z-depth-2" @click="$emit('submitGame',inputProfile)" style="background:var(--main)">Submit</div>
+                    </div>
                 </div>
             </div>
         </div>

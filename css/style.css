@@ -115,6 +115,10 @@ div.progress{height: 20px !important;}
 .modal i.material-icons, .modal i.fa{
     font-size: 45px;
 }
+.input-field input[type=text].invalid {
+    border-bottom: 1px solid red;
+    box-shadow: 0 1px 0 0 red;
+}
 
 /*moving hearts*/
 div.hearts {

@@ -6,25 +6,51 @@ var serviceProvider = {
             modalInstance: null,
             modalData: {},
             leadList: [2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 17],
-            url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg',
             name: '',
             profileTimeout: null,
-            inputProfile: ''
+            inputProfile: '',
+            testProfile: [{ name: 'kim k', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofia', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }]
         };
     },
     computed: {
         instaName: function instaName() {
             return this.$store.state.instaName;
         },
+        url: function url() {
+            return this.$store.state.url;
+        },
         previousChampion: function previousChampion() {
             return this.leadList.slice(0, 3);
+        },
+        currentGameDay: function currentGameDay() {
+            return moment().startOf('day').toISOString();
+        },
+        previousGameDay: function previousGameDay() {
+            return moment().subtract(1, 'days').startOf('day').toISOString();
         }
     },
     mounted: function mounted() {
         var modal = document.querySelector('.modal');
         var tooltip = document.querySelector('.tooltipped');
-        if (modal) this.modalInstance = M.Modal.init(modal);
+        var modalOptions = {};
+        if (this.$route.path.includes('game')) modalOptions.dismissible = false;
+        if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
+    },
+    beforeCreate: function beforeCreate() {
+        var _this = this;
+
+        if (this.$route.path.includes('game') && this.$store.state.celebList === null) {
+            return router.push('/');
+        }
+        if (this.$store.state.celebList === null) {
+            fetch('/scripts/celebs.json').then(function (res) {
+                //get celebrity list
+                return res.json();
+            }).then(function (data) {
+                _this.$store.commit('celebList', data);
+            });
+        }
     },
     methods: {
         safe: function safe(a) {
@@ -63,6 +89,11 @@ var serviceProvider = {
             tones.type = type || tones.type;
             tones.play(key, octave);
         }),
+        vibrate: function vibrate(seconds) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(seconds);
+            }
+        },
         gameTimePlayed: function gameTimePlayed($scope) {
             //get current time
             $scope.test.end_time = moment();
@@ -80,19 +111,19 @@ var serviceProvider = {
             this.$store.commit('insertName', this.name);
         },
         getProfile: function getProfile() {
-            var _this = this;
+            var _this2 = this;
 
             if (this.profileTimeout !== null) {
                 clearTimeout(this.profileTimeout);
             }
             this.profileTimeout = setTimeout(function () {
-                console.log(_this.inputProfile);
-                var profile = _this.inputProfile.replace('@', '').toLowerCase();
-                _this.fetchInstaProfile(profile);
+                console.log(_this2.inputProfile);
+                var profile = _this2.inputProfile.replace('@', '').toLowerCase();
+                _this2.fetchInstaProfile(profile);
             }, 1200);
         },
         fetchInstaProfile: function fetchInstaProfile(profile) {
-            var _this2 = this;
+            var _this3 = this;
 
             fetch('https://www.instagram.com/' + profile + '/').then(function (res) {
                 if (res.status === 200) {
@@ -103,7 +134,7 @@ var serviceProvider = {
             }).then(function (data) {
                 if (data !== 'failed') {
                     var sift = data.match(/og:image.+(http.+)"/i)[1];
-                    _this2.url = sift;
+                    _this3.$store.commit('url', sift);
                 }
             });
             //this.url = profile;
@@ -114,25 +145,26 @@ var landing = Vue.component('landing', {
     template: '<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">\n                    <div class="center-align fwhite" style="font-family: \'Pacifico\', cursive;">\n                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>\n                        <div style="font-size:26px;margin-top:20px">align the stars</div>\n                        <!--<div class="btn btn-large red"><i class="fa fa-warning"></i> Mobile phones only</div>-->\n                        <div class="animated fadeIn" style="margin-top:250px">\n                            <div class="preloader-wrapper small active">\n                                <div class="spinner-layer spinner-white-only">\n                                <div class="circle-clipper left">\n                                    <div class="circle"></div>\n                                </div><div class="gap-patch">\n                                    <div class="circle"></div>\n                                </div><div class="circle-clipper right">\n                                    <div class="circle"></div>\n                                </div>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n               </div>',
     mixins: [serviceProvider],
     created: function created() {
-        // setTimeout(function(){
-        //     //might do something here at some point
-        //     router.push('dash');
-        // },3000)
+        setTimeout(function () {
+            //might do something here at some point
+            router.push('dash');
+        }, 3000);
     }
 });
 var container = Vue.component('container', {
-    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:category="modalData"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-for="(x, index) in previousChampion" :url="url" :index="index"></champion>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <input type="text" @keyup="insta" v-model="name">\n            </div>\n        </div>\n    ',
+    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-for="(x, index) in testProfile" :url="x.url" :index="index"></champion>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            category: [{ name: 'fashion', color: '#e68213' }, { name: 'music', color: '#136ee6' }, { name: 'movies', color: '#b9499f' }, { name: 'sports', color: '#e61313' }]
+            modalPage: { page: 'dash' },
+            category: [{ name: 'fashion', color: '#e68213' }, { name: 'music', color: '#136ee6' }, { name: 'movie', color: '#b9499f' }, { name: 'sport', color: '#e61313' }]
         };
     },
     created: function created() {
-        this.message = 'damn girl', this.wow();
+        this.message = 'damn girlz', this.wow();
         self = this;
         // fetch('https://www.instagram.com/bohnchild/').then(function(res){
         //      return  res.text();    
@@ -156,7 +188,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <!-- <div class="btn list-me" v-on:click="setUp(375,501)">Run</div> -->\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n                <!-- <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog == 100}">\n                        Puzzlegram\n                </div> -->\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <div class="chip animated" style="position:absolute;bottom:2%;right: 0;">\n                    <img :src="profile.url" alt="Contact Person">\n                    {{profile.fullname}}\n                </div>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -174,12 +206,17 @@ var game = Vue.component('game', {
             test: { end_time: null, start_time: null, time_result: '0:0' },
             picColumn: 2,
             picRow: 2,
-            puzzLevel: 1
+            puzzLevel: 1,
+            currentUrl: '',
+            profile: {},
+            modalPage: { page: 'game', insta: false }
         };
     },
     mounted: function mounted() {
-        this.svgSpace = document.getElementById('svg');
-        this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
+        if (this.$store.state.celebList !== null) {
+            this.svgSpace = document.getElementById('svg');
+            this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
+        }
     },
     methods: {
         isStarted: function isStarted() {
@@ -200,26 +237,60 @@ var game = Vue.component('game', {
                 this.shuffle = [];
                 this.basket = [];
                 this.prog = 0;
-                this.picColumn = 6;
-                this.picRow = 6;
+                this.picColumn = 3;
+                this.picRow = 3;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
             } else {
                 // game is finished and time to move on
                 this.test.hideModal = false;
+                this.toggleModal();
+            }
+        },
+        retry: function retry() {
+            // this lets them replay the same category
+            this.draw.clear();
+            this.waste = [];
+            this.correct = [];
+            this.dw, this.dh, this.draw;
+            this.sw, this.sh;
+            this.shuffle = [];
+            this.basket = [];
+            this.prog = 0;
+            this.picColumn = 2;
+            this.picRow = 2;
+            this.puzzLevel = 1;
+            this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0' }, this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
+        },
+        submitGame: function submitGame(inputProfile) {
+            var _this4 = this;
+
+            if (this.safe(inputProfile)) {
+                var timestamp = moment().toISOString();
+                var playtime = this.test.timePlayed;
+                var name = inputProfile.replace('@', '').toLowerCase();
+                var picurl = this.url;
+                var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl };
+                console.log(postData);
+                axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl).then(function (response) {
+                    _this4.modalInstance.close();
+                    router.push('/leaderboard');
+                });
+            } else {
+                console.warn('what are you doing fam?');
             }
         },
         isLevelCompleted: function isLevelCompleted() {
-            var _this3 = this;
+            var _this5 = this;
 
             if (this.correct.length === this.picBoxes) {
                 //$scope.draw.text('you win').move(50,50);
                 this.output = 'Completed';
                 this.test.time_result = this.gameTimePlayed(this).split(':');
                 this.tones('f', 5, 500);
-                //$scope.mocha.vibrate(2000);
+                this.vibrate(2000);
                 setTimeout(function () {
-                    _this3.levelUp();
+                    _this5.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
@@ -242,7 +313,45 @@ var game = Vue.component('game', {
 
             this.isLevelCompleted();
         },
-        drawCanvas: function drawCanvas(fWidth, fHeight) {
+        getImage: function getImage() {
+            var _this6 = this;
+
+            if (this.currentUrl !== '') {
+                return new Promise(function (resolve, reject) {
+                    resolve(_this6.currentUrl);
+                });
+            }
+            var category = this.$route.params.category;
+            var categoryList = this.$store.state.celebList.filter(function (item) {
+                return item.category === category;
+            });
+            var randomIndex = Math.floor(Math.random() * categoryList.length);
+            var handle = categoryList[randomIndex].handle;
+            return new Promise(function (resolve, reject) {
+                fetch('https://www.instagram.com/' + handle + '/').then(function (res) {
+                    if (res.status === 200) {
+                        return res.text();
+                    } else {
+                        _this6.getImage();
+                    }
+                }).then(function (data) {
+                    var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
+                    var user = sift.entry_data.ProfilePage["0"].graphql.user;
+                    var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
+                    var imageList = instaList.filter(function (item) {
+                        return item.node.is_video === false;
+                    });
+                    if (imageList.length < 1) {
+                        _this6.getImage();
+                    } else {
+                        var index = Math.floor(Math.random() * imageList.length);
+                        _this6.profile = { fullname: user.full_name, url: user.profile_pic_url };
+                        resolve(imageList[index].node.display_url);
+                    }
+                });
+            });
+        },
+        drawCanvas: function drawCanvas(fWidth, fHeight, imgUrl) {
             var self = this;
             return new Promise(function (resolve, reject) {
                 var canvas = document.getElementById('canvas');
@@ -255,7 +364,7 @@ var game = Vue.component('game', {
                 //perfect on mobile for any image dimensions (square, 3:4 ratio and 4:3 ratio)
                 //good on desktop for only square and 4:3 ratio image dimensions
                 //im.src = 'https://scontent-yyz1-1.cdninstagram.com/vp/2c9e475a6c684b4eb20fb9c06a9c8c36/5B01A374/t51.2885-15/e35/24274488_1204373613026222_6359081673119760384_n.jpg';
-                im.src = 'https://scontent-yyz1-1.cdninstagram.com/vp/a0f1f9b8a2924eb3869b5d71b3bb4fb9/5B184CB1/t51.2885-15/e35/26863250_2004244896455821_3703496126918295552_n.jpg';
+                im.src = imgUrl;
                 //im.src = 'https://scontent-yyz1-1.cdninstagram.com/vp/192110115a0379f7200f2aabeac9a7e5/5B094E85/t51.2885-15/e35/11849357_536498379834099_188237789_n.jpg';
                 //sw and sh are the withis.dh and height of the image piece to be cut from the raw image
                 im.onload = function () {
@@ -312,56 +421,60 @@ var game = Vue.component('game', {
             });
         },
         setUp: function setUp(w, h) {
-            var _this4 = this;
+            var _this7 = this;
 
             this.picBoxes = this.picColumn * this.picRow;
             this.footnote_hide = false;
             this.footnote = true;
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
-            this.drawCanvas(w, h).then(function (data) {
+            this.getImage().then(function (data) {
+                _this7.currentUrl = data;
+                return _this7.drawCanvas(w, h, data);
+            }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!_this4.safe(_this4.draw)) {
-                    _this4.svg = document.getElementById('svg');
-                    _this4.draw = SVG(_this4.svg).size(w, h);
+                if (!_this7.safe(_this7.draw)) {
+                    _this7.svg = document.getElementById('svg');
+                    _this7.draw = SVG(_this7.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
                 var z = 0;
-                _this4.basket.forEach(function (item) {
+                _this7.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    var elem = _this4.draw.image(item.img, _this4.dw, Math.round(_this4.sh * _this4.dw / _this4.sw));
-                    elem.x(_this4.shuffle[z].x);
-                    elem.y(_this4.shuffle[z].y);
+                    var elem = _this7.draw.image(item.img, _this7.dw, Math.round(_this7.sh * _this7.dw / _this7.sw));
+                    elem.x(_this7.shuffle[z].x);
+                    elem.y(_this7.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     elem.click(function () {
-                        _this4.isStarted();
-                        _this4.tones('e', 5, 10, null, 'sine');
-                        elem.animate(100).width(_this4.dw - _this4.dw * 0.3);
-                        if (_this4.waste.length < 2) {
-                            _this4.waste.push(elem);
+                        _this7.isStarted();
+                        _this7.tones('e', 5, 10, null, 'sine');
+                        _this7.vibrate(100);
+                        elem.animate(100).width(_this7.dw - _this7.dw * 0.3);
+                        if (_this7.waste.length < 2) {
+                            _this7.waste.push(elem);
                         }
-                        if (_this4.waste.length === 2 && _this4.waste[0].node.id !== _this4.waste[1].node.id) {
-                            var a = { x: _this4.waste[0].node.x.baseVal.value,
-                                y: _this4.waste[0].node.y.baseVal.value,
-                                truth: _this4.waste[0].truth
+                        if (_this7.waste.length === 2 && _this7.waste[0].node.id !== _this7.waste[1].node.id) {
+                            var a = { x: _this7.waste[0].node.x.baseVal.value,
+                                y: _this7.waste[0].node.y.baseVal.value,
+                                truth: _this7.waste[0].truth
                             };
-                            var b = { x: _this4.waste[1].node.x.baseVal.value,
-                                y: _this4.waste[1].node.y.baseVal.value,
-                                truth: _this4.waste[1].truth
+                            var b = { x: _this7.waste[1].node.x.baseVal.value,
+                                y: _this7.waste[1].node.y.baseVal.value,
+                                truth: _this7.waste[1].truth
                             };
-                            SVG.get(_this4.waste[0].node.id).animate(500).move(b.x, b.y).animate(100).width(_this4.dw);
-                            SVG.get(_this4.waste[1].node.id).animate(500).move(a.x, a.y).animate(100).width(_this4.dw);
-                            _this4.checker(a, b);
-                            _this4.checker(b, a);
-                            _this4.progressFunc();
-                            _this4.waste = [];
+                            SVG.get(_this7.waste[0].node.id).animate(500).move(b.x, b.y).animate(100).width(_this7.dw);
+                            SVG.get(_this7.waste[1].node.id).animate(500).move(a.x, a.y).animate(100).width(_this7.dw);
+                            _this7.checker(a, b);
+                            _this7.checker(b, a);
+                            _this7.progressFunc();
+                            _this7.waste = [];
 
                             //console.log(a,b)
-                        } else if (_this4.waste.length === 2 && _this4.waste[0].node.id == _this4.waste[1].node.id) {
+                        } else if (_this7.waste.length === 2 && _this7.waste[0].node.id == _this7.waste[1].node.id) {
                             //this is the situation where the same box is touched
-                            elem.animate(100).width(_this4.dw);
-                            _this4.waste = [];
+                            elem.animate(100).width(_this7.dw);
+                            _this7.waste = [];
                         }
                         //console.log(elem);
                     });
@@ -372,16 +485,16 @@ var game = Vue.component('game', {
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            _this4.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this7.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        _this4.progressFunc();
-                        _this4.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this7.progressFunc();
+                        _this7.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                M.toast({ html: '<div class="center-align full-width">' + _this4.footnote_msg + '</div>', displayLength: 2000000 });
+                M.toast({ html: '<div class="center-align full-width">' + _this7.footnote_msg + '</div>', displayLength: 3000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -393,12 +506,13 @@ var leaderboard = Vue.component('leaderboard', {
     mixins: [serviceProvider],
     data: function data() {
         return {
-            movingHearts: []
+            movingHearts: [],
+            leaderboardList: []
         };
     },
     methods: {
         makeHeart: function makeHeart() {
-            var _this5 = this;
+            var _this8 = this;
 
             var b = Math.floor(Math.random() * 100 + 1);
             var d = ["flowOne", "flowTwo", "flowThree"];
@@ -412,24 +526,36 @@ var leaderboard = Vue.component('leaderboard', {
             bucket.seconds = c;
             this.movingHearts.push(bucket);
             setTimeout(function () {
-                var index = _this5.movingHearts.findIndex(function (i) {
+                var index = _this8.movingHearts.findIndex(function (i) {
                     return i.id === b;
                 });
-                _this5.movingHearts.splice(index, 1);
+                _this8.movingHearts.splice(index, 1);
             }, c * 1200);
+        },
+        getLeaderboard: function getLeaderboard() {
+            var _this9 = this;
+
+            var today = this.currentGameDay;
+            axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
+                console.log(res);
+                _this9.leaderboardList = res.data;
+            });
         }
     },
+    created: function created() {
+        this.getLeaderboard();
+    },
     mounted: function mounted() {
-        var _this6 = this;
+        var _this10 = this;
 
         setInterval(function () {
-            _this6.makeHeart();
+            _this10.makeHeart();
         }, 900);
     }
 });
 
 Vue.component('modal', {
-    props: ['category'],
+    props: ['modalData', 'test', 'url', 'modalPage'],
     template: '#comp-modal',
     mixins: [serviceProvider],
     data: function data() {
@@ -467,11 +593,19 @@ Vue.filter('number', function (value) {
 var store = new Vuex.Store({
     //state management in VUE
     state: {
-        instaName: ''
+        instaName: '',
+        celebList: null,
+        url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg'
     },
     mutations: {
         insertName: function insertName(state, data) {
             state.instaName = data;
+        },
+        celebList: function celebList(state, data) {
+            state.celebList = data;
+        },
+        url: function url(state, data) {
+            state.url = data;
         }
     }
 });
