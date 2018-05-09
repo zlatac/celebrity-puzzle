@@ -54,6 +54,9 @@ div.progress{height: 20px !important;}
 .spinner-white-only{
     border-color: white;
 }
+.spinner-celeb{
+    border-color: #7569af;
+}
 .top-banner{
     height: 5px;
     width: 100%;

@@ -27,6 +27,12 @@ var serviceProvider = {
         },
         previousGameDay: function previousGameDay() {
             return moment().subtract(1, 'days').startOf('day').toISOString();
+        },
+        savedProfile: function savedProfile() {
+            if (this.safe(localStorage.instahandle)) {
+                return localStorage.instahandle;
+            }
+            return '';
         }
     },
     mounted: function mounted() {
@@ -110,14 +116,25 @@ var serviceProvider = {
         insta: function insta() {
             this.$store.commit('insertName', this.name);
         },
+        showSubmit: function showSubmit() {
+            this.modalPage.insta = true;
+            this.profileExist();
+        },
+        profileExist: function profileExist() {
+            if (this.savedProfile !== '') {
+                this.inputProfile = this.savedProfile;
+                this.getProfile();
+            }
+        },
         getProfile: function getProfile() {
             var _this2 = this;
 
+            this.modalPage.imageacquired = false; // remove submit button while typing
             if (this.profileTimeout !== null) {
                 clearTimeout(this.profileTimeout);
             }
             this.profileTimeout = setTimeout(function () {
-                console.log(_this2.inputProfile);
+                //console.log(this.inputProfile)
                 var profile = _this2.inputProfile.replace('@', '').toLowerCase();
                 _this2.fetchInstaProfile(profile);
             }, 1200);
@@ -125,16 +142,22 @@ var serviceProvider = {
         fetchInstaProfile: function fetchInstaProfile(profile) {
             var _this3 = this;
 
+            this.modalPage.loader = true;
+            if (profile === '') return this.modalPage.fail = true;
             fetch('https://www.instagram.com/' + profile + '/').then(function (res) {
                 if (res.status === 200) {
                     return res.text();
                 } else {
+                    _this3.modalPage.fail = true;
                     return 'failed';
                 }
             }).then(function (data) {
                 if (data !== 'failed') {
                     var sift = data.match(/og:image.+(http.+)"/i)[1];
                     _this3.$store.commit('url', sift);
+                    _this3.modalPage.fail = false;
+                    _this3.modalPage.loader = false;
+                    _this3.modalPage.imageacquired = true;
                 }
             });
             //this.url = profile;
@@ -142,7 +165,7 @@ var serviceProvider = {
     }
 };
 var landing = Vue.component('landing', {
-    template: '<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">\n                    <div class="center-align fwhite" style="font-family: \'Pacifico\', cursive;">\n                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>\n                        <div style="font-size:26px;margin-top:20px">align the stars</div>\n                        <!--<div class="btn btn-large red"><i class="fa fa-warning"></i> Mobile phones only</div>-->\n                        <div class="animated fadeIn" style="margin-top:250px">\n                            <div class="preloader-wrapper small active">\n                                <div class="spinner-layer spinner-white-only">\n                                <div class="circle-clipper left">\n                                    <div class="circle"></div>\n                                </div><div class="gap-patch">\n                                    <div class="circle"></div>\n                                </div><div class="circle-clipper right">\n                                    <div class="circle"></div>\n                                </div>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n               </div>',
+    template: '<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">\n                    <div class="center-align fwhite" style="font-family: \'Pacifico\', cursive;">\n                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>\n                        <div style="font-size:26px;margin-top:20px">align the stars</div>\n                        <!--<div class="btn btn-large red"><i class="fa fa-warning"></i> Mobile phones only</div>-->\n                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="\'white\'"></spinner>\n                    </div>\n               </div>',
     mixins: [serviceProvider],
     created: function created() {
         setTimeout(function () {
@@ -203,13 +226,13 @@ var game = Vue.component('game', {
             basket: [],
             output: '',
             prog: 0,
-            test: { end_time: null, start_time: null, time_result: '0:0' },
+            test: { end_time: null, start_time: null, time_result: '0:0', timePlayed: null, bestTime: null },
             picColumn: 2,
             picRow: 2,
             puzzLevel: 1,
             currentUrl: '',
             profile: {},
-            modalPage: { page: 'game', insta: false }
+            modalPage: { page: 'game', insta: false, loader: false, fail: false, imageacquired: false }
         };
     },
     mounted: function mounted() {
@@ -226,6 +249,21 @@ var game = Vue.component('game', {
         },
         progressFunc: function progressFunc() {
             this.prog = this.correct.length / this.picBoxes * 100;
+        },
+        updateBestTime: function updateBestTime() {
+            var currentTime = this.test.timePlayed;
+            if ('bestTime' in localStorage) {
+                var bestTime = localStorage.bestTime;
+                if (currentTime < bestTime) {
+                    this.test.bestTime = currentTime;
+                    localStorage.bestTime = currentTime;
+                } else {
+                    this.test.bestTime = bestTime;
+                }
+            } else {
+                this.test.bestTime = currentTime;
+                localStorage.bestTime = currentTime;
+            }
         },
         levelUp: function levelUp() {
             if (this.puzzLevel < 2) {
@@ -244,6 +282,7 @@ var game = Vue.component('game', {
             } else {
                 // game is finished and time to move on
                 this.test.hideModal = false;
+                this.updateBestTime();
                 this.toggleModal();
             }
         },
@@ -260,7 +299,7 @@ var game = Vue.component('game', {
             this.picColumn = 2;
             this.picRow = 2;
             this.puzzLevel = 1;
-            this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0' }, this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
+            this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0', timePlayed: null, bestTime: null }, this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
         },
         submitGame: function submitGame(inputProfile) {
             var _this4 = this;
@@ -271,6 +310,7 @@ var game = Vue.component('game', {
                 var name = inputProfile.replace('@', '').toLowerCase();
                 var picurl = this.url;
                 var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl };
+                localStorage.instahandle = name;
                 console.log(postData);
                 axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl).then(function (response) {
                     _this4.modalInstance.close();
@@ -568,6 +608,10 @@ Vue.component('modal', {
 Vue.component('champion', {
     props: ['index', 'url'],
     template: '\n        <div style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead">\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>\n            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>\n        </div>\n    '
+});
+Vue.component('spinner', {
+    props: ['colorClass'],
+    template: '\n        <div class="preloader-wrapper small active">\n            <div class="spinner-layer" :class="{\'spinner-white-only\': colorClass === \'white\', \'spinner-celeb\': colorClass === \'default\'}">\n            <div class="circle-clipper left">\n                <div class="circle"></div>\n            </div><div class="gap-patch">\n                <div class="circle"></div>\n            </div><div class="circle-clipper right">\n                <div class="circle"></div>\n            </div>\n            </div>\n        </div>\n    '
 });
 Vue.directive('prog', {
     update: function update(el, binding) {

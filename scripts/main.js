@@ -29,6 +29,12 @@ const serviceProvider = {
         },
         previousGameDay(){
             return moment().subtract(1, 'days').startOf('day').toISOString();
+        },
+        savedProfile(){
+            if(this.safe(localStorage.instahandle)){
+                return localStorage.instahandle
+            }
+            return ''
         }
     },
     mounted: function(){
@@ -104,22 +110,36 @@ const serviceProvider = {
         insta:function(){
             this.$store.commit('insertName',this.name);
         },
+        showSubmit: function(){
+            this.modalPage.insta = true
+            this.profileExist()
+        },
+        profileExist:function(){
+            if(this.savedProfile !== ''){
+                this.inputProfile = this.savedProfile
+                this.getProfile()
+            }
+        },
         getProfile:function(){
+            this.modalPage.imageacquired = false // remove submit button while typing
             if(this.profileTimeout !== null){
                 clearTimeout(this.profileTimeout)
             }
             this.profileTimeout = setTimeout(()=>{
-                console.log(this.inputProfile)
+                //console.log(this.inputProfile)
                 let profile = this.inputProfile.replace('@','').toLowerCase()
                 this.fetchInstaProfile(profile)
             },1200)
         },
         fetchInstaProfile: function(profile){
+            this.modalPage.loader = true
+            if(profile === '') return this.modalPage.fail = true
             fetch(`https://www.instagram.com/${profile}/`)
             .then((res)=>{
                 if(res.status === 200){
                     return  res.text();
                 }else{
+                    this.modalPage.fail = true
                     return 'failed'
                 }      
             })
@@ -127,6 +147,9 @@ const serviceProvider = {
                 if(data !== 'failed'){
                     let sift = data.match(/og:image.+(http.+)"/i)[1];
                     this.$store.commit('url',sift);
+                    this.modalPage.fail = false
+                    this.modalPage.loader = false
+                    this.modalPage.imageacquired = true
                 }
             });
             //this.url = profile;
@@ -139,19 +162,7 @@ const landing = Vue.component('landing', {
                         <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>
                         <div style="font-size:26px;margin-top:20px">align the stars</div>
                         <!--<div class="btn btn-large red"><i class="fa fa-warning"></i> Mobile phones only</div>-->
-                        <div class="animated fadeIn" style="margin-top:250px">
-                            <div class="preloader-wrapper small active">
-                                <div class="spinner-layer spinner-white-only">
-                                <div class="circle-clipper left">
-                                    <div class="circle"></div>
-                                </div><div class="gap-patch">
-                                    <div class="circle"></div>
-                                </div><div class="circle-clipper right">
-                                    <div class="circle"></div>
-                                </div>
-                                </div>
-                            </div>
-                        </div>
+                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="'white'"></spinner>
                     </div>
                </div>`,
     mixins: [serviceProvider],
@@ -275,13 +286,13 @@ const game = Vue.component('game',{
             basket :[],
             output : '',
             prog : 0,
-            test: {end_time:null, start_time:null,time_result:'0:0'},
+            test: {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null},
             picColumn : 2,
             picRow : 2,
             puzzLevel: 1,
             currentUrl: '',
             profile: {},
-            modalPage:{page:'game',insta:false}
+            modalPage:{page:'game',insta:false,loader:false,fail:false,imageacquired:false}
         }
     },
     mounted: function(){
@@ -298,6 +309,21 @@ const game = Vue.component('game',{
         },
         progressFunc : function(){
             this.prog = ((this.correct.length)/this.picBoxes)*100;
+        },
+        updateBestTime: function(){
+            let currentTime = this.test.timePlayed
+            if('bestTime' in localStorage){
+                let bestTime = localStorage.bestTime
+                if(currentTime < bestTime){
+                    this.test.bestTime = currentTime
+                    localStorage.bestTime = currentTime
+                }else{
+                    this.test.bestTime = bestTime
+                }
+            }else{
+                this.test.bestTime = currentTime
+                localStorage.bestTime = currentTime
+            }
         },
         levelUp : function(){
             if(this.puzzLevel < 2){
@@ -316,6 +342,7 @@ const game = Vue.component('game',{
             }else{
                 // game is finished and time to move on
                 this.test.hideModal = false;
+                this.updateBestTime()
                 this.toggleModal()
             }
         },
@@ -333,7 +360,7 @@ const game = Vue.component('game',{
             this.picRow = 2;
             this.puzzLevel = 1;
             this.currentUrl= '',
-            this.test =  {end_time:null, start_time:null,time_result:'0:0'},
+            this.test =  {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null},
             this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
         },
         submitGame: function(inputProfile){
@@ -343,6 +370,7 @@ const game = Vue.component('game',{
                 let name = inputProfile.replace('@','').toLowerCase()
                 let picurl = this.url
                 let postData = {timestamp,playtime,name,picurl}
+                localStorage.instahandle = name
                 console.log(postData)
                 axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}`)
                 .then((response)=>{
@@ -639,6 +667,22 @@ Vue.component('champion',{
             <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>
             <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
             <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>
+        </div>
+    `
+});
+Vue.component('spinner',{
+    props:['colorClass'],
+    template:`
+        <div class="preloader-wrapper small active">
+            <div class="spinner-layer" :class="{'spinner-white-only': colorClass === 'white', 'spinner-celeb': colorClass === 'default'}">
+            <div class="circle-clipper left">
+                <div class="circle"></div>
+            </div><div class="gap-patch">
+                <div class="circle"></div>
+            </div><div class="circle-clipper right">
+                <div class="circle"></div>
+            </div>
+            </div>
         </div>
     `
 });
