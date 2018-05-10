@@ -9,6 +9,7 @@ var serviceProvider = {
             name: '',
             profileTimeout: null,
             inputProfile: '',
+            loader: false,
             testProfile: [{ name: 'kim k', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofia', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }]
         };
     },
@@ -33,6 +34,9 @@ var serviceProvider = {
                 return localStorage.instahandle;
             }
             return '';
+        },
+        isWindowBig: function isWindowBig() {
+            return this.checkWindow();
         }
     },
     mounted: function mounted() {
@@ -64,6 +68,13 @@ var serviceProvider = {
                 return false;
             }
             return true;
+        },
+        checkWindow: function checkWindow() {
+            if (window.innerWidth > 600 && window.innerWidth > 768) {
+                //768px is for tablet (ipad)
+                return true;
+            }
+            return false;
         },
         randomize: function randomize(array) {
             //Algorithm to shuffle an array
@@ -165,13 +176,15 @@ var serviceProvider = {
     }
 };
 var landing = Vue.component('landing', {
-    template: '<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">\n                    <div class="center-align fwhite" style="font-family: \'Pacifico\', cursive;">\n                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>\n                        <div style="font-size:26px;margin-top:20px">align the stars</div>\n                        <!--<div class="btn btn-large red"><i class="fa fa-warning"></i> Mobile phones only</div>-->\n                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="\'white\'"></spinner>\n                    </div>\n               </div>',
+    template: '<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">\n                    <div class="center-align fwhite" style="font-family: \'Pacifico\', cursive;">\n                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>\n                        <div style="font-size:26px;margin-top:20px">align the stars</div>\n                        <div class="btn btn-large red-text white tooltipped" style="margin-top:20px" v-if="isWindowBig" data-position="top" data-tooltip="Coming soon to desktops and laptops">\n                            <i class="material-icons">stay_primary_portrait</i> Mobile phones only\n                        </div>\n                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="\'white\'" v-if="!isWindowBig"></spinner>\n                    </div>\n               </div>',
     mixins: [serviceProvider],
     created: function created() {
-        setTimeout(function () {
-            //might do something here at some point
-            router.push('dash');
-        }, 3000);
+        if (this.isWindowBig !== true) {
+            setTimeout(function () {
+                //might do something here at some point
+                router.push('dash');
+            }, 3000);
+        }
     }
 });
 var container = Vue.component('container', {
@@ -187,17 +200,7 @@ var container = Vue.component('container', {
         };
     },
     created: function created() {
-        this.message = 'damn girlz', this.wow();
-        self = this;
-        // fetch('https://www.instagram.com/bohnchild/').then(function(res){
-        //      return  res.text();    
-        // })
-        // .then(function(data){
-        //     let sift = data.match(/og:image.+(http.+)"/i)[1];
-        //     //json object with everything regex /window._sharedData = ({.+);/
-        //      console.log(sift);
-        //      self.url = sift
-        // });
+        if (this.isWindowBig === true) return router.push('/');
     },
     methods: {
         wow: function wow() {
@@ -211,7 +214,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <div class="chip animated" style="position:absolute;bottom:2%;right: 0;">\n                    <img :src="profile.url" alt="Contact Person">\n                    {{profile.fullname}}\n                </div>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <div class="chip animated" style="position:absolute;bottom:2%;right: 0;">\n                    <img :src="profile.url" alt="Contact Person">\n                    {{profile.fullname}}\n                </div>\n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -236,6 +239,8 @@ var game = Vue.component('game', {
         };
     },
     mounted: function mounted() {
+        if (this.isWindowBig === true) return router.push('/');
+
         if (this.$store.state.celebList !== null) {
             this.svgSpace = document.getElementById('svg');
             this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
@@ -275,8 +280,8 @@ var game = Vue.component('game', {
                 this.shuffle = [];
                 this.basket = [];
                 this.prog = 0;
-                this.picColumn = 3;
-                this.picRow = 3;
+                this.picColumn = 5;
+                this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
             } else {
@@ -463,6 +468,7 @@ var game = Vue.component('game', {
         setUp: function setUp(w, h) {
             var _this7 = this;
 
+            this.loader = true;
             this.picBoxes = this.picColumn * this.picRow;
             this.footnote_hide = false;
             this.footnote = true;
@@ -534,6 +540,7 @@ var game = Vue.component('game', {
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
+                _this7.loader = false;
                 M.toast({ html: '<div class="center-align full-width">' + _this7.footnote_msg + '</div>', displayLength: 3000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
@@ -575,14 +582,17 @@ var leaderboard = Vue.component('leaderboard', {
         getLeaderboard: function getLeaderboard() {
             var _this9 = this;
 
+            this.loader = true;
             var today = this.currentGameDay;
             axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 console.log(res);
                 _this9.leaderboardList = res.data;
+                _this9.loader = false;
             });
         }
     },
     created: function created() {
+        if (this.isWindowBig === true) return router.push('/');
         this.getLeaderboard();
     },
     mounted: function mounted() {

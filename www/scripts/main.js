@@ -7,6 +7,7 @@ const serviceProvider = {
             name:'',
             profileTimeout:null,
             inputProfile:'',
+            loader: false,
             testProfile: [
                 {name:'kim k', url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
                 {name:'sofia', url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
@@ -35,6 +36,9 @@ const serviceProvider = {
                 return localStorage.instahandle
             }
             return ''
+        },
+        isWindowBig(){
+            return this.checkWindow()
         }
     },
     mounted: function(){
@@ -68,6 +72,13 @@ const serviceProvider = {
                 return false;
             }
             return true;
+        },
+        checkWindow: function(){
+            if(window.innerWidth > 600 && window.innerWidth > 768){
+                //768px is for tablet (ipad)
+                return true;
+            }
+            return false;
 	    },
         randomize : function(array) {
 			//Algorithm to shuffle an array
@@ -161,16 +172,21 @@ const landing = Vue.component('landing', {
                     <div class="center-align fwhite" style="font-family: 'Pacifico', cursive;">
                         <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>
                         <div style="font-size:26px;margin-top:20px">align the stars</div>
-                        <!--<div class="btn btn-large red"><i class="fa fa-warning"></i> Mobile phones only</div>-->
-                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="'white'"></spinner>
+                        <div class="btn btn-large red-text white tooltipped" style="margin-top:20px" v-if="isWindowBig" data-position="top" data-tooltip="Coming soon to desktops and laptops">
+                            <i class="material-icons">stay_primary_portrait</i> Mobile phones only
+                        </div>
+                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="'white'" v-if="!isWindowBig"></spinner>
                     </div>
                </div>`,
     mixins: [serviceProvider],
     created: function(){
-        setTimeout(function(){
-            //might do something here at some point
-            router.push('dash');
-        },3000)
+        if(this.isWindowBig !== true){
+            setTimeout(function(){
+                //might do something here at some point
+                router.push('dash');
+            },3000)
+        }
+    
     }
 });
 const container = Vue.component('container', {
@@ -222,18 +238,7 @@ const container = Vue.component('container', {
         }
     },
     created: function(){
-        this.message = 'damn girlz',
-        this.wow();
-        self = this;
-        // fetch('https://www.instagram.com/bohnchild/').then(function(res){
-        //      return  res.text();    
-        // })
-        // .then(function(data){
-        //     let sift = data.match(/og:image.+(http.+)"/i)[1];
-        //     //json object with everything regex /window._sharedData = ({.+);/
-        //      console.log(sift);
-        //      self.url = sift
-        // });
+        if(this.isWindowBig === true) return router.push('/')
         
     },
     methods: {
@@ -260,6 +265,7 @@ const game = Vue.component('game',{
                     <img :src="profile.url" alt="Contact Person">
                     {{profile.fullname}}
                 </div>
+                <spinner class="animated fadeIn" :colorClass="'default'" v-show="loader"></spinner>
             </div>
             <div id="svg" style="background-color:white; width:100%; height:80%;" >
                 <div class="btn list-me animated bounceIn" v-bind:class="{'hide': prog !== 100}">
@@ -296,6 +302,8 @@ const game = Vue.component('game',{
         }
     },
     mounted: function(){
+        if(this.isWindowBig === true) return router.push('/')
+
         if(this.$store.state.celebList !== null){
             this.svgSpace = document.getElementById('svg')
             this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
@@ -335,8 +343,8 @@ const game = Vue.component('game',{
                 this.shuffle = [];
                 this.basket =[];
                 this.prog = 0;
-                this.picColumn = 3;
-                this.picRow = 3;
+                this.picColumn =5;
+                this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
             }else{
@@ -520,6 +528,7 @@ const game = Vue.component('game',{
             
         },
         setUp : function(w,h){
+            this.loader = true
             this.picBoxes = this.picColumn * this.picRow;
             this.footnote_hide = false;
             this.footnote = true;
@@ -593,6 +602,7 @@ const game = Vue.component('game',{
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
+                this.loader = false
                 M.toast({html:`<div class="center-align full-width">${this.footnote_msg}</div>`,displayLength:3000});
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
@@ -629,15 +639,18 @@ const leaderboard = Vue.component('leaderboard',{
             },c * 1200)
         },
         getLeaderboard(){
+            this.loader = true
             let today = this.currentGameDay
             axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`)
             .then((res)=>{
                 console.log(res)
                 this.leaderboardList = res.data;
+                this.loader = false
             })
         }
     },
     created:function(){
+        if(this.isWindowBig === true) return router.push('/')
         this.getLeaderboard()
     },
     mounted:function(){

@@ -9,12 +9,12 @@ var babel = require("gulp-babel");
 gulp.task('default', ['build']);
 
 gulp.task('es5', function(){
-    return gulp.src(['scripts/main.js'])
+    return gulp.src(['www/scripts/main.js'])
     .pipe(babel())
     .pipe(rename("main.es5.js"))
-    .pipe(gulp.dest('scripts'));
+    .pipe(gulp.dest('www/scripts'));
 });
 
 gulp.task('build', function() {
-    gulp.watch('scripts/main.js', ['es5']);
+    gulp.watch('www/scripts/main.js', ['es5']);
   });

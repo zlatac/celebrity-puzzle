@@ -44,8 +44,9 @@
                     </div>
                 </div>
             </div>
+            <div class="col s12 center" v-show="loader"><spinner class="animated fadeIn" :colorClass="'default'"></spinner></div>
             <div class="col s12 animated fadeInUp" v-for="(x, index) in leaderboardList">
-                <div class="card-panel z-depth-2" style="padding:9px;margin:0.5rem 0 0.1rem 0;">
+                <div class="card-panel z-depth-2" style="padding:9px;margin:0.5rem 0 0.1rem 0;" :class="{'grey white-text': savedProfile === x.name}">
                 <div class="row valign-wrapper" style="margin-bottom:0px">
                     <!-- <div class="col s3" style="position: relative;" @click="makeHeart()">
                     <img :src="url" alt="" class="circle responsive-img img-lead">
@@ -107,7 +108,9 @@
             <div v-if="modalPage.page === 'dash'">
                 <!-- Start a game -->
                 <div class="row">
-                    <div class="col s12">Instruction: play and give me money please</div>
+                    <div class="col s12">
+                        <b>Instruction</b>: Tap a tile to switch positions with other tiles. Solve the puzzle with the fastest time in the world today
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col s4 push-s9">
