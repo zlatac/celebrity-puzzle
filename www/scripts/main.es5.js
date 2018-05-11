@@ -120,9 +120,18 @@ var serviceProvider = {
             $scope.test.timePlayed = moment(dif).format("mm:ss:SS");
             return $scope.test.timePlayed;
         },
+        resumeAudioContext: function resumeAudioContext() {
+            //fucking chrome suspends audio context till the user acts on an event in the browser
+            if (tones.context.state.includes('suspended')) {
+                tones.context.resume().then(function () {
+                    console.log('audio context back online');
+                });
+            }
+        },
         toggleModal: function toggleModal(modalData) {
             this.modalData = modalData;
             this.modalInstance.open();
+            this.resumeAudioContext();
         },
         insta: function insta() {
             this.$store.commit('insertName', this.name);

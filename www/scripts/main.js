@@ -114,9 +114,17 @@ const serviceProvider = {
             $scope.test.timePlayed = moment(dif).format("mm:ss:SS");
             return $scope.test.timePlayed;
         },
+        resumeAudioContext: function(){
+            //fucking chrome suspends audio context till the user acts on an event in the browser
+            if(tones.context.state.includes('suspended')){
+                tones.context.resume()
+                .then(()=>{console.log('audio context back online')})
+            }
+        },
         toggleModal: function(modalData){
             this.modalData = modalData
             this.modalInstance.open();
+            this.resumeAudioContext()
         },
         insta:function(){
             this.$store.commit('insertName',this.name);
