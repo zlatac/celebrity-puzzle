@@ -54,7 +54,7 @@ var serviceProvider = {
             return router.push('/');
         }
         if (this.$store.state.celebList === null) {
-            fetch('/scripts/celebs.json').then(function (res) {
+            fetch('/www/scripts/celebs.json').then(function (res) {
                 //get celebrity list
                 return res.json();
             }).then(function (data) {
@@ -223,7 +223,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <div class="chip animated" style="position:absolute;bottom:2%;right: 0;">\n                    <img :src="profile.url" alt="Contact Person">\n                    {{profile.fullname}}\n                </div>\n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  <i class="fa fa-clock-o"></i> \n                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry">\n                        <i class="material-icons" style="font-size: 34px;">autorenew</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -501,38 +501,51 @@ var game = Vue.component('game', {
                     elem.y(_this7.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
-                    elem.click(function () {
-                        _this7.isStarted();
-                        _this7.tones('e', 5, 10, null, 'sine');
-                        _this7.vibrate(100);
-                        elem.animate(100).width(_this7.dw - _this7.dw * 0.3);
-                        if (_this7.waste.length < 2) {
-                            _this7.waste.push(elem);
+                    function onTrigger() {
+                        this.isStarted();
+                        this.tones('e', 5, 10, null, 'sine');
+                        this.vibrate(100);
+                        if (elem.width() !== this.dw - this.dw * 0.3) {
+                            //so we dont have multiple shrunken elements at once in the case where the user taps very quickly
+                            //on different elements like a mad man :)
+                            elem.animate(100).width(this.dw - this.dw * 0.3);
                         }
-                        if (_this7.waste.length === 2 && _this7.waste[0].node.id !== _this7.waste[1].node.id) {
-                            var a = { x: _this7.waste[0].node.x.baseVal.value,
-                                y: _this7.waste[0].node.y.baseVal.value,
-                                truth: _this7.waste[0].truth
+                        if (this.waste.length < 2 && !elem.fx.active) {
+                            //check if the animation is active or else it could get called again while in transit
+                            //which will throw it off the grid and thats a BIG PROBLEM for the user
+                            this.waste.push(elem);
+                        }
+                        if (this.waste.length === 2 && this.waste[0].node.id !== this.waste[1].node.id) {
+                            var a = { x: this.waste[0].node.x.baseVal.value,
+                                y: this.waste[0].node.y.baseVal.value,
+                                truth: this.waste[0].truth
                             };
-                            var b = { x: _this7.waste[1].node.x.baseVal.value,
-                                y: _this7.waste[1].node.y.baseVal.value,
-                                truth: _this7.waste[1].truth
+                            var b = { x: this.waste[1].node.x.baseVal.value,
+                                y: this.waste[1].node.y.baseVal.value,
+                                truth: this.waste[1].truth
                             };
-                            SVG.get(_this7.waste[0].node.id).animate(500).move(b.x, b.y).animate(100).width(_this7.dw);
-                            SVG.get(_this7.waste[1].node.id).animate(500).move(a.x, a.y).animate(100).width(_this7.dw);
-                            _this7.checker(a, b);
-                            _this7.checker(b, a);
-                            _this7.progressFunc();
-                            _this7.waste = [];
+                            SVG.get(this.waste[0].node.id).animate(500).move(b.x, b.y).animate(100).width(this.dw);
+                            SVG.get(this.waste[1].node.id).animate(500).move(a.x, a.y).animate(100).width(this.dw);
+                            this.checker(a, b);
+                            this.checker(b, a);
+                            this.progressFunc();
+                            this.waste = [];
 
                             //console.log(a,b)
-                        } else if (_this7.waste.length === 2 && _this7.waste[0].node.id == _this7.waste[1].node.id) {
+                        } else if (this.waste.length === 2 && this.waste[0].node.id == this.waste[1].node.id) {
                             //this is the situation where the same box is touched
-                            elem.animate(100).width(_this7.dw);
-                            _this7.waste = [];
+                            elem.animate(100).width(this.dw);
+                            this.waste = [];
                         }
-                        //console.log(elem);
+                    }
+                    elem.touchstart(function () {
+                        onTrigger.call(_this7);
                     });
+                    if (_this7.isWindowBig === true) {
+                        elem.click(function () {
+                            onTrigger.call(_this7);
+                        });
+                    }
 
                     elem.loaded(function () {
                         //on initialization check if element is in the right position
@@ -651,6 +664,12 @@ Vue.directive('disappear', {
 Vue.filter('number', function (value) {
     value = Number(value);
     return Math.round(value);
+});
+Vue.filter('truncate', function (value) {
+    if (value && value.length > 20) {
+        return value.slice(0, 20);
+    }
+    return value;
 });
 
 var store = new Vuex.Store({

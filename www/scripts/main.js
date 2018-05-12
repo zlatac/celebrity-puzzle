@@ -55,7 +55,7 @@ const serviceProvider = {
             return router.push('/');
         }
         if(this.$store.state.celebList === null){
-            fetch(`/scripts/celebs.json`).then((res)=>{
+            fetch(`/www/scripts/celebs.json`).then((res)=>{
                 //get celebrity list
                 return  res.json()   
             })
@@ -269,16 +269,24 @@ const game = Vue.component('game',{
                     <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
                     <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>
                 </div>
-                <div class="chip animated" style="position:absolute;bottom:2%;right: 0;">
-                    <img :src="profile.url" alt="Contact Person">
-                    {{profile.fullname}}
-                </div>
+                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
+                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry">
+                        <i class="material-icons" style="font-size: 34px;">autorenew</i>
+                    </span>
+                    <div class="chip">
+                        <img :src="profile.url" alt="Contact Person">
+                        {{profile.fullname | truncate}}
+                    </div>
+                </div>                
                 <spinner class="animated fadeIn" :colorClass="'default'" v-show="loader"></spinner>
             </div>
             <div id="svg" style="background-color:white; width:100%; height:80%;" >
                 <div class="btn list-me animated bounceIn" v-bind:class="{'hide': prog !== 100}">
-                        Completed!!  <i class="fa fa-clock-o"></i> 
-                        {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>
+                        Completed!!  
+                        <span v-show="test.start_time !== null">
+                            <i class="fa fa-clock-o"></i> 
+                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>
+                        </span>
                 </div>
             </div>
             
@@ -562,12 +570,18 @@ const game = Vue.component('game',{
                     elem.y(this.shuffle[z].y);
                     elem.truth = {x:item.x,y:item.y};
                     elem.attr('v-buzz','');
-                    elem.click(()=>{
+                    function onTrigger(){
                         this.isStarted();
                         this.tones('e',5,10,null,'sine');
                         this.vibrate(100)
-                        elem.animate(100).width(this.dw - this.dw*0.3);
-                        if(this.waste.length < 2){
+                        if(elem.width() !== this.dw - this.dw*0.3){
+                            //so we dont have multiple shrunken elements at once in the case where the user taps very quickly
+                            //on different elements like a mad man :)
+                            elem.animate(100).width(this.dw - this.dw*0.3);
+                        }
+                        if(this.waste.length < 2 && !elem.fx.active){
+                            //check if the animation is active or else it could get called again while in transit
+                            //which will throw it off the grid and thats a BIG PROBLEM for the user
                             this.waste.push(elem);
                         }
                         if(this.waste.length === 2 && this.waste[0].node.id !== this.waste[1].node.id ){
@@ -592,9 +606,16 @@ const game = Vue.component('game',{
                             elem.animate(100).width(this.dw);
                             this.waste = [];
                         }
-                        //console.log(elem);
+                    }
+                    elem.touchstart(()=>{
+                        onTrigger.call(this)
                     });
-                    
+                    if(this.isWindowBig === true){
+                        elem.click(()=>{
+                            onTrigger.call(this)
+                        });
+                    }
+
                     elem.loaded (()=>{
                         //on initialization check if element is in the right position
                         let pos = {x:elem.node.x.baseVal.value,
@@ -727,6 +748,12 @@ Vue.directive('disappear', {
 Vue.filter('number', function (value) {
   value = Number(value)
   return Math.round(value)
+});
+Vue.filter('truncate', function (value) {
+    if(value && value.length > 20){
+        return value.slice(0,20)
+    }
+    return value
 });
 
 const store = new Vuex.Store({
