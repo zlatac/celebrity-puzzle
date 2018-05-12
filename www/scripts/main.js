@@ -55,7 +55,7 @@ const serviceProvider = {
             return router.push('/');
         }
         if(this.$store.state.celebList === null){
-            fetch(`/www/scripts/celebs.json`).then((res)=>{
+            fetch(`/scripts/celebs.json`).then((res)=>{
                 //get celebrity list
                 return  res.json()   
             })

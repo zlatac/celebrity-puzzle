@@ -54,7 +54,7 @@ var serviceProvider = {
             return router.push('/');
         }
         if (this.$store.state.celebList === null) {
-            fetch('/www/scripts/celebs.json').then(function (res) {
+            fetch('/scripts/celebs.json').then(function (res) {
                 //get celebrity list
                 return res.json();
             }).then(function (data) {
