@@ -24,7 +24,8 @@ var serviceProvider = {
             return this.leadList.slice(0, 3);
         },
         currentGameDay: function currentGameDay() {
-            return moment().startOf('day').toISOString();
+            //return moment().startOf('day').toISOString();
+            return moment('2018/05/11', 'YYYY/MM/DD').toISOString();
         },
         previousGameDay: function previousGameDay() {
             return moment().subtract(1, 'days').startOf('day').toISOString();
@@ -54,7 +55,8 @@ var serviceProvider = {
             return router.push('/');
         }
         if (this.$store.state.celebList === null) {
-            fetch('/scripts/celebs.json').then(function (res) {
+            var location = window.location.port === '5500' ? '/www/scripts/celebs.json' : '/scripts/celebs.json';
+            fetch(location).then(function (res) {
                 //get celebrity list
                 return res.json();
             }).then(function (data) {
@@ -386,21 +388,24 @@ var game = Vue.component('game', {
                     if (res.status === 200) {
                         return res.text();
                     } else {
-                        _this6.getImage();
+                        //this.getImage();
+                        reject('there was an error retreiving data from instagram');
                     }
                 }).then(function (data) {
-                    var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
-                    var user = sift.entry_data.ProfilePage["0"].graphql.user;
-                    var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
-                    var imageList = instaList.filter(function (item) {
-                        return item.node.is_video === false;
-                    });
-                    if (imageList.length < 1) {
-                        _this6.getImage();
-                    } else {
-                        var index = Math.floor(Math.random() * imageList.length);
-                        _this6.profile = { fullname: user.full_name, url: user.profile_pic_url };
-                        resolve(imageList[index].node.display_url);
+                    if (_this6.safe(data)) {
+                        var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
+                        var user = sift.entry_data.ProfilePage["0"].graphql.user;
+                        var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
+                        var imageList = instaList.filter(function (item) {
+                            return item.node.is_video === false;
+                        });
+                        if (imageList.length < 1) {
+                            _this6.getImage();
+                        } else {
+                            var index = Math.floor(Math.random() * imageList.length);
+                            _this6.profile = { fullname: user.full_name, url: user.profile_pic_url };
+                            resolve(imageList[index].node.display_url);
+                        }
                     }
                 });
             });
@@ -485,6 +490,9 @@ var game = Vue.component('game', {
             this.getImage().then(function (data) {
                 _this7.currentUrl = data;
                 return _this7.drawCanvas(w, h, data);
+            }).catch(function (error) {
+                console.error(new Error(error));
+                _this7.setUp(w, h); //retry once there is a 404
             }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
                 if (!_this7.safe(_this7.draw)) {

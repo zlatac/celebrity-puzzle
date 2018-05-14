@@ -26,7 +26,8 @@ const serviceProvider = {
             return this.leadList.slice(0,3)
         },
         currentGameDay(){
-            return moment().startOf('day').toISOString();
+            //return moment().startOf('day').toISOString();
+            return moment('2018/05/11','YYYY/MM/DD').toISOString();
         },
         previousGameDay(){
             return moment().subtract(1, 'days').startOf('day').toISOString();
@@ -55,7 +56,8 @@ const serviceProvider = {
             return router.push('/');
         }
         if(this.$store.state.celebList === null){
-            fetch(`/scripts/celebs.json`).then((res)=>{
+            let location = (window.location.port === '5500')? '/www/scripts/celebs.json' : '/scripts/celebs.json'
+            fetch(location).then((res)=>{
                 //get celebrity list
                 return  res.json()   
             })
@@ -452,21 +454,25 @@ const game = Vue.component('game',{
                     if(res.status === 200){
                         return  res.text();
                     }else{
-                        this.getImage();
+                        //this.getImage();
+                        reject('there was an error retreiving data from instagram')
                     }       
                 })
                 .then((data)=>{
-                    let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
-                    let user = sift.entry_data.ProfilePage["0"].graphql.user
-                    let instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges
-                    let imageList = instaList.filter(item => item.node.is_video === false)
-                    if(imageList.length < 1){
-                        this.getImage()
-                    }else{
-                        let index = Math.floor(Math.random()*(imageList.length));
-                        this.profile = {fullname:user.full_name, url:user.profile_pic_url}
-                        resolve(imageList[index].node.display_url);
+                    if(this.safe(data)){
+                        let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
+                        let user = sift.entry_data.ProfilePage["0"].graphql.user
+                        let instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges
+                        let imageList = instaList.filter(item => item.node.is_video === false)
+                        if(imageList.length < 1){
+                            this.getImage()
+                        }else{
+                            let index = Math.floor(Math.random()*(imageList.length));
+                            this.profile = {fullname:user.full_name, url:user.profile_pic_url}
+                            resolve(imageList[index].node.display_url);
+                        }
                     }
+                    
                 });
             })
         },
@@ -553,6 +559,10 @@ const game = Vue.component('game',{
             .then((data)=>{
                 this.currentUrl = data
                 return this.drawCanvas(w,h,data)
+            })
+            .catch((error)=>{
+                console.error(new Error(error))
+                this.setUp(w,h) //retry once there is a 404
             })            
             .then((data)=>{
                 //console.log('yeaaaaaaaaaah', this.basket);
