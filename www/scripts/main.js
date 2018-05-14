@@ -269,7 +269,7 @@ const game = Vue.component('game',{
             <div style="background-color:white; width:100%;" >
                 <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">
                     <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
-                    <div style="position: absolute;left: 50%;top: 5%;color:  white;">{{prog | number}}%</div>
+                    <div style="position: absolute;left: 50%;top: 5%;" :class="{'white-text': prog >= 54}">{{prog | number}}%</div>
                 </div>
                 <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
                     <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry">
