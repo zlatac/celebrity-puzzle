@@ -9,8 +9,8 @@ const serviceProvider = {
             inputProfile:'',
             loader: false,
             testProfile: [
-                {name:'kim k', url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
-                {name:'sofia', url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
+                {name:'kimkardashian', url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
+                {name:'sofiavergara', url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
                 {name:'shaq', url:'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg'},
             ]
         }
@@ -215,9 +215,12 @@ const container = Vue.component('container', {
                         <div class="row" style="margin:0.5rem 0 0.1rem 0;">
                             <champion class="col s4" v-for="(x, index) in testProfile" :url="x.url" :index="index"></champion>
                         </div>
+                        <div class="row" style="margin:0rem 0px 0rem;">
+                            <div class="col s4 center-align" v-for="(x, index) in testProfile"><span class="truncate">{{x.name}}</span></div>
+                        </div>
                     </div>
                 </div>
-                <div class="row animated bounceInLeft" v-for="x in category">
+                <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">
                     <div class="col s12">
                         <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">
                             <div class="card-content">
@@ -370,6 +373,7 @@ const game = Vue.component('game',{
                 this.test.hideModal = false;
                 this.updateBestTime()
                 this.toggleModal()
+                this.submitGame('regular')
             }
         },
         retry:function(){
@@ -390,22 +394,34 @@ const game = Vue.component('game',{
             this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
         },
         submitGame: function(inputProfile){
-            if(this.safe(inputProfile)){
-                let timestamp =  moment().toISOString()
-                let playtime = this.test.timePlayed
-                let name = inputProfile.replace('@','').toLowerCase()
-                let picurl = this.url
-                let postData = {timestamp,playtime,name,picurl}
+            let timestamp =  moment().toISOString()
+            let playtime = this.test.timePlayed
+            let name = null
+            let picurl = null
+            let leaderboard = 0
+            if(inputProfile === 'regular'){
+                //this is for metric tracking the completion of a game without submitting to the leaderboard
+                name = (this.safe(localStorage.instahandle)) ? localStorage.instahandle : 'noname'
+                picurl = 'nourl'
+            }
+            if(inputProfile !== 'regular'){
+                //submit to the leaderboard for sure
+                name = inputProfile.replace('@','').toLowerCase()
+                picurl = this.url
+                leaderboard = 1
                 localStorage.instahandle = name
-                console.log(postData)
-                axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}`)
-                .then((response)=>{
+            }
+            let postData = {timestamp,playtime,name,picurl,leaderboard}
+            console.log(postData)
+            axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}
+            &leaderboard=${leaderboard}`)
+            .then((response)=>{
+                if(inputProfile !== 'regular'){
                     this.modalInstance.close()
                     router.push('/leaderboard')
-                })
-            }else{
-                console.warn('what are you doing fam?')
-            }
+                }
+            })
+            .catch((error)=>{console.error(new Error(error))})
         },
         isLevelCompleted : function(){
             if(this.correct.length === this.picBoxes){

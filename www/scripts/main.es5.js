@@ -10,7 +10,7 @@ var serviceProvider = {
             profileTimeout: null,
             inputProfile: '',
             loader: false,
-            testProfile: [{ name: 'kim k', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofia', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }]
+            testProfile: [{ name: 'kimkardashian', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofiavergara', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }]
         };
     },
     computed: {
@@ -199,7 +199,7 @@ var landing = Vue.component('landing', {
     }
 });
 var container = Vue.component('container', {
-    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-for="(x, index) in testProfile" :url="x.url" :index="index"></champion>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
+    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-for="(x, index) in testProfile" :url="x.url" :index="index"></champion>\n                        </div>\n                        <div class="row" style="margin:0rem 0px 0rem;">\n                            <div class="col s4 center-align" v-for="(x, index) in testProfile"><span class="truncate">{{x.name}}</span></div>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -300,6 +300,7 @@ var game = Vue.component('game', {
                 this.test.hideModal = false;
                 this.updateBestTime();
                 this.toggleModal();
+                this.submitGame('regular');
             }
         },
         retry: function retry() {
@@ -320,21 +321,33 @@ var game = Vue.component('game', {
         submitGame: function submitGame(inputProfile) {
             var _this4 = this;
 
-            if (this.safe(inputProfile)) {
-                var timestamp = moment().toISOString();
-                var playtime = this.test.timePlayed;
-                var name = inputProfile.replace('@', '').toLowerCase();
-                var picurl = this.url;
-                var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl };
+            var timestamp = moment().toISOString();
+            var playtime = this.test.timePlayed;
+            var name = null;
+            var picurl = null;
+            var leaderboard = 0;
+            if (inputProfile === 'regular') {
+                //this is for metric tracking the completion of a game without submitting to the leaderboard
+                name = this.safe(localStorage.instahandle) ? localStorage.instahandle : 'noname';
+                picurl = 'nourl';
+            }
+            if (inputProfile !== 'regular') {
+                //submit to the leaderboard for sure
+                name = inputProfile.replace('@', '').toLowerCase();
+                picurl = this.url;
+                leaderboard = 1;
                 localStorage.instahandle = name;
-                console.log(postData);
-                axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl).then(function (response) {
+            }
+            var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl, leaderboard: leaderboard };
+            console.log(postData);
+            axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard).then(function (response) {
+                if (inputProfile !== 'regular') {
                     _this4.modalInstance.close();
                     router.push('/leaderboard');
-                });
-            } else {
-                console.warn('what are you doing fam?');
-            }
+                }
+            }).catch(function (error) {
+                console.error(new Error(error));
+            });
         },
         isLevelCompleted: function isLevelCompleted() {
             var _this5 = this;
