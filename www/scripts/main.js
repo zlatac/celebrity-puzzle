@@ -8,6 +8,7 @@ const serviceProvider = {
             profileTimeout:null,
             inputProfile:'',
             loader: false,
+            toastInstance: null,
             testProfile: [
                 {name:'kimkardashian', url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
                 {name:'sofiavergara', url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
@@ -275,7 +276,8 @@ const game = Vue.component('game',{
                     <div style="position: absolute;left: 50%;top: 5%;" :class="{'white-text': prog >= 54}">{{prog | number}}%</div>
                 </div>
                 <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
-                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry">
+                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"
+                          :disabled="loader">
                         <i class="material-icons" style="font-size: 34px;">autorenew</i>
                     </span>
                     <div class="chip">
@@ -425,7 +427,12 @@ const game = Vue.component('game',{
         },
         isLevelCompleted : function(){
             if(this.correct.length === this.picBoxes){
-                //$scope.draw.text('you win').move(50,50);
+                if(this.test.start_time === null){
+                    //sometimes the randomness solves the puzzle on the first round which negatively impacts the gaming experience
+                    this.toastInstance.dismiss()
+                    console.log('it solved itself lol but i got it')
+                    return this.retry()
+                }
                 this.output = 'Completed'
                 this.test.time_result = this.gameTimePlayed(this).split(':');
                 this.tones('f',5,500);
@@ -658,7 +665,7 @@ const game = Vue.component('game',{
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
                 this.loader = false
-                M.toast({html:`<div class="center-align full-width">${this.footnote_msg}</div>`,displayLength:3000});
+                this.toastInstance = M.toast({html:`<div class="center-align full-width">${this.footnote_msg}</div>`,displayLength:3000});
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
             

@@ -10,6 +10,7 @@ var serviceProvider = {
             profileTimeout: null,
             inputProfile: '',
             loader: false,
+            toastInstance: null,
             testProfile: [{ name: 'kimkardashian', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofiavergara', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }]
         };
     },
@@ -225,7 +226,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry">\n                        <i class="material-icons" style="font-size: 34px;">autorenew</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">autorenew</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -353,7 +354,12 @@ var game = Vue.component('game', {
             var _this5 = this;
 
             if (this.correct.length === this.picBoxes) {
-                //$scope.draw.text('you win').move(50,50);
+                if (this.test.start_time === null) {
+                    //sometimes the randomness solves the puzzle on the first round which negatively impacts the gaming experience
+                    this.toastInstance.dismiss();
+                    console.log('it solved itself lol but i got it');
+                    return this.retry();
+                }
                 this.output = 'Completed';
                 this.test.time_result = this.gameTimePlayed(this).split(':');
                 this.tones('f', 5, 500);
@@ -584,7 +590,7 @@ var game = Vue.component('game', {
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
                 _this7.loader = false;
-                M.toast({ html: '<div class="center-align full-width">' + _this7.footnote_msg + '</div>', displayLength: 3000 });
+                _this7.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this7.footnote_msg + '</div>', displayLength: 3000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
