@@ -39,6 +39,13 @@ var serviceProvider = {
         },
         isWindowBig: function isWindowBig() {
             return this.checkWindow();
+        },
+        deviceId: function deviceId() {
+            if ('deviceId' in localStorage) {
+                return localStorage.deviceId;
+            } else {
+                return null;
+            }
         }
     },
     mounted: function mounted() {
@@ -184,6 +191,30 @@ var serviceProvider = {
                 }
             });
             //this.url = profile;
+        },
+        generateDeviceId: function generateDeviceId() {
+            axios('/myipaddress').then(function (res) {
+                var ip = res.data;
+                var unixtime = moment().unix();
+                var hash = generateHash(ip, unixtime);
+                localStorage.deviceId = hash;
+            }).catch(function (error) {
+                console.warn(new Error(error));
+            });
+            function generateHash(ip, time) {
+                //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
+                var address = ip.replace('.', '');
+                var stringtime = String(time);
+                var hash = '';
+                for (var i = 0; i < 3; i++) {
+                    if (i !== 1) {
+                        hash += address[Math.round(Math.random() * address.length)];
+                    } else {
+                        hash += stringtime[Math.round(Math.random() * stringtime.length)];
+                    }
+                }
+                return ip + '-' + time + '-' + hash;
+            }
         }
     }
 };
@@ -192,6 +223,9 @@ var landing = Vue.component('landing', {
     mixins: [serviceProvider],
     created: function created() {
         if (this.isWindowBig !== true) {
+            if (!('deviceId' in localStorage)) {
+                this.generateDeviceId();
+            }
             setTimeout(function () {
                 //might do something here at some point
                 router.push('dash');

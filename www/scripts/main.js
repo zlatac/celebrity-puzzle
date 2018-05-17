@@ -41,7 +41,15 @@ const serviceProvider = {
         },
         isWindowBig(){
             return this.checkWindow()
+        },
+        deviceId(){
+            if('deviceId' in localStorage){
+                return localStorage.deviceId
+            }else{
+                return null
+            }
         }
+
     },
     mounted: function(){
         let modal = document.querySelector('.modal');
@@ -175,6 +183,30 @@ const serviceProvider = {
                 }
             });
             //this.url = profile;
+        },
+        generateDeviceId: function(){
+            axios('/myipaddress')
+            .then((res)=> {
+                let ip = res.data
+                let unixtime = moment().unix()
+                let hash = generateHash(ip,unixtime)
+                localStorage.deviceId = hash
+            })
+            .catch((error)=> {console.warn(new Error(error))})
+            function generateHash(ip,time){
+                //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
+                let address = ip.replace('.','')
+                let stringtime = String(time)
+                let hash = ''
+                for(let i=0; i < 3; i++){
+                    if(i !== 1){
+                        hash += address[Math.round(Math.random()*address.length)]
+                    }else{
+                        hash += stringtime[Math.round(Math.random()*stringtime.length)]
+                    }
+                }
+                return `${ip}-${time}-${hash}`
+            }
         }
     }
 }
@@ -192,6 +224,9 @@ const landing = Vue.component('landing', {
     mixins: [serviceProvider],
     created: function(){
         if(this.isWindowBig !== true){
+            if(!('deviceId' in localStorage)){
+                this.generateDeviceId()
+            }
             setTimeout(function(){
                 //might do something here at some point
                 router.push('dash');
