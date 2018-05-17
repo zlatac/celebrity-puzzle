@@ -46,7 +46,7 @@ const serviceProvider = {
             if('deviceId' in localStorage){
                 return localStorage.deviceId
             }else{
-                return null
+                return 'empty'
             }
         }
 
@@ -193,6 +193,7 @@ const serviceProvider = {
                 localStorage.deviceId = hash
             })
             .catch((error)=> {console.warn(new Error(error))})
+            .finally(()=>{this.sendToCategory()})
             function generateHash(ip,time){
                 //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
                 let address = ip.replace('.','')
@@ -200,13 +201,18 @@ const serviceProvider = {
                 let hash = ''
                 for(let i=0; i < 3; i++){
                     if(i !== 1){
-                        hash += address[Math.round(Math.random()*address.length)]
+                        hash += address[Math.floor(Math.random()*address.length)]
                     }else{
-                        hash += stringtime[Math.round(Math.random()*stringtime.length)]
+                        hash += stringtime[Math.floor(Math.random()*stringtime.length)]
                     }
                 }
                 return `${ip}-${time}-${hash}`
             }
+        },
+        sendToCategory: function(){
+            setTimeout(function(){
+                router.push('dash');
+            },3000)
         }
     }
 }
@@ -225,12 +231,9 @@ const landing = Vue.component('landing', {
     created: function(){
         if(this.isWindowBig !== true){
             if(!('deviceId' in localStorage)){
-                this.generateDeviceId()
+                return this.generateDeviceId()
             }
-            setTimeout(function(){
-                //might do something here at some point
-                router.push('dash');
-            },3000)
+            this.sendToCategory()            
         }
     
     }
@@ -436,6 +439,7 @@ const game = Vue.component('game',{
             let name = null
             let picurl = null
             let leaderboard = 0
+            let deviceId = this.deviceId
             if(inputProfile === 'regular'){
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = (this.safe(localStorage.instahandle)) ? localStorage.instahandle : 'noname'
@@ -448,10 +452,10 @@ const game = Vue.component('game',{
                 leaderboard = 1
                 localStorage.instahandle = name
             }
-            let postData = {timestamp,playtime,name,picurl,leaderboard}
+            let postData = {timestamp,playtime,name,picurl,leaderboard,deviceId}
             console.log(postData)
             axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}
-            &leaderboard=${leaderboard}`)
+            &leaderboard=${leaderboard}&deviceid=${deviceId}`)
             .then((response)=>{
                 if(inputProfile !== 'regular'){
                     this.modalInstance.close()

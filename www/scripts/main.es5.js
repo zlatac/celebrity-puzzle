@@ -44,7 +44,7 @@ var serviceProvider = {
             if ('deviceId' in localStorage) {
                 return localStorage.deviceId;
             } else {
-                return null;
+                return 'empty';
             }
         }
     },
@@ -193,6 +193,8 @@ var serviceProvider = {
             //this.url = profile;
         },
         generateDeviceId: function generateDeviceId() {
+            var _this4 = this;
+
             axios('/myipaddress').then(function (res) {
                 var ip = res.data;
                 var unixtime = moment().unix();
@@ -200,6 +202,8 @@ var serviceProvider = {
                 localStorage.deviceId = hash;
             }).catch(function (error) {
                 console.warn(new Error(error));
+            }).finally(function () {
+                _this4.sendToCategory();
             });
             function generateHash(ip, time) {
                 //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
@@ -208,13 +212,18 @@ var serviceProvider = {
                 var hash = '';
                 for (var i = 0; i < 3; i++) {
                     if (i !== 1) {
-                        hash += address[Math.round(Math.random() * address.length)];
+                        hash += address[Math.floor(Math.random() * address.length)];
                     } else {
-                        hash += stringtime[Math.round(Math.random() * stringtime.length)];
+                        hash += stringtime[Math.floor(Math.random() * stringtime.length)];
                     }
                 }
                 return ip + '-' + time + '-' + hash;
             }
+        },
+        sendToCategory: function sendToCategory() {
+            setTimeout(function () {
+                router.push('dash');
+            }, 3000);
         }
     }
 };
@@ -224,12 +233,9 @@ var landing = Vue.component('landing', {
     created: function created() {
         if (this.isWindowBig !== true) {
             if (!('deviceId' in localStorage)) {
-                this.generateDeviceId();
+                return this.generateDeviceId();
             }
-            setTimeout(function () {
-                //might do something here at some point
-                router.push('dash');
-            }, 3000);
+            this.sendToCategory();
         }
     }
 });
@@ -354,13 +360,14 @@ var game = Vue.component('game', {
             this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0', timePlayed: null, bestTime: null }, this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
         },
         submitGame: function submitGame(inputProfile) {
-            var _this4 = this;
+            var _this5 = this;
 
             var timestamp = moment().toISOString();
             var playtime = this.test.timePlayed;
             var name = null;
             var picurl = null;
             var leaderboard = 0;
+            var deviceId = this.deviceId;
             if (inputProfile === 'regular') {
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = this.safe(localStorage.instahandle) ? localStorage.instahandle : 'noname';
@@ -373,11 +380,11 @@ var game = Vue.component('game', {
                 leaderboard = 1;
                 localStorage.instahandle = name;
             }
-            var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl, leaderboard: leaderboard };
+            var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl, leaderboard: leaderboard, deviceId: deviceId };
             console.log(postData);
-            axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard).then(function (response) {
+            axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId).then(function (response) {
                 if (inputProfile !== 'regular') {
-                    _this4.modalInstance.close();
+                    _this5.modalInstance.close();
                     router.push('/leaderboard');
                 }
             }).catch(function (error) {
@@ -385,7 +392,7 @@ var game = Vue.component('game', {
             });
         },
         isLevelCompleted: function isLevelCompleted() {
-            var _this5 = this;
+            var _this6 = this;
 
             if (this.correct.length === this.picBoxes) {
                 if (this.test.start_time === null) {
@@ -399,7 +406,7 @@ var game = Vue.component('game', {
                 this.tones('f', 5, 500);
                 this.vibrate(2000);
                 setTimeout(function () {
-                    _this5.levelUp();
+                    _this6.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
@@ -423,11 +430,11 @@ var game = Vue.component('game', {
             this.isLevelCompleted();
         },
         getImage: function getImage() {
-            var _this6 = this;
+            var _this7 = this;
 
             if (this.currentUrl !== '') {
                 return new Promise(function (resolve, reject) {
-                    resolve(_this6.currentUrl);
+                    resolve(_this7.currentUrl);
                 });
             }
             var category = this.$route.params.category;
@@ -445,7 +452,7 @@ var game = Vue.component('game', {
                         reject('there was an error retreiving data from instagram');
                     }
                 }).then(function (data) {
-                    if (_this6.safe(data)) {
+                    if (_this7.safe(data)) {
                         var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         var user = sift.entry_data.ProfilePage["0"].graphql.user;
                         var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
@@ -453,10 +460,10 @@ var game = Vue.component('game', {
                             return item.node.is_video === false;
                         });
                         if (imageList.length < 1) {
-                            _this6.getImage();
+                            _this7.getImage();
                         } else {
                             var index = Math.floor(Math.random() * imageList.length);
-                            _this6.profile = { fullname: user.full_name, url: user.profile_pic_url };
+                            _this7.profile = { fullname: user.full_name, url: user.profile_pic_url };
                             resolve(imageList[index].node.display_url);
                         }
                     }
@@ -533,7 +540,7 @@ var game = Vue.component('game', {
             });
         },
         setUp: function setUp(w, h) {
-            var _this7 = this;
+            var _this8 = this;
 
             this.loader = true;
             this.picBoxes = this.picColumn * this.picRow;
@@ -541,25 +548,25 @@ var game = Vue.component('game', {
             this.footnote = true;
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
             this.getImage().then(function (data) {
-                _this7.currentUrl = data;
-                return _this7.drawCanvas(w, h, data);
+                _this8.currentUrl = data;
+                return _this8.drawCanvas(w, h, data);
             }).catch(function (error) {
                 console.error(new Error(error));
-                _this7.setUp(w, h); //retry once there is a 404
+                _this8.setUp(w, h); //retry once there is a 404
             }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!_this7.safe(_this7.draw)) {
-                    _this7.svg = document.getElementById('svg');
-                    _this7.draw = SVG(_this7.svg).size(w, h);
+                if (!_this8.safe(_this8.draw)) {
+                    _this8.svg = document.getElementById('svg');
+                    _this8.draw = SVG(_this8.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
                 var z = 0;
-                _this7.basket.forEach(function (item) {
+                _this8.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    var elem = _this7.draw.image(item.img, _this7.dw, Math.round(_this7.sh * _this7.dw / _this7.sw));
-                    elem.x(_this7.shuffle[z].x);
-                    elem.y(_this7.shuffle[z].y);
+                    var elem = _this8.draw.image(item.img, _this8.dw, Math.round(_this8.sh * _this8.dw / _this8.sw));
+                    elem.x(_this8.shuffle[z].x);
+                    elem.y(_this8.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     function onTrigger() {
@@ -600,11 +607,11 @@ var game = Vue.component('game', {
                         }
                     }
                     elem.touchstart(function () {
-                        onTrigger.call(_this7);
+                        onTrigger.call(_this8);
                     });
-                    if (_this7.isWindowBig === true) {
+                    if (_this8.isWindowBig === true) {
                         elem.click(function () {
-                            onTrigger.call(_this7);
+                            onTrigger.call(_this8);
                         });
                     }
 
@@ -614,17 +621,17 @@ var game = Vue.component('game', {
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            _this7.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this8.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        _this7.progressFunc();
-                        _this7.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this8.progressFunc();
+                        _this8.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                _this7.loader = false;
-                _this7.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this7.footnote_msg + '</div>', displayLength: 3000 });
+                _this8.loader = false;
+                _this8.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this8.footnote_msg + '</div>', displayLength: 3000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -642,7 +649,7 @@ var leaderboard = Vue.component('leaderboard', {
     },
     methods: {
         makeHeart: function makeHeart() {
-            var _this8 = this;
+            var _this9 = this;
 
             var b = Math.floor(Math.random() * 100 + 1);
             var d = ["flowOne", "flowTwo", "flowThree"];
@@ -656,21 +663,21 @@ var leaderboard = Vue.component('leaderboard', {
             bucket.seconds = c;
             this.movingHearts.push(bucket);
             setTimeout(function () {
-                var index = _this8.movingHearts.findIndex(function (i) {
+                var index = _this9.movingHearts.findIndex(function (i) {
                     return i.id === b;
                 });
-                _this8.movingHearts.splice(index, 1);
+                _this9.movingHearts.splice(index, 1);
             }, c * 1200);
         },
         getLeaderboard: function getLeaderboard() {
-            var _this9 = this;
+            var _this10 = this;
 
             this.loader = true;
             var today = this.currentGameDay;
             axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 console.log(res);
-                _this9.leaderboardList = res.data;
-                _this9.loader = false;
+                _this10.leaderboardList = res.data;
+                _this10.loader = false;
             });
         }
     },
@@ -679,10 +686,10 @@ var leaderboard = Vue.component('leaderboard', {
         this.getLeaderboard();
     },
     mounted: function mounted() {
-        var _this10 = this;
+        var _this11 = this;
 
         setInterval(function () {
-            _this10.makeHeart();
+            _this11.makeHeart();
         }, 900);
     }
 });
