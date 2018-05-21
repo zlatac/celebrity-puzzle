@@ -9,10 +9,17 @@ const serviceProvider = {
             inputProfile:'',
             loader: false,
             toastInstance: null,
+            noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [
                 {name:'kimkardashian', url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
                 {name:'sofiavergara', url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
                 {name:'shaq', url:'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg'},
+            ],
+            category:[
+                {name:'fashion',color:'#e68213'},
+                {name:'music',color:'#136ee6'},
+                {name:'movie',color:'#b9499f'},
+                {name:'sport',color:'#e61313'},
             ]
         }
     },
@@ -27,11 +34,14 @@ const serviceProvider = {
             return this.leadList.slice(0,3)
         },
         currentGameDay(){
-            //return moment().startOf('day').toISOString();
-            return moment('2018/05/11','YYYY/MM/DD').toISOString();
+            return moment().startOf('day').toISOString();
+            //return moment('2018/05/11','YYYY/MM/DD').toISOString();
         },
         previousGameDay(){
             return moment().subtract(1, 'days').startOf('day').toISOString();
+        },
+        currentGameMonth(){
+            return moment().startOf('month').toISOString();
         },
         savedProfile(){
             if(this.safe(localStorage.instahandle)){
@@ -249,13 +259,18 @@ const container = Vue.component('container', {
                         <i class="fa fa-trophy" style="font-size:34px;color:white"></i>
                     </div>
                 </router-link>
-                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday's Champions">
+                <div class="row center-align" v-show="!loader" style="margin-top:20px">
+                    <div class="col s12">
+                        <spinner class="animated fadeIn" :colorClass="'default'"></spinner>
+                    </div>
+                </div>
+                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday's Champions" v-show="loader">
                     <div class="col s12">
                         <div class="row" style="margin:0.5rem 0 0.1rem 0;">
-                            <champion class="col s4" v-for="(x, index) in testProfile" :url="x.url" :index="index"></champion>
+                            <champion class="col s4" v-if="prevWinners !== null" v-for="(x, index) in prevWinners" :url="x.profile_url" :index="index"></champion>
                         </div>
                         <div class="row" style="margin:0rem 0px 0rem;">
-                            <div class="col s4 center-align" v-for="(x, index) in testProfile"><span class="truncate">{{x.name}}</span></div>
+                            <div class="col s4 center-align" v-if="prevWinners !== null" v-for="(x, index) in prevWinners"><span class="truncate">{{x.name}}</span></div>
                         </div>
                     </div>
                 </div>
@@ -280,17 +295,36 @@ const container = Vue.component('container', {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            modalPage:{page:'dash'},
-            category:[
-                {name:'fashion',color:'#e68213'},
-                {name:'music',color:'#136ee6'},
-                {name:'movie',color:'#b9499f'},
-                {name:'sport',color:'#e61313'},
-            ]
+            modalPage:{page:'dash'}
+        }
+    },
+    computed:{
+        prevWinners(){
+            let x = this.$store.state.previousChamps
+            if(x !== null) this.loader = true
+            return x
         }
     },
     created: function(){
         if(this.isWindowBig === true) return router.push('/')
+        if(this.$store.state.previousChamps === null){
+            axios(`https://styleminions.co/api/puzzleoldchamps?today=${this.currentGameDay}&yesterday=${this.previousGameDay}`)
+            .then((res)=>{
+                let champs = res.data
+                if(champs.length === 3){
+                    this.$store.commit('previousChamps',champs);
+                    this.loader = true
+                }else{
+                    let startIndex = champs.length
+                    for(let i=startIndex; i < 3; i++){
+                        champs.push({name:'', profile_url:this.noProfileUrl})
+                    }
+                    this.$store.commit('previousChamps',champs);
+                    this.loader = true
+                }
+            })
+        }
+        
         
     },
     methods: {
@@ -440,6 +474,7 @@ const game = Vue.component('game',{
             let picurl = null
             let leaderboard = 0
             let deviceId = this.deviceId
+            let category = this.$route.params.category
             if(inputProfile === 'regular'){
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = (this.safe(localStorage.instahandle)) ? localStorage.instahandle : 'noname'
@@ -455,7 +490,7 @@ const game = Vue.component('game',{
             let postData = {timestamp,playtime,name,picurl,leaderboard,deviceId}
             console.log(postData)
             axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}
-            &leaderboard=${leaderboard}&deviceid=${deviceId}`)
+            &leaderboard=${leaderboard}&deviceid=${deviceId}&category=${category}`)
             .then((response)=>{
                 if(inputProfile !== 'regular'){
                     this.modalInstance.close()
@@ -718,7 +753,8 @@ const leaderboard = Vue.component('leaderboard',{
     data: function(){
         return{
             movingHearts:[],
-            leaderboardList:[]
+            leaderboardList:[],
+            todayChip: true
         }
     },
     methods:{
@@ -741,13 +777,30 @@ const leaderboard = Vue.component('leaderboard',{
         },
         getLeaderboard(){
             this.loader = true
-            let today = this.currentGameDay
+            let today = (this.todayChip === true) ? this.currentGameDay : this.currentGameMonth
             axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`)
             .then((res)=>{
                 console.log(res)
                 this.leaderboardList = res.data;
                 this.loader = false
             })
+        },
+        selectedTime(time){
+            if(time === 'month' && this.todayChip === true){
+                this.todayChip = false
+                this.getLeaderboard()
+            } 
+            if(time === 'today' && this.todayChip === false){
+                this.todayChip = true 
+                this.getLeaderboard()
+            } 
+        },
+        scrollToMe(){
+            let elem = document.querySelector('.myprofile')
+            if(this.safe(elem)){
+                //console.log('wooooooooow')
+                elem.scrollIntoView({behavior:'smooth'})
+            }
         }
     },
     created:function(){
@@ -833,6 +886,7 @@ const store = new Vuex.Store({
     state:{
         instaName:'',
         celebList:null,
+        previousChamps: null,
         url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg'
     },
     mutations:{
@@ -844,6 +898,9 @@ const store = new Vuex.Store({
         },
         url(state, data){
             state.url = data;
+        },
+        previousChamps(state,data){
+            state.previousChamps = data;
         }
     }
 })

@@ -122,6 +122,10 @@ div.progress{height: 20px !important;}
     border-bottom: 1px solid red;
     box-shadow: 0 1px 0 0 red;
 }
+.chip-selected, .chip-selected:hover{
+    background-color: #6da3cd;
+    color: white;
+}
 
 /*moving hearts*/
 div.hearts {

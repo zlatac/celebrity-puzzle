@@ -49,37 +49,51 @@
                 </div>
             </router-link>
             <div class="col s12 animated fadeInUp" style="margin-top: 30px;">
-                <div class="card-panel z-depth-4 center-align waves-effect waves-block" @click="getLeaderboard" style="margin:0.5rem 0 0.1rem 0;">
+                <div class="card-panel z-depth-4 center-align"  
+                     style="margin:0.5rem 0 0.1rem 0;padding-bottom: 0px;">
                     <div class="row " style="margin-bottom:0px">
-                        <span class="left"><i class="material-icons">refresh</i></span>World Ranking (Today) {{instaName}}
-                        <span class="right"><i class="material-icons" style="color: rgb(108, 163, 205);">people</i>1k</span>
+                        <span class="right waves-effect waves-block" @click="getLeaderboard"><i class="material-icons">refresh</i></span>World Ranking
+                        <!-- <span class="left"><i class="material-icons" style="color: rgb(108, 163, 205);">people</i>1k</span> -->
+                        <span class="left waves-effect waves-block" @click="scrollToMe"><i class="material-icons" style="color: rgb(108, 163, 205);">my_location</i></span>
+                    </div>
+                    <div class="row" style="margin-bottom: 0px;">
+                        <div class="col s12">
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('month')" :class="{'chip-selected':!todayChip}">Month</div>
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('today')" :class="{'chip-selected':todayChip}">Today</div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col s12 center" v-show="loader"><spinner class="animated fadeIn" :colorClass="'default'"></spinner></div>
-            <div class="col s12 animated fadeInUp" v-for="(x, index) in leaderboardList">
-                <div class="card-panel z-depth-2" style="padding:9px;margin:0.5rem 0 0.1rem 0;" :class="{'grey white-text': savedProfile === x.name}">
-                <div class="row valign-wrapper" style="margin-bottom:0px">
-                    <!-- <div class="col s3" style="position: relative;" @click="makeHeart()">
-                    <img :src="url" alt="" class="circle responsive-img img-lead">
-                    <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>
-                    <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>
-                    <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
-                    <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>
-                    </div> -->
-                    <champion class="col s3" :index="index" :url="x.profile_url" @click.native="makeHeart()"></champion>
-                    <div class="col s4 truncate">
-                        <span>{{x.name}}</span>
-                    </div>
-                    <div class="col s3">
-                        <span>{{x.realtime}}</span>
-                    </div>
-                    <div class="col s2 center-align">
-                        <a :href="'https://www.instagram.com/' + x.name" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
-                            <span><i class="fa fa-instagram" style="font-size: 23px;"></i></span>
-                        </a>
+            <div class="col s12 animated fadeInUp" v-show="!loader && leaderboardList.length === 0">
+                <div class="card-panel z-depth-2 center-align" style="padding:9px;margin:0.5rem 0 0.1rem 0;">
+                    <div class="col s12">Claim the No 1 spot in the world now before others.</div>
+                    <div class="row" style="margin-top:20px;">
+                        <router-link to="/dash">
+                            <div class="col s12"><span class="btn chip-selected animated pulse">Play Now</span></div>
+                        </router-link>
                     </div>
                 </div>
+            </div>
+            <div id="leader-wrapper" v-show="!loader">
+                <div class="col s12 animated fadeInUp" v-for="(x, index) in leaderboardList">
+                    <div class="card-panel z-depth-2" style="padding:9px;margin:0.5rem 0 0.1rem 0;" 
+                    :class="{'grey white-text myprofile': savedProfile === x.name}">
+                    <div class="row valign-wrapper" style="margin-bottom:0px">
+                        <champion class="col s3" :index="index" :url="x.profile_url" @click.native="makeHeart()"></champion>
+                        <div class="col s4 truncate">
+                            <span>{{x.name}}</span>
+                        </div>
+                        <div class="col s3">
+                            <span>{{x.realtime}}</span>
+                        </div>
+                        <div class="col s2 center-align">
+                            <a :href="'https://www.instagram.com/' + x.name" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
+                                <span><i class="fa fa-instagram" style="font-size: 23px;"></i></span>
+                            </a>
+                        </div>
+                    </div>
+                    </div>
                 </div>
             </div>
             <div class="hearts">

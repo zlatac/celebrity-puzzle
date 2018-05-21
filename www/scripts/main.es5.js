@@ -11,7 +11,9 @@ var serviceProvider = {
             inputProfile: '',
             loader: false,
             toastInstance: null,
-            testProfile: [{ name: 'kimkardashian', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofiavergara', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }]
+            noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+            testProfile: [{ name: 'kimkardashian', url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofiavergara', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }],
+            category: [{ name: 'fashion', color: '#e68213' }, { name: 'music', color: '#136ee6' }, { name: 'movie', color: '#b9499f' }, { name: 'sport', color: '#e61313' }]
         };
     },
     computed: {
@@ -25,11 +27,14 @@ var serviceProvider = {
             return this.leadList.slice(0, 3);
         },
         currentGameDay: function currentGameDay() {
-            //return moment().startOf('day').toISOString();
-            return moment('2018/05/11', 'YYYY/MM/DD').toISOString();
+            return moment().startOf('day').toISOString();
+            //return moment('2018/05/11','YYYY/MM/DD').toISOString();
         },
         previousGameDay: function previousGameDay() {
             return moment().subtract(1, 'days').startOf('day').toISOString();
+        },
+        currentGameMonth: function currentGameMonth() {
+            return moment().startOf('month').toISOString();
         },
         savedProfile: function savedProfile() {
             if (this.safe(localStorage.instahandle)) {
@@ -240,19 +245,43 @@ var landing = Vue.component('landing', {
     }
 });
 var container = Vue.component('container', {
-    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-for="(x, index) in testProfile" :url="x.url" :index="index"></champion>\n                        </div>\n                        <div class="row" style="margin:0rem 0px 0rem;">\n                            <div class="col s4 center-align" v-for="(x, index) in testProfile"><span class="truncate">{{x.name}}</span></div>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
+    template: '\n        <div>\n            <div class="top-banner"></div>\n            <div class="container">\n                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>\n                <router-link to="/leaderboard">\n                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">\n                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>\n                    </div>\n                </router-link>\n                <div class="row center-align" v-show="!loader" style="margin-top:20px">\n                    <div class="col s12">\n                        <spinner class="animated fadeIn" :colorClass="\'default\'"></spinner>\n                    </div>\n                </div>\n                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday\'s Champions" v-show="loader">\n                    <div class="col s12">\n                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">\n                            <champion class="col s4" v-if="prevWinners !== null" v-for="(x, index) in prevWinners" :url="x.profile_url" :index="index"></champion>\n                        </div>\n                        <div class="row" style="margin:0rem 0px 0rem;">\n                            <div class="col s4 center-align" v-if="prevWinners !== null" v-for="(x, index) in prevWinners"><span class="truncate">{{x.name}}</span></div>\n                        </div>\n                    </div>\n                </div>\n                <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">\n                    <div class="col s12">\n                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">\n                            <div class="card-content">\n                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" \n                                     v-on:click="toggleModal(x)">\n                                    {{x.name}}\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            modalPage: { page: 'dash' },
-            category: [{ name: 'fashion', color: '#e68213' }, { name: 'music', color: '#136ee6' }, { name: 'movie', color: '#b9499f' }, { name: 'sport', color: '#e61313' }]
+            modalPage: { page: 'dash' }
         };
     },
+    computed: {
+        prevWinners: function prevWinners() {
+            var x = this.$store.state.previousChamps;
+            if (x !== null) this.loader = true;
+            return x;
+        }
+    },
     created: function created() {
+        var _this5 = this;
+
         if (this.isWindowBig === true) return router.push('/');
+        if (this.$store.state.previousChamps === null) {
+            axios('https://styleminions.co/api/puzzleoldchamps?today=' + this.currentGameDay + '&yesterday=' + this.previousGameDay).then(function (res) {
+                var champs = res.data;
+                if (champs.length === 3) {
+                    _this5.$store.commit('previousChamps', champs);
+                    _this5.loader = true;
+                } else {
+                    var startIndex = champs.length;
+                    for (var i = startIndex; i < 3; i++) {
+                        champs.push({ name: '', profile_url: _this5.noProfileUrl });
+                    }
+                    _this5.$store.commit('previousChamps', champs);
+                    _this5.loader = true;
+                }
+            });
+        }
     },
     methods: {
         wow: function wow() {
@@ -360,7 +389,7 @@ var game = Vue.component('game', {
             this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0', timePlayed: null, bestTime: null }, this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
         },
         submitGame: function submitGame(inputProfile) {
-            var _this5 = this;
+            var _this6 = this;
 
             var timestamp = moment().toISOString();
             var playtime = this.test.timePlayed;
@@ -368,6 +397,7 @@ var game = Vue.component('game', {
             var picurl = null;
             var leaderboard = 0;
             var deviceId = this.deviceId;
+            var category = this.$route.params.category;
             if (inputProfile === 'regular') {
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = this.safe(localStorage.instahandle) ? localStorage.instahandle : 'noname';
@@ -382,9 +412,9 @@ var game = Vue.component('game', {
             }
             var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl, leaderboard: leaderboard, deviceId: deviceId };
             console.log(postData);
-            axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId).then(function (response) {
+            axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId + '&category=' + category).then(function (response) {
                 if (inputProfile !== 'regular') {
-                    _this5.modalInstance.close();
+                    _this6.modalInstance.close();
                     router.push('/leaderboard');
                 }
             }).catch(function (error) {
@@ -392,7 +422,7 @@ var game = Vue.component('game', {
             });
         },
         isLevelCompleted: function isLevelCompleted() {
-            var _this6 = this;
+            var _this7 = this;
 
             if (this.correct.length === this.picBoxes) {
                 if (this.test.start_time === null) {
@@ -406,7 +436,7 @@ var game = Vue.component('game', {
                 this.tones('f', 5, 500);
                 this.vibrate(2000);
                 setTimeout(function () {
-                    _this6.levelUp();
+                    _this7.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
@@ -430,11 +460,11 @@ var game = Vue.component('game', {
             this.isLevelCompleted();
         },
         getImage: function getImage() {
-            var _this7 = this;
+            var _this8 = this;
 
             if (this.currentUrl !== '') {
                 return new Promise(function (resolve, reject) {
-                    resolve(_this7.currentUrl);
+                    resolve(_this8.currentUrl);
                 });
             }
             var category = this.$route.params.category;
@@ -452,7 +482,7 @@ var game = Vue.component('game', {
                         reject('there was an error retreiving data from instagram');
                     }
                 }).then(function (data) {
-                    if (_this7.safe(data)) {
+                    if (_this8.safe(data)) {
                         var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         var user = sift.entry_data.ProfilePage["0"].graphql.user;
                         var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
@@ -460,10 +490,10 @@ var game = Vue.component('game', {
                             return item.node.is_video === false;
                         });
                         if (imageList.length < 1) {
-                            _this7.getImage();
+                            _this8.getImage();
                         } else {
                             var index = Math.floor(Math.random() * imageList.length);
-                            _this7.profile = { fullname: user.full_name, url: user.profile_pic_url };
+                            _this8.profile = { fullname: user.full_name, url: user.profile_pic_url };
                             resolve(imageList[index].node.display_url);
                         }
                     }
@@ -540,7 +570,7 @@ var game = Vue.component('game', {
             });
         },
         setUp: function setUp(w, h) {
-            var _this8 = this;
+            var _this9 = this;
 
             this.loader = true;
             this.picBoxes = this.picColumn * this.picRow;
@@ -548,25 +578,25 @@ var game = Vue.component('game', {
             this.footnote = true;
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
             this.getImage().then(function (data) {
-                _this8.currentUrl = data;
-                return _this8.drawCanvas(w, h, data);
+                _this9.currentUrl = data;
+                return _this9.drawCanvas(w, h, data);
             }).catch(function (error) {
                 console.error(new Error(error));
-                _this8.setUp(w, h); //retry once there is a 404
+                _this9.setUp(w, h); //retry once there is a 404
             }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!_this8.safe(_this8.draw)) {
-                    _this8.svg = document.getElementById('svg');
-                    _this8.draw = SVG(_this8.svg).size(w, h);
+                if (!_this9.safe(_this9.draw)) {
+                    _this9.svg = document.getElementById('svg');
+                    _this9.draw = SVG(_this9.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
                 var z = 0;
-                _this8.basket.forEach(function (item) {
+                _this9.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    var elem = _this8.draw.image(item.img, _this8.dw, Math.round(_this8.sh * _this8.dw / _this8.sw));
-                    elem.x(_this8.shuffle[z].x);
-                    elem.y(_this8.shuffle[z].y);
+                    var elem = _this9.draw.image(item.img, _this9.dw, Math.round(_this9.sh * _this9.dw / _this9.sw));
+                    elem.x(_this9.shuffle[z].x);
+                    elem.y(_this9.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     function onTrigger() {
@@ -607,11 +637,11 @@ var game = Vue.component('game', {
                         }
                     }
                     elem.touchstart(function () {
-                        onTrigger.call(_this8);
+                        onTrigger.call(_this9);
                     });
-                    if (_this8.isWindowBig === true) {
+                    if (_this9.isWindowBig === true) {
                         elem.click(function () {
-                            onTrigger.call(_this8);
+                            onTrigger.call(_this9);
                         });
                     }
 
@@ -621,17 +651,17 @@ var game = Vue.component('game', {
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            _this8.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this9.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        _this8.progressFunc();
-                        _this8.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this9.progressFunc();
+                        _this9.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                _this8.loader = false;
-                _this8.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this8.footnote_msg + '</div>', displayLength: 3000 });
+                _this9.loader = false;
+                _this9.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this9.footnote_msg + '</div>', displayLength: 3000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -644,12 +674,13 @@ var leaderboard = Vue.component('leaderboard', {
     data: function data() {
         return {
             movingHearts: [],
-            leaderboardList: []
+            leaderboardList: [],
+            todayChip: true
         };
     },
     methods: {
         makeHeart: function makeHeart() {
-            var _this9 = this;
+            var _this10 = this;
 
             var b = Math.floor(Math.random() * 100 + 1);
             var d = ["flowOne", "flowTwo", "flowThree"];
@@ -663,22 +694,39 @@ var leaderboard = Vue.component('leaderboard', {
             bucket.seconds = c;
             this.movingHearts.push(bucket);
             setTimeout(function () {
-                var index = _this9.movingHearts.findIndex(function (i) {
+                var index = _this10.movingHearts.findIndex(function (i) {
                     return i.id === b;
                 });
-                _this9.movingHearts.splice(index, 1);
+                _this10.movingHearts.splice(index, 1);
             }, c * 1200);
         },
         getLeaderboard: function getLeaderboard() {
-            var _this10 = this;
+            var _this11 = this;
 
             this.loader = true;
-            var today = this.currentGameDay;
+            var today = this.todayChip === true ? this.currentGameDay : this.currentGameMonth;
             axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 console.log(res);
-                _this10.leaderboardList = res.data;
-                _this10.loader = false;
+                _this11.leaderboardList = res.data;
+                _this11.loader = false;
             });
+        },
+        selectedTime: function selectedTime(time) {
+            if (time === 'month' && this.todayChip === true) {
+                this.todayChip = false;
+                this.getLeaderboard();
+            }
+            if (time === 'today' && this.todayChip === false) {
+                this.todayChip = true;
+                this.getLeaderboard();
+            }
+        },
+        scrollToMe: function scrollToMe() {
+            var elem = document.querySelector('.myprofile');
+            if (this.safe(elem)) {
+                //console.log('wooooooooow')
+                elem.scrollIntoView({ behavior: 'smooth' });
+            }
         }
     },
     created: function created() {
@@ -686,10 +734,10 @@ var leaderboard = Vue.component('leaderboard', {
         this.getLeaderboard();
     },
     mounted: function mounted() {
-        var _this11 = this;
+        var _this12 = this;
 
         setInterval(function () {
-            _this11.makeHeart();
+            _this12.makeHeart();
         }, 900);
     }
 });
@@ -745,6 +793,7 @@ var store = new Vuex.Store({
     state: {
         instaName: '',
         celebList: null,
+        previousChamps: null,
         url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg'
     },
     mutations: {
@@ -756,6 +805,9 @@ var store = new Vuex.Store({
         },
         url: function url(state, data) {
             state.url = data;
+        },
+        previousChamps: function previousChamps(state, data) {
+            state.previousChamps = data;
         }
     }
 });
