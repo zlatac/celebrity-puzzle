@@ -126,6 +126,9 @@ div.progress{height: 20px !important;}
     background-color: #6da3cd;
     color: white;
 }
+a{
+    color: #202020
+}
 
 /*moving hearts*/
 div.hearts {

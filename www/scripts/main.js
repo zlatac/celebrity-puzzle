@@ -11,15 +11,15 @@ const serviceProvider = {
             toastInstance: null,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [
-                {name:'kimkardashian', url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
-                {name:'sofiavergara', url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
-                {name:'shaq', url:'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg'},
+                {name:'kimkardashian', profile_url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
+                {name:'sofiavergara', profile_url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
+                {name:'shaq', profile_url:'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg'},
             ],
             category:[
-                {name:'fashion',color:'#e68213'},
-                {name:'music',color:'#136ee6'},
-                {name:'movie',color:'#b9499f'},
-                {name:'sport',color:'#e61313'},
+                {name:'fashion',color:'#e68213',text:'fashion'},
+                {name:'music',color:'#136ee6',text:'music'},
+                {name:'movie',color:'#b9499f',text:'movies'},
+                {name:'sport',color:'#e61313',text:'sports'},
             ]
         }
     },
@@ -280,7 +280,7 @@ const container = Vue.component('container', {
                             <div class="card-content">
                                 <div class="btn btn-full btn-large btn-black waves-light waves-effect" 
                                      v-on:click="toggleModal(x)">
-                                    {{x.name}}
+                                    {{x.text}}
                                 </div>
                             </div>
                         </div>
@@ -313,6 +313,9 @@ const container = Vue.component('container', {
                 let champs = res.data
                 if(champs.length === 3){
                     this.$store.commit('previousChamps',champs);
+                    this.loader = true
+                }else if(champs.length === 0){
+                    this.$store.commit('previousChamps',this.testProfile);
                     this.loader = true
                 }else{
                     let startIndex = champs.length
@@ -350,7 +353,7 @@ const game = Vue.component('game',{
                 <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
                     <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"
                           :disabled="loader">
-                        <i class="material-icons" style="font-size: 34px;">autorenew</i>
+                        <i class="material-icons" style="font-size: 34px;">refresh</i>
                     </span>
                     <div class="chip">
                         <img :src="profile.url" alt="Contact Person">
@@ -887,7 +890,7 @@ const store = new Vuex.Store({
         instaName:'',
         celebList:null,
         previousChamps: null,
-        url: 'https://scontent-yyz1-1.cdninstagram.com/vp/6be0630296a2eddc74eac879437eff98/5B7E2DF1/t51.2885-19/s150x150/28753195_156320601741376_5135544669874159616_n.jpg'
+        url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
     },
     mutations:{
         insertName(state, data){
