@@ -351,6 +351,11 @@ const game = Vue.component('game',{
                     <div style="position: absolute;left: 50%;top: 5%;" :class="{'white-text': prog >= 54}">{{prog | number}}%</div>
                 </div>
                 <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
+                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">
+                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"
+                        :class="{'img-lead':challengeTimer === 0,'img-green pulse':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
+                        'img-red flash': challengeTimer >= 100}">
+                    </span>
                     <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"
                           :disabled="loader">
                         <i class="material-icons" style="font-size: 34px;">refresh</i>
@@ -396,7 +401,28 @@ const game = Vue.component('game',{
             puzzLevel: 1,
             currentUrl: '',
             profile: {},
-            modalPage:{page:'game',insta:false,loader:false,fail:false,imageacquired:false}
+            modalPage:{page:'game',insta:false,loader:false,fail:false,imageacquired:false},
+            challengeSeconds:0,
+            challengeInterval:null
+        }
+    },
+    computed:{
+        challenge(){
+            return this.$store.state.challenge
+        },
+        totalChallengeSeconds(){
+            if(this.safe(this.challenge)){
+                let time = this.challenge.realtime.split(':')
+                let seconds = Number(time[0])*60 + Number(time[1])
+                return seconds
+            }
+            return null
+        },
+        challengeTimer(){
+            if(this.safe(this.challenge)){
+                return (this.challengeSeconds/this.totalChallengeSeconds)*100
+            }
+            return null            
         }
     },
     mounted: function(){
@@ -411,6 +437,19 @@ const game = Vue.component('game',{
         isStarted : function(){
             if(this.test.start_time === null){
                 this.test.start_time = moment();
+                this.startChallenge()
+            }
+        },
+        startChallenge:function(){
+            let store = this.challenge
+            if(this.safe(store)){
+                this.challengeInterval = setInterval(()=>{
+                    this.challengeSeconds += 1
+                    if(this.challengeSeconds === this.totalChallengeSeconds){
+                        clearInterval(this.challengeInterval)
+                        console.log('time interval is cancelled')
+                    }
+                },1000)
             }
         },
         progressFunc : function(){
@@ -468,6 +507,9 @@ const game = Vue.component('game',{
             this.puzzLevel = 1;
             this.currentUrl= '',
             this.test =  {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null},
+            this.challengeSeconds = 0
+            if(this.challengeInterval !== null) clearInterval(this.challengeInterval)
+            this.challengeInterval = null
             this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
         },
         submitGame: function(inputProfile){
@@ -804,6 +846,11 @@ const leaderboard = Vue.component('leaderboard',{
                 //console.log('wooooooooow')
                 elem.scrollIntoView({behavior:'smooth'})
             }
+        },
+        challengePlayer(playerdetails){
+            this.$store.commit('challenge',playerdetails)
+            let category = (playerdetails.category !== 'empty') ? playerdetails.category : 'movie'
+            router.push(`/game/${category}`)
         }
     },
     created:function(){
@@ -811,9 +858,9 @@ const leaderboard = Vue.component('leaderboard',{
         this.getLeaderboard()
     },
     mounted:function(){
-        setInterval(()=>{
-            this.makeHeart();
-        },900)
+        // setInterval(()=>{
+        //     this.makeHeart();
+        // },900)
     }
 })
 
@@ -890,7 +937,8 @@ const store = new Vuex.Store({
         instaName:'',
         celebList:null,
         previousChamps: null,
-        url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
+        url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+        challenge:null
     },
     mutations:{
         insertName(state, data){
@@ -904,6 +952,9 @@ const store = new Vuex.Store({
         },
         previousChamps(state,data){
             state.previousChamps = data;
+        },
+        challenge(state,data){
+            state.challenge = data;
         }
     }
 })

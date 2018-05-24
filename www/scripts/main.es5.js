@@ -298,7 +298,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                        :class="{\'img-lead\':challengeTimer === 0,\'img-green pulse\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                        \'img-red flash\': challengeTimer >= 100}">\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -319,8 +319,29 @@ var game = Vue.component('game', {
             puzzLevel: 1,
             currentUrl: '',
             profile: {},
-            modalPage: { page: 'game', insta: false, loader: false, fail: false, imageacquired: false }
+            modalPage: { page: 'game', insta: false, loader: false, fail: false, imageacquired: false },
+            challengeSeconds: 0,
+            challengeInterval: null
         };
+    },
+    computed: {
+        challenge: function challenge() {
+            return this.$store.state.challenge;
+        },
+        totalChallengeSeconds: function totalChallengeSeconds() {
+            if (this.safe(this.challenge)) {
+                var time = this.challenge.realtime.split(':');
+                var seconds = Number(time[0]) * 60 + Number(time[1]);
+                return seconds;
+            }
+            return null;
+        },
+        challengeTimer: function challengeTimer() {
+            if (this.safe(this.challenge)) {
+                return this.challengeSeconds / this.totalChallengeSeconds * 100;
+            }
+            return null;
+        }
     },
     mounted: function mounted() {
         if (this.isWindowBig === true) return router.push('/');
@@ -334,6 +355,21 @@ var game = Vue.component('game', {
         isStarted: function isStarted() {
             if (this.test.start_time === null) {
                 this.test.start_time = moment();
+                this.startChallenge();
+            }
+        },
+        startChallenge: function startChallenge() {
+            var _this6 = this;
+
+            var store = this.challenge;
+            if (this.safe(store)) {
+                this.challengeInterval = setInterval(function () {
+                    _this6.challengeSeconds += 1;
+                    if (_this6.challengeSeconds === _this6.totalChallengeSeconds) {
+                        clearInterval(_this6.challengeInterval);
+                        console.log('time interval is cancelled');
+                    }
+                }, 1000);
             }
         },
         progressFunc: function progressFunc() {
@@ -389,10 +425,13 @@ var game = Vue.component('game', {
             this.picColumn = 2;
             this.picRow = 2;
             this.puzzLevel = 1;
-            this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0', timePlayed: null, bestTime: null }, this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
+            this.currentUrl = '', this.test = { end_time: null, start_time: null, time_result: '0:0', timePlayed: null, bestTime: null }, this.challengeSeconds = 0;
+            if (this.challengeInterval !== null) clearInterval(this.challengeInterval);
+            this.challengeInterval = null;
+            this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
         },
         submitGame: function submitGame(inputProfile) {
-            var _this6 = this;
+            var _this7 = this;
 
             var timestamp = moment().toISOString();
             var playtime = this.test.timePlayed;
@@ -417,7 +456,7 @@ var game = Vue.component('game', {
             console.log(postData);
             axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId + '&category=' + category).then(function (response) {
                 if (inputProfile !== 'regular') {
-                    _this6.modalInstance.close();
+                    _this7.modalInstance.close();
                     router.push('/leaderboard');
                 }
             }).catch(function (error) {
@@ -425,7 +464,7 @@ var game = Vue.component('game', {
             });
         },
         isLevelCompleted: function isLevelCompleted() {
-            var _this7 = this;
+            var _this8 = this;
 
             if (this.correct.length === this.picBoxes) {
                 if (this.test.start_time === null) {
@@ -439,7 +478,7 @@ var game = Vue.component('game', {
                 this.tones('f', 5, 500);
                 this.vibrate(2000);
                 setTimeout(function () {
-                    _this7.levelUp();
+                    _this8.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
@@ -463,11 +502,11 @@ var game = Vue.component('game', {
             this.isLevelCompleted();
         },
         getImage: function getImage() {
-            var _this8 = this;
+            var _this9 = this;
 
             if (this.currentUrl !== '') {
                 return new Promise(function (resolve, reject) {
-                    resolve(_this8.currentUrl);
+                    resolve(_this9.currentUrl);
                 });
             }
             var category = this.$route.params.category;
@@ -485,7 +524,7 @@ var game = Vue.component('game', {
                         reject('there was an error retreiving data from instagram');
                     }
                 }).then(function (data) {
-                    if (_this8.safe(data)) {
+                    if (_this9.safe(data)) {
                         var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         var user = sift.entry_data.ProfilePage["0"].graphql.user;
                         var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
@@ -493,10 +532,10 @@ var game = Vue.component('game', {
                             return item.node.is_video === false;
                         });
                         if (imageList.length < 1) {
-                            _this8.getImage();
+                            _this9.getImage();
                         } else {
                             var index = Math.floor(Math.random() * imageList.length);
-                            _this8.profile = { fullname: user.full_name, url: user.profile_pic_url };
+                            _this9.profile = { fullname: user.full_name, url: user.profile_pic_url };
                             resolve(imageList[index].node.display_url);
                         }
                     }
@@ -573,7 +612,7 @@ var game = Vue.component('game', {
             });
         },
         setUp: function setUp(w, h) {
-            var _this9 = this;
+            var _this10 = this;
 
             this.loader = true;
             this.picBoxes = this.picColumn * this.picRow;
@@ -581,25 +620,25 @@ var game = Vue.component('game', {
             this.footnote = true;
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
             this.getImage().then(function (data) {
-                _this9.currentUrl = data;
-                return _this9.drawCanvas(w, h, data);
+                _this10.currentUrl = data;
+                return _this10.drawCanvas(w, h, data);
             }).catch(function (error) {
                 console.error(new Error(error));
-                _this9.setUp(w, h); //retry once there is a 404
+                _this10.setUp(w, h); //retry once there is a 404
             }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!_this9.safe(_this9.draw)) {
-                    _this9.svg = document.getElementById('svg');
-                    _this9.draw = SVG(_this9.svg).size(w, h);
+                if (!_this10.safe(_this10.draw)) {
+                    _this10.svg = document.getElementById('svg');
+                    _this10.draw = SVG(_this10.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
                 var z = 0;
-                _this9.basket.forEach(function (item) {
+                _this10.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    var elem = _this9.draw.image(item.img, _this9.dw, Math.round(_this9.sh * _this9.dw / _this9.sw));
-                    elem.x(_this9.shuffle[z].x);
-                    elem.y(_this9.shuffle[z].y);
+                    var elem = _this10.draw.image(item.img, _this10.dw, Math.round(_this10.sh * _this10.dw / _this10.sw));
+                    elem.x(_this10.shuffle[z].x);
+                    elem.y(_this10.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     function onTrigger() {
@@ -640,11 +679,11 @@ var game = Vue.component('game', {
                         }
                     }
                     elem.touchstart(function () {
-                        onTrigger.call(_this9);
+                        onTrigger.call(_this10);
                     });
-                    if (_this9.isWindowBig === true) {
+                    if (_this10.isWindowBig === true) {
                         elem.click(function () {
-                            onTrigger.call(_this9);
+                            onTrigger.call(_this10);
                         });
                     }
 
@@ -654,17 +693,17 @@ var game = Vue.component('game', {
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            _this9.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this10.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        _this9.progressFunc();
-                        _this9.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this10.progressFunc();
+                        _this10.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                _this9.loader = false;
-                _this9.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this9.footnote_msg + '</div>', displayLength: 3000 });
+                _this10.loader = false;
+                _this10.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this10.footnote_msg + '</div>', displayLength: 3000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -683,7 +722,7 @@ var leaderboard = Vue.component('leaderboard', {
     },
     methods: {
         makeHeart: function makeHeart() {
-            var _this10 = this;
+            var _this11 = this;
 
             var b = Math.floor(Math.random() * 100 + 1);
             var d = ["flowOne", "flowTwo", "flowThree"];
@@ -697,21 +736,21 @@ var leaderboard = Vue.component('leaderboard', {
             bucket.seconds = c;
             this.movingHearts.push(bucket);
             setTimeout(function () {
-                var index = _this10.movingHearts.findIndex(function (i) {
+                var index = _this11.movingHearts.findIndex(function (i) {
                     return i.id === b;
                 });
-                _this10.movingHearts.splice(index, 1);
+                _this11.movingHearts.splice(index, 1);
             }, c * 1200);
         },
         getLeaderboard: function getLeaderboard() {
-            var _this11 = this;
+            var _this12 = this;
 
             this.loader = true;
             var today = this.todayChip === true ? this.currentGameDay : this.currentGameMonth;
             axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 console.log(res);
-                _this11.leaderboardList = res.data;
-                _this11.loader = false;
+                _this12.leaderboardList = res.data;
+                _this12.loader = false;
             });
         },
         selectedTime: function selectedTime(time) {
@@ -730,6 +769,11 @@ var leaderboard = Vue.component('leaderboard', {
                 //console.log('wooooooooow')
                 elem.scrollIntoView({ behavior: 'smooth' });
             }
+        },
+        challengePlayer: function challengePlayer(playerdetails) {
+            this.$store.commit('challenge', playerdetails);
+            var category = playerdetails.category !== 'empty' ? playerdetails.category : 'movie';
+            router.push('/game/' + category);
         }
     },
     created: function created() {
@@ -737,11 +781,9 @@ var leaderboard = Vue.component('leaderboard', {
         this.getLeaderboard();
     },
     mounted: function mounted() {
-        var _this12 = this;
-
-        setInterval(function () {
-            _this12.makeHeart();
-        }, 900);
+        // setInterval(()=>{
+        //     this.makeHeart();
+        // },900)
     }
 });
 
@@ -797,7 +839,8 @@ var store = new Vuex.Store({
         instaName: '',
         celebList: null,
         previousChamps: null,
-        url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
+        url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+        challenge: null
     },
     mutations: {
         insertName: function insertName(state, data) {
@@ -811,6 +854,9 @@ var store = new Vuex.Store({
         },
         previousChamps: function previousChamps(state, data) {
             state.previousChamps = data;
+        },
+        challenge: function challenge(state, data) {
+            state.challenge = data;
         }
     }
 });

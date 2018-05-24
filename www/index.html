@@ -7,6 +7,9 @@
     <meta name="keywords" content="celebrity puzzle, celebrity gaming, picture puzzle, instagram picture puzzle">
     <meta property="og:image" content="https://drive.google.com/uc?id=1YXh_5QKqO1d26Jd1uc2e2OHWoDTJI6P7">
     <meta property="og:url" content="http://celebritypuzzle.com">
+    <meta property="og:title" content="Celebrity Puzzle">
+    <meta property="og:description" content="A fun picture puzzle game powered by real celebrities on Instagram">
+    <meta name="google-site-verification" content="g4r3_3eXpFSXEfaVCxwhGvON-aF_YoX97OjllFkcAQk" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Celebrity Puzzle</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
@@ -79,24 +82,30 @@
                 <div class="col s12 animated fadeInUp" v-for="(x, index) in leaderboardList">
                     <div class="card-panel z-depth-2" style="padding:9px;margin:0.5rem 0 0.1rem 0;" 
                     :class="{'grey white-text myprofile': savedProfile === x.name}">
-                    <div class="row valign-wrapper" style="margin-bottom:0px">
-                        <champion class="col s3" :index="index" :url="x.profile_url" @click.native="makeHeart()"></champion>
-                        <div class="col s4 truncate">
-                            <span>{{x.name}}</span>
+                        <div class="row valign-wrapper" style="margin-bottom:0px">
+                            <champion class="col s3" :index="index" :url="x.profile_url" @click.native="makeHeart()"></champion>
+                            <div class="col s4 truncate">
+                                <span>{{x.name}}</span>
+                            </div>
+                            <div class="col s3">
+                                <span>{{x.realtime}}</span>
+                            </div>
+                            <div class="col s2 center-align">
+                                <a :href="'https://www.instagram.com/' + x.name" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
+                                    <span><i class="fa fa-instagram" style="font-size: 23px;"></i></span>
+                                </a>
+                            </div>
                         </div>
-                        <div class="col s3">
-                            <span>{{x.realtime}}</span>
+                        <div class="row" v-if="index < 3" style="margin-bottom:0px">
+                            <div class="center-align col s12">
+                                <div class="chip waves-effect" style="margin-bottom:0px" @click="challengePlayer(x)">Challenge</div>
+                            </div>
                         </div>
-                        <div class="col s2 center-align">
-                            <a :href="'https://www.instagram.com/' + x.name" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
-                                <span><i class="fa fa-instagram" style="font-size: 23px;"></i></span>
-                            </a>
-                        </div>
-                    </div>
                     </div>
                 </div>
             </div>
-            <div class="hearts">
+            <div class="hearts hide">
+                <!-- hide this in the mean time as it intereferes with the UI since it overlays the player list -->
                 <div class="heart" v-for="x in movingHearts" :class="[x.color]" :style="{'fontSize': x.font +'px', 'animation': x.flow + ' ' + x.seconds + 's linear'}">
                     <i class="fa fa-star"></i>
                 </div>

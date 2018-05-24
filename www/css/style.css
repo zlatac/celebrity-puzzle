@@ -129,6 +129,15 @@ div.progress{height: 20px !important;}
 a{
     color: #202020
 }
+.img-green{
+    border: solid 3px #26b72f;
+}
+.img-orange{
+    border: solid 3px orange;
+}
+.img-red{
+    border: solid 3px #e00000;
+}
 
 /*moving hearts*/
 div.hearts {
