@@ -138,6 +138,9 @@ a{
 .img-red{
     border: solid 3px #e00000;
 }
+.left-right-space{
+    margin: 0px 12px;
+}
 
 /*moving hearts*/
 div.hearts {

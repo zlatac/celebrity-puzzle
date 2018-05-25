@@ -344,7 +344,8 @@ const container = Vue.component('container', {
 const game = Vue.component('game',{
     template:`
         <div class="background center-align">
-            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>
+            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"
+                   v-bind:urlChallenge="challengeUrl"></modal>
             <div style="background-color:white; width:100%;" >
                 <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">
                     <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
@@ -352,8 +353,8 @@ const game = Vue.component('game',{
                 </div>
                 <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
                     <span class="" style="margin-right: 10px;" v-if="challenge !== null">
-                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"
-                        :class="{'img-lead':challengeTimer === 0,'img-green pulse':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
+                        <img :src="challenge.profile_url" v-imgfallback class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"
+                        :class="{'img-lead':challengeTimer === 0,'img-green bounceIn':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
                         'img-red flash': challengeTimer >= 100}">
                     </span>
                     <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"
@@ -423,6 +424,15 @@ const game = Vue.component('game',{
                 return (this.challengeSeconds/this.totalChallengeSeconds)*100
             }
             return null            
+        },
+        challengeUrl(){
+            let category = this.$route.params.category
+            let splitTime = (this.test.time_result !== null) ? `${this.test.time_result[0]} min ${this.test.time_result[1]} sec` : '0'
+            let playtime = this.test.timePlayed
+            let instahandle = ('instahandle' in localStorage) ? localStorage.instahandle : '0'
+            let message = `I challenge you to beat my time of ${splitTime} today on celebrity puzzle`
+            let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${category}`
+            return encodeURIComponent(`${message} ${link}`)
         }
     },
     mounted: function(){
@@ -480,8 +490,8 @@ const game = Vue.component('game',{
                 this.shuffle = [];
                 this.basket =[];
                 this.prog = 0;
-                this.picColumn =5;
-                this.picRow = 5;
+                this.picColumn =2;
+                this.picRow = 2;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
             }else{
@@ -865,7 +875,7 @@ const leaderboard = Vue.component('leaderboard',{
 })
 
 Vue.component('modal',{
-    props:['modalData','test','url','modalPage'],
+    props:['modalData','test','url','modalPage','urlChallenge'],
     template:'#comp-modal',
     mixins: [serviceProvider],
     data: function(){
@@ -879,7 +889,7 @@ Vue.component('champion',{
     props:['index','url'],
     template:`
         <div style="position: relative;">
-            <img :src="url" alt="" class="circle responsive-img img-lead">
+            <img :src="url" alt="" class="circle responsive-img img-lead" v-imgfallback>
             <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>
             <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>
             <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
@@ -906,6 +916,18 @@ Vue.component('spinner',{
 Vue.directive('prog', {
     update: function(el,binding){
         el.style.width = binding.value + '%';
+    }
+});
+Vue.directive('imgfallback', {
+    bind: function(el,binding,vnode){
+        //let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
+        let fallback = vnode.context.$parent.noProfileUrl
+        el.onerror = function(){
+            if(el.src !== fallback){
+                el.src = fallback
+                console.log(vnode)
+            }
+        }
     }
 });
 Vue.directive('disappear', {
@@ -964,6 +986,7 @@ const routes = [
   { path: '/dash', component: container },
   { path: '/game/:category', component: game },
   { path: '/', component: landing },
+  { path: '/challenge/:insta/:time/:category', component: landing },
   { path: '', redirect: '/' },
 ];
 const router = new VueRouter({

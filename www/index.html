@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
     <meta name="description" content="A fun picture puzzle game powered by real celebrities on Instagram">
     <meta name="keywords" content="celebrity puzzle, celebrity gaming, picture puzzle, instagram picture puzzle">
-    <meta property="og:image" content="https://drive.google.com/uc?id=1YXh_5QKqO1d26Jd1uc2e2OHWoDTJI6P7">
+    <meta property="og:image" content="https://celebritypuzzle.com/assets/celebrity-small.png">
     <meta property="og:url" content="http://celebritypuzzle.com">
     <meta property="og:title" content="Celebrity Puzzle">
     <meta property="og:description" content="A fun picture puzzle game powered by real celebrities on Instagram">
@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
     <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
     <link href="css/animate.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
     <!-- favicon -->
@@ -92,7 +92,7 @@
                             </div>
                             <div class="col s2 center-align">
                                 <a :href="'https://www.instagram.com/' + x.name" target="_blank" rel="noopener noreferrer" style="color:#f42e91b0;">
-                                    <span><i class="fa fa-instagram" style="font-size: 23px;"></i></span>
+                                    <span><i class="fab fa-instagram" style="font-size: 23px;"></i></span>
                                 </a>
                             </div>
                         </div>
@@ -123,7 +123,13 @@
                 <!-- Game ended -->
                 <div class="row left-align">
                     <div class="col s12">Time: {{test.timePlayed}}</div>
-                <div class="col s12">Best Time: {{test.bestTime}}</div>
+                    <div class="col s12">Best Time: {{test.bestTime}}</div>
+                    <div class="col s12">Challenge Time: {{test.bestTime}}</div>
+                    <div class="col s12 valign-wrapper">
+                        <div>Challenge A Friend:</div>
+                        <a :href="'whatsapp://send?text=' + urlChallenge"><i class="fab fa-whatsapp fa-2x green-text left-right-space"></i></a>
+                        <a :href="'fb-messenger://share/?link=' + urlChallenge"><i class="fab fa-facebook-messenger fa-2x blue-text left-right-space"></i></a>
+                    </div>
                     <div class="col s12">World Rank (Today): Submit to find out</div>
                 </div>
                 

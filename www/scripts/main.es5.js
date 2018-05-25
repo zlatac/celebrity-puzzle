@@ -298,7 +298,7 @@ var container = Vue.component('container', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                        :class="{\'img-lead\':challengeTimer === 0,\'img-green pulse\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                        \'img-red flash\': challengeTimer >= 100}">\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"\n                   v-bind:urlChallenge="challengeUrl"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" v-imgfallback class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                        :class="{\'img-lead\':challengeTimer === 0,\'img-green bounceIn\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                        \'img-red flash\': challengeTimer >= 100}">\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -341,6 +341,15 @@ var game = Vue.component('game', {
                 return this.challengeSeconds / this.totalChallengeSeconds * 100;
             }
             return null;
+        },
+        challengeUrl: function challengeUrl() {
+            var category = this.$route.params.category;
+            var splitTime = this.test.time_result !== null ? this.test.time_result[0] + ' min ' + this.test.time_result[1] + ' sec' : '0';
+            var playtime = this.test.timePlayed;
+            var instahandle = 'instahandle' in localStorage ? localStorage.instahandle : '0';
+            var message = 'I challenge you to beat my time of ' + splitTime + ' today on celebrity puzzle';
+            var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + category;
+            return encodeURIComponent(message + ' ' + link);
         }
     },
     mounted: function mounted() {
@@ -400,8 +409,8 @@ var game = Vue.component('game', {
                 this.shuffle = [];
                 this.basket = [];
                 this.prog = 0;
-                this.picColumn = 5;
-                this.picRow = 5;
+                this.picColumn = 2;
+                this.picRow = 2;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
             } else {
@@ -788,7 +797,7 @@ var leaderboard = Vue.component('leaderboard', {
 });
 
 Vue.component('modal', {
-    props: ['modalData', 'test', 'url', 'modalPage'],
+    props: ['modalData', 'test', 'url', 'modalPage', 'urlChallenge'],
     template: '#comp-modal',
     mixins: [serviceProvider],
     data: function data() {
@@ -800,7 +809,7 @@ Vue.component('modal', {
 
 Vue.component('champion', {
     props: ['index', 'url'],
-    template: '\n        <div style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead">\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>\n            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>\n        </div>\n    '
+    template: '\n        <div style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead" v-imgfallback>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>\n            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>\n        </div>\n    '
 });
 Vue.component('spinner', {
     props: ['colorClass'],
@@ -809,6 +818,18 @@ Vue.component('spinner', {
 Vue.directive('prog', {
     update: function update(el, binding) {
         el.style.width = binding.value + '%';
+    }
+});
+Vue.directive('imgfallback', {
+    bind: function bind(el, binding, vnode) {
+        //let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
+        var fallback = vnode.context.$parent.noProfileUrl;
+        el.onerror = function () {
+            if (el.src !== fallback) {
+                el.src = fallback;
+                console.log(vnode);
+            }
+        };
     }
 });
 Vue.directive('disappear', {
@@ -861,7 +882,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: container }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: container }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });
