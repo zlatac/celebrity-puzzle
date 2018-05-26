@@ -220,9 +220,19 @@ const serviceProvider = {
             }
         },
         sendToCategory: function(){
-            setTimeout(function(){
-                router.push('dash');
+            let route = this.$route
+            setTimeout(()=>{
+                if(route.path.includes('challenge')){
+                    //when a user shows up as a result of a social media challenge
+                    this.$store.commit('socialChallenge',route.params)
+                }
+                this.$router.push('/dash');
             },3000)
+        },
+        clearInterval:function(intervalInstance){
+            if(this.safe(intervalInstance)){
+                clearInterval(intervalInstance)
+            }            
         }
     }
 }
@@ -248,54 +258,16 @@ const landing = Vue.component('landing', {
     
     }
 });
-const container = Vue.component('container', {
-    template: `
-        <div>
-            <div class="top-banner"></div>
-            <div class="container">
-                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>
-                <router-link to="/leaderboard">
-                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">
-                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>
-                    </div>
-                </router-link>
-                <div class="row center-align" v-show="!loader" style="margin-top:20px">
-                    <div class="col s12">
-                        <spinner class="animated fadeIn" :colorClass="'default'"></spinner>
-                    </div>
-                </div>
-                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday's Champions" v-show="loader">
-                    <div class="col s12">
-                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">
-                            <champion class="col s4" v-if="prevWinners !== null" v-for="(x, index) in prevWinners" :url="x.profile_url" :index="index"></champion>
-                        </div>
-                        <div class="row" style="margin:0rem 0px 0rem;">
-                            <div class="col s4 center-align" v-if="prevWinners !== null" v-for="(x, index) in prevWinners"><span class="truncate">{{x.name}}</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">
-                    <div class="col s12">
-                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">
-                            <div class="card-content">
-                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" 
-                                     v-on:click="toggleModal(x)">
-                                    {{x.text}}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `,
+const dash = Vue.component('dash', {
+    template: '#dashboard',   
     mixins: [serviceProvider],
     data: function(){ 
         return {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            modalPage:{page:'dash'}
+            modalPage:{page:'dash',insta:false,loader:false,fail:false,imageacquired:false},
+            socialChallengeUrl: null
         }
     },
     computed:{
@@ -303,6 +275,9 @@ const container = Vue.component('container', {
             let x = this.$store.state.previousChamps
             if(x !== null) this.loader = true
             return x
+        },
+        socialChallenge(){
+            return this.$store.state.socialChallenge
         }
     },
     created: function(){
@@ -327,16 +302,23 @@ const container = Vue.component('container', {
                 }
             })
         }
+        if(this.$store.state.socialChallenge !== null && this.$store.state.socialChallenge.insta !== '0'){
+            this.fetchInstaProfile(this.$store.state.socialChallenge.insta)
+        }
         
         
     },
     methods: {
-        wow: function(){
-                var self = this;
-                setTimeout(function(){
-                self.message = 'Oh MY GOD';
-                self.show = true;
-            },5000)
+        startSocialChallenge: function(){
+            let playerdetails =  this.socialChallenge
+            let category = (playerdetails.category !== '0') ? playerdetails.category : 'movie'
+            let gamedetails = {}
+            gamedetails.profile_url = this.url
+            gamedetails.realtime = playerdetails.time
+            gamedetails.name = playerdetails.insta
+            this.$store.commit('challenge',gamedetails)
+            this.resumeAudioContext()
+            this.$router.push(`/game/${category}`)
         }
     }
 });
@@ -345,7 +327,7 @@ const game = Vue.component('game',{
     template:`
         <div class="background center-align">
             <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"
-                   v-bind:urlChallenge="challengeUrl"></modal>
+                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>
             <div style="background-color:white; width:100%;" >
                 <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">
                     <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
@@ -427,7 +409,7 @@ const game = Vue.component('game',{
         },
         challengeUrl(){
             let category = this.$route.params.category
-            let splitTime = (this.test.time_result !== null) ? `${this.test.time_result[0]} min ${this.test.time_result[1]} sec` : '0'
+            let splitTime = (this.test.time_result !== null) ? `${this.test.time_result[0]} minutes ${this.test.time_result[1]} seconds` : '0'
             let playtime = this.test.timePlayed
             let instahandle = ('instahandle' in localStorage) ? localStorage.instahandle : '0'
             let message = `I challenge you to beat my time of ${splitTime} today on celebrity puzzle`
@@ -456,7 +438,7 @@ const game = Vue.component('game',{
                 this.challengeInterval = setInterval(()=>{
                     this.challengeSeconds += 1
                     if(this.challengeSeconds === this.totalChallengeSeconds){
-                        clearInterval(this.challengeInterval)
+                        this.clearInterval(this.challengeInterval)
                         console.log('time interval is cancelled')
                     }
                 },1000)
@@ -499,6 +481,7 @@ const game = Vue.component('game',{
                 this.test.hideModal = false;
                 this.updateBestTime()
                 this.toggleModal()
+                this.clearInterval(this.challengeInterval)
                 this.submitGame('regular')
             }
         },
@@ -543,7 +526,7 @@ const game = Vue.component('game',{
                 localStorage.instahandle = name
             }
             let postData = {timestamp,playtime,name,picurl,leaderboard,deviceId}
-            console.log(postData)
+            //console.log(postData)
             axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}
             &leaderboard=${leaderboard}&deviceid=${deviceId}&category=${category}`)
             .then((response)=>{
@@ -835,7 +818,7 @@ const leaderboard = Vue.component('leaderboard',{
             let today = (this.todayChip === true) ? this.currentGameDay : this.currentGameMonth
             axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`)
             .then((res)=>{
-                console.log(res)
+                //console.log(res)
                 this.leaderboardList = res.data;
                 this.loader = false
             })
@@ -875,7 +858,7 @@ const leaderboard = Vue.component('leaderboard',{
 })
 
 Vue.component('modal',{
-    props:['modalData','test','url','modalPage','urlChallenge'],
+    props:['modalData','test','url','modalPage','urlChallenge','challenger'],
     template:'#comp-modal',
     mixins: [serviceProvider],
     data: function(){
@@ -925,7 +908,7 @@ Vue.directive('imgfallback', {
         el.onerror = function(){
             if(el.src !== fallback){
                 el.src = fallback
-                console.log(vnode)
+                //console.log(vnode)
             }
         }
     }
@@ -960,7 +943,8 @@ const store = new Vuex.Store({
         celebList:null,
         previousChamps: null,
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-        challenge:null
+        challenge:null,
+        socialChallenge:null
     },
     mutations:{
         insertName(state, data){
@@ -977,13 +961,16 @@ const store = new Vuex.Store({
         },
         challenge(state,data){
             state.challenge = data;
+        },
+        socialChallenge(state,data){
+            state.socialChallenge = data;
         }
     }
 })
 
 const routes = [
   { path: '/leaderboard', component: leaderboard },
-  { path: '/dash', component: container },
+  { path: '/dash', component: dash },
   { path: '/game/:category', component: game },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },

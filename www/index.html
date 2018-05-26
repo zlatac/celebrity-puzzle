@@ -122,15 +122,15 @@
             <div v-if="modalPage.page === 'game'" v-show="!modalPage.insta">
                 <!-- Game ended -->
                 <div class="row left-align">
-                    <div class="col s12">Time: {{test.timePlayed}}</div>
-                    <div class="col s12">Best Time: {{test.bestTime}}</div>
-                    <div class="col s12">Challenge Time: {{test.bestTime}}</div>
-                    <div class="col s12 valign-wrapper">
-                        <div>Challenge A Friend:</div>
+                    <div class="col s12"><b>Time</b>: {{test.timePlayed}} (mm:ss:ms)</div>
+                    <div class="col s12" v-if="challenger !== null"><b>Challenge Time</b>: {{challenger.realtime}}</div>
+                    <div class="col s12"><b>Best Time</b>: {{test.bestTime}}</div>                    
+                    <div class="col s12">
+                        <div><b>Challenge A Friend</b>:</div>
                         <a :href="'whatsapp://send?text=' + urlChallenge"><i class="fab fa-whatsapp fa-2x green-text left-right-space"></i></a>
                         <a :href="'fb-messenger://share/?link=' + urlChallenge"><i class="fab fa-facebook-messenger fa-2x blue-text left-right-space"></i></a>
                     </div>
-                    <div class="col s12">World Rank (Today): Submit to find out</div>
+                    <div class="col s12"><b>World Rank (Today)</b>: Submit to find out</div>
                 </div>
                 
                 <div class="row valign-wrapper">
@@ -192,6 +192,66 @@
             <span class="modal-action modal-close waves-effect waves-green btn-flat ">Agree</span>
         </div>-->
     </div>
+</script>
+<script type="text/x-template" id="dashboard">
+    <div>
+            <div class="top-banner"></div>
+            <div class="container">
+                <modal v-bind:modal-data="modalData" v-bind:modalPage="modalPage"></modal>
+                <router-link to="/leaderboard">
+                    <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4">
+                        <i class="fa fa-trophy" style="font-size:34px;color:white"></i>
+                    </div>
+                </router-link>
+                <div class="row center-align" v-show="!loader" style="margin-top:20px">
+                    <div class="col s12">
+                        <spinner class="animated fadeIn" :colorClass="'default'"></spinner>
+                    </div>
+                </div>
+                <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday's Champions" v-show="loader">
+                    <div class="col s12">
+                        <div class="row" style="margin:0.5rem 0 0.1rem 0;">
+                            <champion class="col s4" v-if="prevWinners !== null" v-for="(x, index) in prevWinners" :url="x.profile_url" :index="index"></champion>
+                        </div>
+                        <div class="row" style="margin:0rem 0px 0rem;">
+                            <div class="col s4 center-align" v-if="prevWinners !== null" v-for="(x, index) in prevWinners"><span class="truncate">{{x.name}}</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row center-align" v-if="socialChallenge !== null">
+                    <div class="col s12">
+                        <div class="card">
+                            <div class="card-content">
+                                <div class="row">
+                                    <div class="col s4">
+                                        <img :src="url" class="circle responsive-img img-lead" v-imgfallback v-show="!modalPage.loader">
+                                        <spinner class="animated fadeIn" :colorClass="'default'" v-show="modalPage.loader"></spinner>
+                                    </div>
+                                    <div class="col s8">I challenge you to beat my time <b>{{socialChallenge.time}}</b></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col s12">
+                                        <span class="btn chip-selected animated pulse" @click="startSocialChallenge">Accept Challenge</span>
+                                    </div>
+                                </div>
+                            </div>                                                       
+                        </div>
+                    </div>
+                </div>
+                <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">
+                    <div class="col s12">
+                        <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">
+                            <div class="card-content">
+                                <div class="btn btn-full btn-large btn-black waves-light waves-effect" 
+                                     v-on:click="toggleModal(x)">
+                                    {{x.text}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 </script>
 <script src="scripts/main.es5.js"></script>
 </body>
