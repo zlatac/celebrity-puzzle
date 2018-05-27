@@ -817,6 +817,17 @@ var leaderboard = Vue.component('leaderboard', {
             this.$store.commit('challenge', playerdetails);
             var category = playerdetails.category !== 'empty' ? playerdetails.category : 'movie';
             router.push('/game/' + category);
+        },
+        challengeUrl: function challengeUrl(profileObject) {
+            //custom for the leaderboard
+            var category = profileObject.category;
+            var splitTime = profileObject.realtime.split(':');
+            var splitTimeText = splitTime[0] + ' minutes ' + splitTime[1] + ' seconds';
+            var playtime = profileObject.realtime;
+            var instahandle = profileObject.name;
+            var message = 'I challenge you to beat my time of ' + splitTimeText + ' today on celebrity puzzle';
+            var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + category;
+            return encodeURIComponent(message + ' ' + link);
         }
     },
     created: function created() {

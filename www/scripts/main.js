@@ -844,6 +844,17 @@ const leaderboard = Vue.component('leaderboard',{
             this.$store.commit('challenge',playerdetails)
             let category = (playerdetails.category !== 'empty') ? playerdetails.category : 'movie'
             router.push(`/game/${category}`)
+        },
+        challengeUrl(profileObject){
+            //custom for the leaderboard
+            let category = profileObject.category
+            let splitTime = profileObject.realtime.split(':')
+            let splitTimeText = `${splitTime[0]} minutes ${splitTime[1]} seconds`
+            let playtime = profileObject.realtime
+            let instahandle = profileObject.name
+            let message = `I challenge you to beat my time of ${splitTimeText} today on celebrity puzzle`
+            let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${category}`
+            return encodeURIComponent(`${message} ${link}`)
         }
     },
     created:function(){

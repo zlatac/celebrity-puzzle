@@ -96,10 +96,22 @@
                                 </a>
                             </div>
                         </div>
-                        <div class="row" v-if="index < 3" style="margin-bottom:0px">
+                        <div class="row" v-if="index < 3 && savedProfile !== x.name" style="margin-bottom:0px">
                             <div class="center-align col s12">
                                 <div class="chip waves-effect" style="margin-bottom:0px" @click="challengePlayer(x)">Challenge</div>
                             </div>
+                        </div>
+                        <div class="center-align row" style="margin-bottom: 0px;" v-if="savedProfile === x.name">
+                            <a :href="'whatsapp://send?text=' + challengeUrl(x)">
+                                <div class="btn-floating left-right-space waves-effect white" style="margin-bottom: 0px;">
+                                    <i class="fa-2x fa-whatsapp fab green-text"></i>
+                                </div>
+                            </a>
+                            <a :href="'fb-messenger://share/?link=' + challengeUrl(x)">
+                                <div class="btn-floating left-right-space waves-effect white" style="margin-bottom: 0px;">
+                                    <i class="fa-2x fa-facebook-messenger fab blue-text"></i>
+                                </div>
+                            </a>
                         </div>
                     </div>
                 </div>
