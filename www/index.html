@@ -6,6 +6,7 @@
     <meta name="description" content="A fun picture puzzle game powered by real celebrities on Instagram">
     <meta name="keywords" content="celebrity puzzle, celebrity gaming, picture puzzle, instagram picture puzzle">
     <meta property="og:image" content="http://celebritypuzzle.com/assets/celebrity-small.png">
+    <meta property="og:image:type" content="image/png">
     <meta property="og:url" content="http://celebritypuzzle.com">
     <meta property="og:title" content="Celebrity Puzzle">
     <meta property="og:description" content="A fun picture puzzle game powered by real celebrities on Instagram">
@@ -111,6 +112,11 @@
                                     <i class="fa-2x fa-facebook-messenger fab blue-text"></i>
                                 </div>
                             </a>
+                            <a :href="'https://twitter.com/intent/tweet?text=' + challengeUrl(x)" target="_blank">
+                                <div class="btn-floating left-right-space waves-effect white" style="margin-bottom: 0px;">
+                                    <i class="fa-2x fa-twitter fab blue-text"></i>
+                                </div>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -140,8 +146,9 @@
                         <div><b>Challenge A Friend</b>:</div>
                         <a :href="'whatsapp://send?text=' + urlChallenge"><i class="fab fa-whatsapp fa-2x green-text left-right-space"></i></a>
                         <a :href="'fb-messenger://share/?link=' + urlChallenge"><i class="fab fa-facebook-messenger fa-2x blue-text left-right-space"></i></a>
+                        <a :href="'https://twitter.com/intent/tweet?text=' + urlChallenge"><i class="fab fa-twitter fa-2x blue-text left-right-space"></i></a>
                     </div>
-                    <div class="col s12"><b>World Rank (Today)</b>: Submit to find out</div>
+                    <div class="col s12"><b>World Rank (Today)</b>: Submit & See</div>
                 </div>
                 
                 <div class="row valign-wrapper">
@@ -153,7 +160,7 @@
                         <i class="material-icons">refresh</i> Retry
                         </div>
                     </div>
-                    <div class="center col s4" @click="showSubmit"><i class="fa fa-trophy"></i> Submit</div>                
+                    <div class="center col s4" @click="showSubmit"><i class="fa fa-trophy gold"></i> Submit</div>                
                 </div>
             </div>
 
