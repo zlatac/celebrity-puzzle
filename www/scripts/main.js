@@ -472,8 +472,8 @@ const game = Vue.component('game',{
                 this.shuffle = [];
                 this.basket =[];
                 this.prog = 0;
-                this.picColumn =2;
-                this.picRow = 2;
+                this.picColumn = 5;
+                this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
             }else{
