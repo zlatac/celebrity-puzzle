@@ -63,7 +63,7 @@ div.progress{height: 20px !important;}
     background: var(--main);
     position: fixed;
     top: 0;
-    z-index: 2;
+    z-index: 10;
 }
 .fab-menu{
     position: fixed;
@@ -140,6 +140,13 @@ a{
 }
 .left-right-space{
     margin: 0px 12px;
+}
+.lead-fixed{
+    position: fixed;
+    top: 0;
+    left:0;
+    width: 100%;
+    z-index: 5
 }
 
 /*moving hearts*/
