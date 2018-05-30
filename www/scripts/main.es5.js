@@ -11,6 +11,9 @@ var serviceProvider = {
             inputProfile: '',
             loader: false,
             toastInstance: null,
+            copiedToClipboard: false,
+            challengeFriends: false,
+            volume: true,
             noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [{ name: 'kimkardashian', profile_url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofiavergara', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }],
             category: [{ name: 'fashion', color: '#e68213', text: 'fashion' }, { name: 'music', color: '#136ee6', text: 'music' }, { name: 'movie', color: '#b9499f', text: 'movies' }, { name: 'sport', color: '#e61313', text: 'sports' }]
@@ -119,10 +122,12 @@ var serviceProvider = {
             tones.release = release || tones.release;
             tones.attack = attack || tones.attack;
             tones.type = type || tones.type;
-            tones.play(key, octave);
+            if (this.volume === true) {
+                tones.play(key, octave);
+            }
         }),
         vibrate: function vibrate(seconds) {
-            if ('vibrate' in navigator) {
+            if ('vibrate' in navigator && this.volume === true) {
                 navigator.vibrate(seconds);
             }
         },
@@ -251,7 +256,17 @@ var serviceProvider = {
             if (this.safe(intervalInstance)) {
                 clearInterval(intervalInstance);
             }
-        })
+        }),
+        copyToClipboard: function copyToClipboard() {
+            var input = document.querySelector('#copy-link');
+            input.focus();
+            input.setSelectionRange(0, 9999);
+            try {
+                document.execCommand("copy");
+            } catch (e) {
+                alert(e);
+            }
+        }
     }
 };
 var landing = Vue.component('landing', {
@@ -331,7 +346,7 @@ var dash = Vue.component('dash', {
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"\n                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" v-imgfallback class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                        :class="{\'img-lead\':challengeTimer === 0,\'img-green bounceIn\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                        \'img-red flash\': challengeTimer >= 100}">\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{profile.fullname | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;" >\n                <div class="btn list-me animated bounceIn" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"\n                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" v-imgfallback class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                        :class="{\'img-lead\':challengeTimer === 0,\'img-green bounceIn\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                        \'img-red flash\': challengeTimer >= 100}">\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">\n                        <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>\n                        <i class="material-icons animated bounceIn" v-show="!volume" style="font-size: 34px;">volume_off</i>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{(profile.fullname !== \'\') ? profile.fullname : profile.fallback.name | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;">\n                <div class="btn list-me animated shake" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -382,7 +397,10 @@ var game = Vue.component('game', {
             var instahandle = 'instahandle' in localStorage ? localStorage.instahandle : '0';
             var message = 'I challenge you to beat my time of ' + splitTime + ' today on celebrity puzzle';
             var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + category;
-            return encodeURIComponent(message + ' ' + link);
+            var url = {};
+            url.encoded = encodeURIComponent(message + ' ' + link);
+            url.raw = message + ' ' + link;
+            return url;
         }
     },
     mounted: function mounted() {
@@ -432,6 +450,17 @@ var game = Vue.component('game', {
                 localStorage.bestTime = currentTime;
             }
         },
+        volumeToggle: function volumeToggle() {
+            switch (this.volume) {
+                case true:
+                    this.volume = false;
+                    break;
+                case false:
+                    this.volume = true;
+                    break;
+            }
+        },
+
         levelUp: function levelUp() {
             if (this.puzzLevel < 2) {
                 this.draw.clear();
@@ -442,7 +471,7 @@ var game = Vue.component('game', {
                 this.shuffle = [];
                 this.basket = [];
                 this.prog = 0;
-                this.picColumn = 5;
+                this.picColumn = 4;
                 this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
@@ -571,14 +600,20 @@ var game = Vue.component('game', {
                         var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         var user = sift.entry_data.ProfilePage["0"].graphql.user;
                         var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
+                        //filter for only images with 3:4 and 1:1 dimensions
                         var imageList = instaList.filter(function (item) {
-                            return item.node.is_video === false;
+                            return item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height;
                         });
                         if (imageList.length < 1) {
                             _this10.getImage();
                         } else {
                             var index = Math.floor(Math.random() * imageList.length);
-                            _this10.profile = { fullname: user.full_name, url: user.profile_pic_url };
+                            _this10.profile = {
+                                fullname: user.full_name,
+                                url: user.profile_pic_url,
+                                fallback: categoryList[randomIndex],
+                                imageList: imageList
+                            };
                             resolve(imageList[index].node.display_url);
                         }
                     }
@@ -746,7 +781,7 @@ var game = Vue.component('game', {
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
                 _this11.loader = false;
-                _this11.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this11.footnote_msg + '</div>', displayLength: 3000 });
+                _this11.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this11.footnote_msg + '</div>', displayLength: 2000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -810,7 +845,7 @@ var leaderboard = Vue.component('leaderboard', {
             var elem = document.querySelector('.myprofile');
             if (this.safe(elem)) {
                 //console.log('wooooooooow')
-                elem.scrollIntoView({ behavior: 'smooth' });
+                elem.scrollIntoView(false); //false aligns the bottom of the element to the bottom of available space and vice versa
             }
         },
         challengePlayer: function challengePlayer(playerdetails) {
@@ -818,7 +853,7 @@ var leaderboard = Vue.component('leaderboard', {
             var category = playerdetails.category !== 'empty' ? playerdetails.category : 'movie';
             router.push('/game/' + category);
         },
-        challengeUrl: function challengeUrl(profileObject) {
+        challengeUrl: function challengeUrl(profileObject, clipboard) {
             //custom for the leaderboard
             var category = profileObject.category;
             var splitTime = profileObject.realtime.split(':');
@@ -827,6 +862,7 @@ var leaderboard = Vue.component('leaderboard', {
             var instahandle = profileObject.name;
             var message = 'I challenge you to beat my time of ' + splitTimeText + ' today on celebrity puzzle';
             var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + category;
+            if (clipboard === true) return message + ' ' + link;
             return encodeURIComponent(message + ' ' + link);
         }
     },

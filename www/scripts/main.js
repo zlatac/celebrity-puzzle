@@ -9,6 +9,9 @@ const serviceProvider = {
             inputProfile:'',
             loader: false,
             toastInstance: null,
+            copiedToClipboard: false,
+            challengeFriends: false,
+            volume: true,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [
                 {name:'kimkardashian', profile_url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
@@ -119,10 +122,12 @@ const serviceProvider = {
             tones.release = release || tones.release;
             tones.attack = attack || tones.attack;
             tones.type = type || tones.type;
-            tones.play(key,octave);
+            if(this.volume === true){
+                tones.play(key,octave);
+            }            
         },
         vibrate: function(seconds){
-            if('vibrate' in navigator){
+            if('vibrate' in navigator && this.volume === true){
                 navigator.vibrate(seconds)
             }
         },
@@ -233,6 +238,17 @@ const serviceProvider = {
             if(this.safe(intervalInstance)){
                 clearInterval(intervalInstance)
             }            
+        },
+        copyToClipboard(){
+            let input = document.querySelector('#copy-link')
+            input.focus()
+            input.setSelectionRange(0, 9999)
+            try{
+                document.execCommand("copy");
+            }catch(e){
+                alert(e)
+            }            
+
         }
     }
 }
@@ -339,19 +355,23 @@ const game = Vue.component('game',{
                         :class="{'img-lead':challengeTimer === 0,'img-green bounceIn':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
                         'img-red flash': challengeTimer >= 100}">
                     </span>
+                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">
+                        <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>
+                        <i class="material-icons animated bounceIn" v-show="!volume" style="font-size: 34px;">volume_off</i>
+                    </span>
                     <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"
                           :disabled="loader">
                         <i class="material-icons" style="font-size: 34px;">refresh</i>
                     </span>
                     <div class="chip">
                         <img :src="profile.url" alt="Contact Person">
-                        {{profile.fullname | truncate}}
+                        {{(profile.fullname !== '') ? profile.fullname : profile.fallback.name | truncate}}
                     </div>
                 </div>                
                 <spinner class="animated fadeIn" :colorClass="'default'" v-show="loader"></spinner>
             </div>
-            <div id="svg" style="background-color:white; width:100%; height:80%;" >
-                <div class="btn list-me animated bounceIn" v-bind:class="{'hide': prog !== 100}">
+            <div id="svg" style="background-color:white; width:100%; height:80%;">
+                <div class="btn list-me animated shake" v-bind:class="{'hide': prog !== 100}">
                         Completed!!  
                         <span v-show="test.start_time !== null">
                             <i class="fa fa-clock-o"></i> 
@@ -414,7 +434,10 @@ const game = Vue.component('game',{
             let instahandle = ('instahandle' in localStorage) ? localStorage.instahandle : '0'
             let message = `I challenge you to beat my time of ${splitTime} today on celebrity puzzle`
             let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${category}`
-            return encodeURIComponent(`${message} ${link}`)
+            let url = {}
+            url.encoded = encodeURIComponent(`${message} ${link}`)
+            url.raw = `${message} ${link}`
+            return url
         }
     },
     mounted: function(){
@@ -462,6 +485,16 @@ const game = Vue.component('game',{
                 localStorage.bestTime = currentTime
             }
         },
+        volumeToggle(){
+            switch(this.volume){
+                case true:
+                    this.volume = false
+                    break
+                case false:
+                    this.volume = true
+                    break
+            }
+        },
         levelUp : function(){
             if(this.puzzLevel < 2){
                 this.draw.clear();
@@ -472,7 +505,7 @@ const game = Vue.component('game',{
                 this.shuffle = [];
                 this.basket =[];
                 this.prog = 0;
-                this.picColumn = 5;
+                this.picColumn = 4;
                 this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
@@ -598,12 +631,18 @@ const game = Vue.component('game',{
                         let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         let user = sift.entry_data.ProfilePage["0"].graphql.user
                         let instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges
-                        let imageList = instaList.filter(item => item.node.is_video === false)
+                        //filter for only images with 3:4 and 1:1 dimensions
+                        let imageList = instaList.filter(item => item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height)
                         if(imageList.length < 1){
                             this.getImage()
                         }else{
                             let index = Math.floor(Math.random()*(imageList.length));
-                            this.profile = {fullname:user.full_name, url:user.profile_pic_url}
+                            this.profile = {
+                                fullname:user.full_name,
+                                url:user.profile_pic_url,
+                                fallback:categoryList[randomIndex],
+                                imageList: imageList
+                            }
                             resolve(imageList[index].node.display_url);
                         }
                     }
@@ -777,7 +816,7 @@ const game = Vue.component('game',{
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
                 this.loader = false
-                this.toastInstance = M.toast({html:`<div class="center-align full-width">${this.footnote_msg}</div>`,displayLength:3000});
+                this.toastInstance = M.toast({html:`<div class="center-align full-width">${this.footnote_msg}</div>`,displayLength:2000});
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
             
@@ -837,7 +876,7 @@ const leaderboard = Vue.component('leaderboard',{
             let elem = document.querySelector('.myprofile')
             if(this.safe(elem)){
                 //console.log('wooooooooow')
-                elem.scrollIntoView({behavior:'smooth'})
+                elem.scrollIntoView(false) //false aligns the bottom of the element to the bottom of available space and vice versa
             }
         },
         challengePlayer(playerdetails){
@@ -845,7 +884,7 @@ const leaderboard = Vue.component('leaderboard',{
             let category = (playerdetails.category !== 'empty') ? playerdetails.category : 'movie'
             router.push(`/game/${category}`)
         },
-        challengeUrl(profileObject){
+        challengeUrl(profileObject, clipboard){
             //custom for the leaderboard
             let category = profileObject.category
             let splitTime = profileObject.realtime.split(':')
@@ -854,6 +893,7 @@ const leaderboard = Vue.component('leaderboard',{
             let instahandle = profileObject.name
             let message = `I challenge you to beat my time of ${splitTimeText} today on celebrity puzzle`
             let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${category}`
+            if(clipboard === true) return `${message} ${link}`
             return encodeURIComponent(`${message} ${link}`)
         }
     },

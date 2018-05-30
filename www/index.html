@@ -101,7 +101,12 @@
                                 <div class="chip waves-effect" style="margin-bottom:0px" @click="challengePlayer(x)">Challenge</div>
                             </div>
                         </div>
-                        <div class="center-align row" style="margin-bottom: 0px;" v-if="savedProfile === x.name">
+                        <div class="row" v-if="savedProfile === x.name" style="margin-bottom:0px" v-show="!challengeFriends">
+                            <div class="center-align col s12">
+                                <div class="chip white waves-effect" style="margin-bottom:0px" @click="challengeFriends=true">Challenge A Friend</div>
+                            </div>
+                        </div>
+                        <div class="center-align row" v-if="savedProfile === x.name" v-show="challengeFriends" style="margin-top:20px">
                             <a :href="'whatsapp://send?text=' + challengeUrl(x)">
                                 <div class="btn-floating left-right-space waves-effect white" style="margin-bottom: 0px;">
                                     <i class="fa-2x fa-whatsapp fab green-text"></i>
@@ -117,6 +122,14 @@
                                     <i class="fa-2x fa-twitter fab blue-text"></i>
                                 </div>
                             </a>
+                            <div class="btn-floating left-right-space waves-effect white" style="margin-bottom: 0px;" 
+                                 @click="copyToClipboard">
+                                <i class="fa-2x fas fa-link black-text"></i>
+                                
+                            </div>
+                        </div>
+                        <div class="row center-align" v-if="savedProfile === x.name" v-show="challengeFriends">
+                            <input class="browser-default" type="text" id="copy-link" :value="challengeUrl(x,true)" width="90%" readonly/>
                         </div>
                     </div>
                 </div>
@@ -141,14 +154,21 @@
                 <div class="row left-align">
                     <div class="col s12"><b>Time</b>: {{test.timePlayed}} (mm:ss:ms)</div>
                     <div class="col s12" v-if="challenger !== null"><b>Challenge Time</b>: {{challenger.realtime}}</div>
-                    <div class="col s12"><b>Best Time</b>: {{test.bestTime}}</div>                    
-                    <div class="col s12">
-                        <div><b>Challenge A Friend</b>:</div>
-                        <a :href="'whatsapp://send?text=' + urlChallenge"><i class="fab fa-whatsapp fa-2x green-text left-right-space"></i></a>
-                        <a :href="'fb-messenger://share/?link=' + urlChallenge"><i class="fab fa-facebook-messenger fa-2x blue-text left-right-space"></i></a>
-                        <a :href="'https://twitter.com/intent/tweet?text=' + urlChallenge"><i class="fab fa-twitter fa-2x blue-text left-right-space"></i></a>
-                    </div>
+                    <div class="col s12"><b>Best Time</b>: {{test.bestTime}}</div>  
                     <div class="col s12"><b>World Rank (Today)</b>: Submit & See</div>
+                    <div class="center-align col s12" v-show="!challengeFriends" style="margin-top: 10px;">
+                        <div class="chip waves-effect" style="margin-bottom:0px" @click="challengeFriends=true">Challenge A Friend</div>
+                    </div>                  
+                    <div class="col s12" v-show="challengeFriends" style="margin-top: 10px;">
+                        <a :href="'whatsapp://send?text=' + urlChallenge.encoded"><i class="fab fa-whatsapp fa-2x green-text left-right-space"></i></a>
+                        <a :href="'fb-messenger://share/?link=' + urlChallenge.encoded"><i class="fab fa-facebook-messenger fa-2x blue-text left-right-space"></i></a>
+                        <a :href="'https://twitter.com/intent/tweet?text=' + urlChallenge.encoded"><i class="fab fa-twitter fa-2x blue-text left-right-space"></i></a>
+                        <i @click="copyToClipboard" class="fa-2x fas fa-link black-text"></i>
+                    </div>
+                    <div class="col s12 center-align" v-show="challengeFriends" style="margin-top: 5px;">
+                        <input class="browser-default" type="text" id="copy-link" :value="urlChallenge.raw" width="90%" readonly/>
+                    </div>
+                    
                 </div>
                 
                 <div class="row valign-wrapper">
