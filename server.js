@@ -6,6 +6,13 @@ var server = require('http').Server(app);
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
 
+app.get('*',function(req,res,next){
+    if(req.headers['x-forwarded-proto']!='https' && process.env.NODE_ENV === 'production')
+        res.redirect(['https://', req.get('Host'), req.url].join(''))
+    else
+        next() /* Continue to other routes if we're not redirecting */
+})
+
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/www/index.html');
 });
