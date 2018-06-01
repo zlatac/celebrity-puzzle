@@ -348,12 +348,14 @@ const game = Vue.component('game',{
                 <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">
                     <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
                     <div style="position: absolute;left: 50%;top: 5%;" :class="{'white-text': prog >= 54}">{{prog | number}}%</div>
+                    <img :src="challenge.profile_url" class="animated circle flash img-green responsive-img" style="width: 25px;height: 25px;position: absolute;top: 0;"
+                         v-if="challenge !== null" :style="{left: challengeTimer + '%'}" :class="{'hide':challengeInterval === null}">
                 </div>
                 <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
                     <span class="" style="margin-right: 10px;" v-if="challenge !== null">
                         <img :src="challenge.profile_url" v-imgfallback class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"
-                        :class="{'img-lead':challengeTimer === 0,'img-green bounceIn':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
-                        'img-red flash': challengeTimer >= 100}">
+                             :class="{'img-lead':challengeTimer === 0,'img-green bounceIn':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
+                             'img-red flash': challengeTimer >= 100}">
                     </span>
                     <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">
                         <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>
@@ -777,8 +779,8 @@ const game = Vue.component('game',{
                                         y:this.waste[1].node.y.baseVal.value,
                                         truth: this.waste[1].truth
                                     }
-                            SVG.get(this.waste[0].node.id).animate(500).move(b.x,b.y).animate(100).width(this.dw);
-                            SVG.get(this.waste[1].node.id).animate(500).move(a.x,a.y).animate(100).width(this.dw);
+                            SVG.get(this.waste[0].node.id).animate(200).move(b.x,b.y).animate(100).width(this.dw);
+                            SVG.get(this.waste[1].node.id).animate(200).move(a.x,a.y).animate(100).width(this.dw);
                             this.checker(a,b);
                             this.checker(b,a);
                             this.progressFunc();
