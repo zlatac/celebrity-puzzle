@@ -1027,7 +1027,7 @@ const routes = [
   { path: '/game/:category', component: game },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },
-  { path: '', redirect: '/' },
+  { path: '*', redirect: '/' }, //wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({
   routes // short for `routes: routes`

@@ -967,7 +967,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });
