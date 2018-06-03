@@ -202,9 +202,10 @@ var serviceProvider = {
             });
             //this.url = profile;
         },
-        generateDeviceId: function generateDeviceId() {
+        generateDeviceId: function generateDeviceId(skipredirect) {
             var _this4 = this;
 
+            //if skipredirect is not true redirect to dash page
             axios('/myipaddress').then(function (res) {
                 var ip = res.data;
                 var unixtime = moment().unix();
@@ -213,7 +214,10 @@ var serviceProvider = {
             }).catch(function (error) {
                 console.warn(new Error(error));
             }).finally(function () {
-                _this4.sendToCategory();
+                if (skipredirect !== true) {
+                    _this4.sendToCategory();
+                    console.log('wow');
+                }
             });
             function generateHash(ip, time) {
                 //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
@@ -328,6 +332,9 @@ var dash = Vue.component('dash', {
         }
         if (this.$store.state.socialChallenge !== null && this.$store.state.socialChallenge.insta !== '0') {
             this.fetchInstaProfile(this.$store.state.socialChallenge.insta);
+        }
+        if (!('deviceId' in localStorage)) {
+            this.generateDeviceId(true); // genereate unique device id without redirecting
         }
     },
     methods: {

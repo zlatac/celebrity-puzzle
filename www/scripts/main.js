@@ -199,7 +199,8 @@ const serviceProvider = {
             });
             //this.url = profile;
         },
-        generateDeviceId: function(){
+        generateDeviceId: function(skipredirect){
+            //if skipredirect is not true redirect to dash page
             axios('/myipaddress')
             .then((res)=> {
                 let ip = res.data
@@ -208,7 +209,13 @@ const serviceProvider = {
                 localStorage.deviceId = hash
             })
             .catch((error)=> {console.warn(new Error(error))})
-            .finally(()=>{this.sendToCategory()})
+            .finally(()=>{
+                if(skipredirect !== true){
+                    this.sendToCategory()
+                    console.log('wow')
+                } 
+            
+            })
             function generateHash(ip,time){
                 //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
                 let address = ip.replace('.','')
@@ -320,6 +327,9 @@ const dash = Vue.component('dash', {
         }
         if(this.$store.state.socialChallenge !== null && this.$store.state.socialChallenge.insta !== '0'){
             this.fetchInstaProfile(this.$store.state.socialChallenge.insta)
+        }
+        if(!('deviceId' in localStorage)){
+            this.generateDeviceId(true) // genereate unique device id without redirecting
         }
         
         
