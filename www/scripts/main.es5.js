@@ -16,7 +16,7 @@ var serviceProvider = {
             volume: true,
             noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [{ name: 'kimkardashian', profile_url: "https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg" }, { name: 'sofiavergara', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }],
-            category: [{ name: 'fashion', color: '#e68213', text: 'fashion' }, { name: 'music', color: '#136ee6', text: 'music' }, { name: 'movie', color: '#b9499f', text: 'movies' }, { name: 'sport', color: '#e61313', text: 'sports' }]
+            category: [{ name: 'fashion', color: '#e68213', text: 'fashion' }, { name: 'music', color: '#136ee6', text: 'music' }, { name: 'movie', color: '#b9499f', text: 'movies' }, { name: 'sport', color: '#136ee6', text: 'sports' }, { name: 'youtube', color: '#e61313', text: 'youtube', logoClass: 'fab fa-youtube red-text' }]
         };
     },
     computed: {
@@ -32,6 +32,12 @@ var serviceProvider = {
         currentGameDay: function currentGameDay() {
             return moment().startOf('day').toISOString();
             //return moment('2018/05/11','YYYY/MM/DD').toISOString();
+        },
+        allTimeGame: function allTimeGame() {
+            return moment('2018/05/11', 'YYYY/MM/DD').toISOString();
+        },
+        currentGameWeek: function currentGameWeek() {
+            return moment().startOf('week').toISOString();
         },
         previousGameDay: function previousGameDay() {
             return moment().subtract(1, 'days').startOf('day').toISOString();
@@ -831,7 +837,7 @@ var leaderboard = Vue.component('leaderboard', {
             var _this13 = this;
 
             this.loader = true;
-            var today = this.todayChip === true ? this.currentGameDay : this.currentGameMonth;
+            var today = this.todayChip === true ? this.currentGameWeek : this.allTimeGame;
             axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 //console.log(res)
                 _this13.leaderboardList = res.data;
@@ -839,11 +845,11 @@ var leaderboard = Vue.component('leaderboard', {
             });
         },
         selectedTime: function selectedTime(time) {
-            if (time === 'month' && this.todayChip === true) {
+            if (time === 'allTime' && this.todayChip === true) {
                 this.todayChip = false;
                 this.getLeaderboard();
             }
-            if (time === 'today' && this.todayChip === false) {
+            if (time === 'thisWeek' && this.todayChip === false) {
                 this.todayChip = true;
                 this.getLeaderboard();
             }
@@ -881,6 +887,50 @@ var leaderboard = Vue.component('leaderboard', {
         // setInterval(()=>{
         //     this.makeHeart();
         // },900)
+    }
+});
+
+var spotify = Vue.component('spotify', {
+    template: '#spotify',
+    mixins: [serviceProvider],
+    data: function data() {
+        return {
+            searchInput: '',
+            searchResult: []
+        };
+    },
+    methods: {
+        searchTrack: function searchTrack() {
+            var _this14 = this;
+
+            if (this.safe(this.searchInput)) {
+                this.loader = true;
+                var token = 'BQDvXdIXAQ-yZLZn6yQNWpriGDb7kQnFuHkXq_SnKHdurMIYaW5nMW57y-Qyz4Zjk8shm3tuVfo0ln6jhjg';
+                var query = encodeURIComponent(this.searchInput);
+                var type = 'track';
+                console.log(this.searchInput);
+
+                fetch('https://api.spotify.com/v1/search?q=' + query + '&type=' + type + '&access_token=' + token).then(function (res) {
+                    if (res.status === 200) return res.json();else return 'fail';
+                }).catch(function (err) {
+                    console.log(new Error(err));
+                }).then(function (res) {
+                    if (res !== 'fail') {
+                        _this14.searchResult = res.tracks.items.map(function (item) {
+                            var obj = {};
+                            obj.image = item.album.images[1].url;
+                            obj.song = item.name;
+                            obj.artist = item.artists.map(function (item) {
+                                return item.name;
+                            }).join(',');
+                            return obj;
+                        });
+                        _this14.loader = false;
+                        //this.searchInput = ''
+                    }
+                });
+            }
+        }
     }
 });
 
@@ -974,7 +1024,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/blessmyrequest', component: spotify }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

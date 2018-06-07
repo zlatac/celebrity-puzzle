@@ -22,7 +22,8 @@ const serviceProvider = {
                 {name:'fashion',color:'#e68213',text:'fashion'},
                 {name:'music',color:'#136ee6',text:'music'},
                 {name:'movie',color:'#b9499f',text:'movies'},
-                {name:'sport',color:'#e61313',text:'sports'},
+                {name:'sport',color:'#136ee6',text:'sports'},
+                {name:'youtube',color:'#e61313',text:'youtube', logoClass:'fab fa-youtube red-text'},
             ]
         }
     },
@@ -39,6 +40,12 @@ const serviceProvider = {
         currentGameDay(){
             return moment().startOf('day').toISOString();
             //return moment('2018/05/11','YYYY/MM/DD').toISOString();
+        },
+        allTimeGame(){
+            return moment('2018/05/11','YYYY/MM/DD').toISOString();
+        },
+        currentGameWeek(){
+            return moment().startOf('week').toISOString();
         },
         previousGameDay(){
             return moment().subtract(1, 'days').startOf('day').toISOString();
@@ -866,7 +873,7 @@ const leaderboard = Vue.component('leaderboard',{
         },
         getLeaderboard(){
             this.loader = true
-            let today = (this.todayChip === true) ? this.currentGameDay : this.currentGameMonth
+            let today = (this.todayChip === true) ? this.currentGameWeek : this.allTimeGame
             axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`)
             .then((res)=>{
                 //console.log(res)
@@ -875,11 +882,11 @@ const leaderboard = Vue.component('leaderboard',{
             })
         },
         selectedTime(time){
-            if(time === 'month' && this.todayChip === true){
+            if(time === 'allTime' && this.todayChip === true){
                 this.todayChip = false
                 this.getLeaderboard()
             } 
-            if(time === 'today' && this.todayChip === false){
+            if(time === 'thisWeek' && this.todayChip === false){
                 this.todayChip = true 
                 this.getLeaderboard()
             } 
@@ -917,6 +924,50 @@ const leaderboard = Vue.component('leaderboard',{
         // setInterval(()=>{
         //     this.makeHeart();
         // },900)
+    }
+})
+
+const spotify = Vue.component('spotify',{
+    template:'#spotify',
+    mixins: [serviceProvider],
+    data: function(){
+        return{
+            searchInput: '',
+            searchResult: []
+        }
+    },
+    methods: {
+        searchTrack(){
+            if(this.safe(this.searchInput)){
+                this.loader = true
+                let token = 'BQDvXdIXAQ-yZLZn6yQNWpriGDb7kQnFuHkXq_SnKHdurMIYaW5nMW57y-Qyz4Zjk8shm3tuVfo0ln6jhjg'
+                let query = encodeURIComponent(this.searchInput)
+                let type = 'track'
+                console.log(this.searchInput)
+
+                fetch(`https://api.spotify.com/v1/search?q=${query}&type=${type}&access_token=${token}`)
+                .then((res)=>{
+                    if(res.status === 200)
+                        return res.json()
+                    else
+                        return 'fail'
+                })
+                .catch((err)=>{console.log(new Error(err))})
+                .then((res)=>{
+                    if(res !== 'fail'){
+                        this.searchResult = res.tracks.items.map((item)=>{
+                            let obj = {}
+                            obj.image = item.album.images[1].url
+                            obj.song = item.name
+                            obj.artist = item.artists.map((item)=> item.name).join(',')
+                            return obj
+                        })
+                        this.loader = false;
+                        //this.searchInput = ''
+                    }                    
+                })
+            }
+        }
     }
 })
 
@@ -1035,6 +1086,7 @@ const routes = [
   { path: '/leaderboard', component: leaderboard },
   { path: '/dash', component: dash },
   { path: '/game/:category', component: game },
+  { path: '/blessmyrequest', component: spotify },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },
   { path: '*', redirect: '/' }, //wild card situations since the shared url could be modified by users

@@ -128,5 +128,18 @@
     {"name":"felicia day","handle":"feliciaday","category":"movie"},
     {"name":"iansomerhalder","handle":"iansomerhalder","category":"movie"},
     {"name":"reese witherspoon","handle":"reesewitherspoon","category":"movie"},
-    {"name":"chris pratt","handle":"prattprattpratt","category":"movie"}
+    {"name":"chris pratt","handle":"prattprattpratt","category":"movie"},
+    {"name":"ksi","handle":"ksi","category":"youtube"},
+    {"name":"dantdm","handle":"dantdm","category":"youtube"},
+    {"name":"Jenna Mourey/Marbles","handle":"jennamarbles","category":"youtube"},
+    {"name":"jacksepticeye","handle":"jacksepticeye","category":"youtube"},
+    {"name":"felipeneto","handle":"felipeneto","category":"youtube"},
+    {"name":"markiplier","handle":"markipliergram","category":"youtube"},
+    {"name":"nigahiga","handle":"notryanhiga","category":"youtube"},
+    {"name":"yuyacst","handle":"yuyacst","category":"youtube"},
+    {"name":"dudeperfect","handle":"dudeperfect","category":"youtube"},
+    {"name":"kondzilla","handle":"kondzilla","category":"youtube"},
+    {"name":"Whindersson Nunes","handle":"whinderssonnunes","category":"youtube"},
+    {"name":"German Garmendia","handle":"germangarmendia","category":"youtube"},
+    {"name":"pewdiepie","handle":"pewdiepie","category":"youtube"}
 ]

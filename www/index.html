@@ -14,7 +14,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Celebrity Puzzle</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -62,8 +62,8 @@
                     </div>
                     <div class="row" style="margin-bottom: 0px;">
                         <div class="col s12">
-                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('month')" :class="{'chip-selected':!todayChip}">Month</div>
-                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('today')" :class="{'chip-selected':todayChip}">Today</div>
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('allTime')" :class="{'chip-selected':!todayChip}">All time</div>
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('thisWeek')" :class="{'chip-selected':todayChip}">This week</div>
                         </div>
                     </div>
                 </div>
@@ -280,10 +280,10 @@
                 <div class="row animated bounceInLeft" v-for="x in category" style="margin-bottom:0px;">
                     <div class="col s12">
                         <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">
-                            <div class="card-content">
+                            <div class="card-content" style="padding:15px">
                                 <div class="btn btn-full btn-large btn-black waves-light waves-effect" 
                                      v-on:click="toggleModal(x)">
-                                    {{x.text}}
+                                    {{x.text}} <i v-if="x.logoClass !== undefined" :class="x.logoClass"></i>
                                 </div>
                             </div>
                         </div>
@@ -291,6 +291,39 @@
                 </div>
             </div>
         </div>
+</script>
+<script type="text/x-template" id="spotify">
+    <div class="zontainer center-align">
+        <div class="row">
+            <div class="col s12">
+                <div class="card-panel">
+                    <div class="row">
+                        <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
+                             alt="" class="circle img-green animated infinite pulse" width="110px" height="110px">
+                        <p>DJ Jaskambo</p>
+                    </div>
+                    <div class="row">
+                        <div class="col s9">
+                            <input type="text" name="search" placeholder="Search tracks" v-model="searchInput">
+                        </div>
+                        <div class="col s3">
+                            <span class="btn btn-floating" @click="searchTrack"><i class="material-icons">search</i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <spinner :colorClass="'default'" v-show="loader"></spinner>
+        <div class="row " v-show="!loader">
+            <div class="card animated fadeInUp" v-for="(x, index) in searchResult">
+                <div class="row">
+                <div class="col s4"><img :src="x.image" width="70px"></div>
+                <div class="col s5">{{x.song}} - {{x.artist}}</div>
+                <div class="col s3"><span class="btn btn-floating"><i class="material-icons">send</i></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </script>
 <script src="scripts/main.es5.js"></script>
 </body>
