@@ -276,6 +276,12 @@ var serviceProvider = {
             } catch (e) {
                 alert(e);
             }
+        },
+        webSocket: function webSocket() {
+            if ('io' in window) {
+                var socket = io('https://mochanow.com');
+                return socket;
+            }
         }
     }
 };
@@ -896,8 +902,17 @@ var spotify = Vue.component('spotify', {
     data: function data() {
         return {
             searchInput: '',
-            searchResult: []
+            searchResult: [],
+            isConnected: false,
+            metrics: { requestNumber: 0 },
+            appName: 'blessmyrequest',
+            accessNumber: 0
         };
+    },
+    computed: {
+        socket: function socket() {
+            return this.webSocket();
+        }
     },
     methods: {
         searchTrack: function searchTrack() {
@@ -905,7 +920,7 @@ var spotify = Vue.component('spotify', {
 
             if (this.safe(this.searchInput)) {
                 this.loader = true;
-                var token = 'BQDvXdIXAQ-yZLZn6yQNWpriGDb7kQnFuHkXq_SnKHdurMIYaW5nMW57y-Qyz4Zjk8shm3tuVfo0ln6jhjg';
+                var token = 'BQDm8mWNgw4VBq7d0W6U9vkhoJ8tvR7FE7KHRw2ieqadmRiu6ND4-DUYgJGAkN89zlvc_RGgRK9LgDLsAWQ';
                 var query = encodeURIComponent(this.searchInput);
                 var type = 'track';
                 console.log(this.searchInput);
@@ -922,15 +937,128 @@ var spotify = Vue.component('spotify', {
                             obj.song = item.name;
                             obj.artist = item.artists.map(function (item) {
                                 return item.name;
-                            }).join(',');
+                            }).join(', ');
+                            obj.id = item.id;
                             return obj;
                         });
                         _this14.loader = false;
+                        _this14.scrollToResultTop();
                         //this.searchInput = ''
                     }
                 });
             }
+        },
+        scrollToResultTop: function scrollToResultTop() {
+            var elem = document.querySelector('.firstresult');
+            if (this.safe(elem)) {
+                elem.scrollIntoView(false); //false aligns the bottom of the element to the bottom of available space and vice versa
+            }
+        },
+        sendRequest: function sendRequest(payload) {
+            if (this.safe(payload)) {
+                payload.timestamp = moment().toISOString();
+                console.log(payload);
+                this.socket.emit('audience', { appName: this.appName, id: this.socket.id, task: 'request', song: payload });
+            }
+        },
+        goToDjView: function goToDjView() {
+            this.accessNumber++;
+            if (this.accessNumber === 3) {
+                this.$router.push('/dj');
+            }
         }
+    },
+    created: function created() {
+        var _this15 = this;
+
+        this.socket.on('connect', function (data) {
+            _this15.isConnected = true;
+            _this15.socket.emit('audience', { appName: _this15.appName, id: _this15.socket.id, task: 'population' });
+            console.log(data, 'connected my nigga');
+        });
+        //this.socket.emit('join','we in this bitch son');
+        this.socket.on('sendMetrics', function (data) {
+            //console.log(data,'metric data');
+            if (data.appName === _this15.appName && 'task' in data && data.task === 'request') {
+                _this15.metrics = data;
+                //this.showMetrics = true;
+            }
+        });
+    },
+    destroyed: function destroyed() {
+        //console.log('damn son am out')
+        this.socket.close();
+    }
+});
+
+var djSpotify = Vue.component('djSpotify', {
+    template: '#djspotify',
+    mixins: [serviceProvider],
+    data: function data() {
+        return {
+            requestBasket: [],
+            population: [],
+            isConnected: false,
+            appName: 'blessmyrequest'
+        };
+    },
+    computed: {
+        controlSocket: function controlSocket() {
+            return this.webSocket();
+        },
+        requestList: function requestList() {
+            if (this.requestBasket.length > 0) {
+                return this.requestBasket.filter(function (item) {
+                    return item.hide !== true;
+                }).sort(function (a, b) {
+                    //requestCount takes primary precident in sort followed by timestamp
+                    //1 (makes b a lower index than a) -1(makes b a higher index than a)
+                    if (b.requestCount > a.requestCount) return 1;
+                    if (b.requestCount === a.requestCount && b.timestamp > a.timestamp) return 1;
+                });
+            } else {
+                return this.requestBasket;
+            }
+        }
+    },
+    methods: {
+        hideRequest: function hideRequest(payload) {
+            if (this.safe(payload)) {
+                var checkIdExist = this.requestBasket.findIndex(function (item) {
+                    return item.id === payload.id;
+                });
+                if (checkIdExist !== -1) {
+                    this.requestBasket[checkIdExist].hide = true;
+                }
+            }
+        }
+    },
+    created: function created() {
+        var _this16 = this;
+
+        this.controlSocket.on('answer', function (data) {
+            if (data.appName === _this16.appName) {
+                if ('task' in data && data.task === 'population') {
+                    console.log('population gwoth complete', data);
+                    _this16.population.push(data);
+                }
+                if ('task' in data && data.task === 'request') {
+                    console.log('request added bruh', data);
+                    var checkIdExist = _this16.requestBasket.findIndex(function (item) {
+                        return item.id === data.song.id;
+                    });
+                    console.log(checkIdExist);
+                    if (checkIdExist === -1) {
+                        data.song.requestCount = 1;
+                        data.song.hide = false;
+                        _this16.requestBasket.push(data.song);
+                    } else {
+                        _this16.requestBasket[checkIdExist].requestCount += 1;
+                    }
+                    _this16.controlSocket.emit('analytics', { appName: _this16.appName, requestNumber: _this16.requestList.length, task: 'request' });
+                }
+            }
+        });
     }
 });
 
@@ -1024,7 +1152,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/blessmyrequest', component: spotify }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/blessmyrequest', component: spotify }, { path: '/dj', component: djSpotify }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

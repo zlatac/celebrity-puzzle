@@ -263,6 +263,13 @@ const serviceProvider = {
                 alert(e)
             }            
 
+        },
+        webSocket(){
+            if('io' in window){
+                var socket = io('https://mochanow.com');
+                return socket;
+            }
+                    
         }
     }
 }
@@ -933,14 +940,23 @@ const spotify = Vue.component('spotify',{
     data: function(){
         return{
             searchInput: '',
-            searchResult: []
+            searchResult: [],
+            isConnected: false,
+            metrics:{requestNumber:0},
+            appName: 'blessmyrequest',
+            accessNumber:0
+        }
+    },
+    computed:{
+        socket(){
+            return this.webSocket()
         }
     },
     methods: {
         searchTrack(){
             if(this.safe(this.searchInput)){
                 this.loader = true
-                let token = 'BQDvXdIXAQ-yZLZn6yQNWpriGDb7kQnFuHkXq_SnKHdurMIYaW5nMW57y-Qyz4Zjk8shm3tuVfo0ln6jhjg'
+                let token = 'BQDm8mWNgw4VBq7d0W6U9vkhoJ8tvR7FE7KHRw2ieqadmRiu6ND4-DUYgJGAkN89zlvc_RGgRK9LgDLsAWQ'
                 let query = encodeURIComponent(this.searchInput)
                 let type = 'track'
                 console.log(this.searchInput)
@@ -959,15 +975,124 @@ const spotify = Vue.component('spotify',{
                             let obj = {}
                             obj.image = item.album.images[1].url
                             obj.song = item.name
-                            obj.artist = item.artists.map((item)=> item.name).join(',')
+                            obj.artist = item.artists.map((item)=> item.name).join(', ')
+                            obj.id = item.id
                             return obj
                         })
                         this.loader = false;
+                        this.scrollToResultTop()
                         //this.searchInput = ''
                     }                    
                 })
             }
+        },
+        scrollToResultTop(){
+            let elem = document.querySelector('.firstresult')
+            if(this.safe(elem)){
+                elem.scrollIntoView(false) //false aligns the bottom of the element to the bottom of available space and vice versa
+            }
+        },
+        sendRequest(payload){
+            if(this.safe(payload)){
+                payload.timestamp = moment().toISOString()
+                console.log(payload)
+                this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'request',song:payload})
+            }
+        },
+        goToDjView(){
+            this.accessNumber++
+            if(this.accessNumber === 3){
+                this.$router.push('/dj')
+            }
         }
+    },
+    created: function(){
+        this.socket.on('connect', (data)=>{
+            this.isConnected = true;
+            this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'population'});
+            console.log(data, 'connected my nigga');
+        });
+        //this.socket.emit('join','we in this bitch son');
+        this.socket.on('sendMetrics',(data)=>{
+            //console.log(data,'metric data');
+            if(data.appName === this.appName && 'task' in data && data.task === 'request'){
+                this.metrics = data;
+                //this.showMetrics = true;
+            }
+        });
+        
+    },
+    destroyed: function(){
+        //console.log('damn son am out')
+        this.socket.close()
+    }
+})
+
+const djSpotify = Vue.component('djSpotify', {
+    template:'#djspotify',
+    mixins: [serviceProvider],
+    data: function(){
+        return{
+            requestBasket:[],
+            population: [],
+            isConnected: false,
+            appName: 'blessmyrequest'
+        }
+    },
+    computed:{
+        controlSocket(){
+            return this.webSocket()
+        },
+        requestList(){
+            if(this.requestBasket.length > 0){
+                return this.requestBasket
+                .filter((item)=> item.hide !== true)
+                .sort((a,b)=>{
+                    //requestCount takes primary precident in sort followed by timestamp
+                    //1 (makes b a lower index than a) -1(makes b a higher index than a)
+                    if(b.requestCount > a.requestCount) return 1
+                    if(b.requestCount === a.requestCount && b.timestamp > a.timestamp) return 1
+                })
+            }else{
+                return this.requestBasket
+            }
+            
+        }
+    },
+    methods: {
+        hideRequest(payload){
+            if(this.safe(payload)){
+                let checkIdExist = this.requestBasket.findIndex((item) => item.id === payload.id)
+                if(checkIdExist !== -1){
+                    this.requestBasket[checkIdExist].hide = true
+                }
+            }
+        }
+    },
+    created:function(){
+        this.controlSocket.on('answer',(data)=>{
+            if(data.appName === this.appName){
+                if('task' in data && data.task === 'population'){
+                    console.log('population gwoth complete', data)
+                    this.population.push(data)
+                }
+                if('task' in data && data.task === 'request'){
+                    console.log('request added bruh', data)
+                    let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
+                    console.log(checkIdExist)
+                    if(checkIdExist === -1){
+                        data.song.requestCount = 1
+                        data.song.hide = false
+                        this.requestBasket.push(data.song)
+                    }else{
+                        this.requestBasket[checkIdExist].requestCount += 1
+                    }
+                    this.controlSocket.emit('analytics',{appName:this.appName,requestNumber:this.requestList.length,task:'request'});
+                    
+                }
+            }
+            
+        })
     }
 })
 
@@ -1087,6 +1212,7 @@ const routes = [
   { path: '/dash', component: dash },
   { path: '/game/:category', component: game },
   { path: '/blessmyrequest', component: spotify },
+  { path: '/dj', component: djSpotify },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },
   { path: '*', redirect: '/' }, //wild card situations since the shared url could be modified by users

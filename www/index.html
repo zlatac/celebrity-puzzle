@@ -39,6 +39,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
     <script src="scripts/tones.js"></script>
+    <script src="https://mochanow.com/lib/socket.io.js"></script>
 </head>
 <body>
     <div id="myapp">
@@ -294,15 +295,19 @@
 </script>
 <script type="text/x-template" id="spotify">
     <div class="zontainer center-align">
-        <div class="row">
-            <div class="col s12">
-                <div class="card-panel">
-                    <div class="row">
+        <div class="zow">
+            <div class="col s12 lead-fixed">
+                <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
+                    <div class="row" style="margin-bottom: 0px;">
                         <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
-                             alt="" class="circle img-green animated infinite pulse" width="110px" height="110px">
+                             alt="" class="circle img-green animated infinite pulse" width="90px" height="90px" @click="goToDjView">
                         <p>DJ Jaskambo</p>
+                        <p>
+                            <!-- <span><i class="material-icons">people</i>56</span> -->
+                            <span class="chip">{{metrics.requestNumber}} Requests</span> 
+                        </p>
                     </div>
-                    <div class="row">
+                    <div class="row" style="margin-bottom: 0px;">
                         <div class="col s9">
                             <input type="text" name="search" placeholder="Search tracks" v-model="searchInput">
                         </div>
@@ -313,17 +318,57 @@
                 </div>
             </div>
         </div>
-        <spinner :colorClass="'default'" v-show="loader"></spinner>
-        <div class="row " v-show="!loader">
-            <div class="card animated fadeInUp" v-for="(x, index) in searchResult">
-                <div class="row">
-                <div class="col s4"><img :src="x.image" width="70px"></div>
-                <div class="col s5">{{x.song}} - {{x.artist}}</div>
-                <div class="col s3"><span class="btn btn-floating"><i class="material-icons">send</i></span></div>
+        <div style="margin-top: 320px;">
+            <spinner :colorClass="'default'" v-show="loader"></spinner>
+            <div class="row " v-show="!loader">
+                <div class="card animated fadeInUp" v-for="(x, index) in searchResult" :class="{'firstresult': index === 0}">
+                    <div class="row">
+                    <div class="col s4"><img :src="x.image" width="70px"></div>
+                    <div class="col s5">{{x.song}} - {{x.artist}}</div>
+                    <div class="col s3"><span class="btn btn-floating" @click="sendRequest(x)"><i class="material-icons">send</i></span></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</script>
+<script type="text/x-template" id="djspotify">
+    <div class="zontainer center-align">
+        <div class="zow">
+            <div class="col s12 lead-fixed">
+                <div class="card-panel" style="margin-top: 0px;">
+                    <div class="row valign-wrapper"  style="margin-bottom: 0px;">
+                        <div class="col s4">
+                            <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
+                            alt="" class="circle img-green" width="90px" height="90px">
+                        </div>
+                        <div class="col s3"><span><i class="material-icons">people</i>{{population.length}}</span></div>
+                        <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 160px;">
+            <spinner :colorClass="'default'" v-show="loader"></spinner>
+            <div class="row " v-show="!loader">
+                <div class="card animated fadeInUp" v-for="(x, index) in requestList" v-if="x.hide === false">
+                    <div class="row">
+                        <div class="col s4">
+                            <div style="position: relative;">
+                                <img :src="x.image" width="70px">
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.requestCount}}</span>
+                            </div>   
+                        </div>                     
+                        <div class="col s5">{{x.song}} - {{x.artist}}</div>
+                        <div class="col s3"><span class="btn btn-floating" @click="hideRequest(x)"><i class="material-icons">delete</i></span></div>
+                    </div>
+                </div>
+            </div>
+            <!-- <div class="row " style=""><div class="card animated fadeInUp firstresult"><div class="row"><div class="col s4"><div style="position: relative;"><img src="https://i.scdn.co/image/af440b4e0d8d22cb46b3723164281dfb70cdb4f5" width="70px"><span class="btn btn-small btn-floating lead-fab z-depth-3">10</span></div></div> <div class="col s5">Good Life - Kanye West,T-Pain</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/1820ea91e0723b1ce8820bb2cedae9f1be9d1de9" width="70px"></div> <div class="col s5">Lush Life - Zara Larsson</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/9e01aaf171b64785c693335e1ce19dcf1d7823c7" width="70px"></div> <div class="col s5">Good Life (with G-Eazy &amp; Kehlani) - G-Eazy,Kehlani</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/851015118292bbee6e0da67750df9782b3f1ec4b" width="70px"></div> <div class="col s5">Good Riddance (Time of Your Life) - Green Day</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/ec1beabb340e7a8ead24450a865d15788091752b" width="70px"></div> <div class="col s5">Good Life - OneRepublic</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/f56acdbbadc334a3d3107a063f3b08e816103bde" width="70px"></div> <div class="col s5">The Good Life - Three Days Grace</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/1b46b9593b3d4826cbd146033ec67b934419d029" width="70px"></div> <div class="col s5">Good Life - The Young Escape</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/a91e0ebec554bf1d3fbbdd4e3b8676763d78dae0" width="70px"></div> <div class="col s5">Real Good Life - The Mowgli's</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/5420c212ea73eb2dc80acdcf7601167e903a9641" width="70px"></div> <div class="col s5">Good Life - Keiynan Lonsdale</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/1e11df0d51bf42ec5a7100050dd45d09066b220f" width="70px"></div> <div class="col s5">The Good Life - Weezer</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/19320480eb39647c1447478eab03340b56fd9c58" width="70px"></div> <div class="col s5">Good Life - Kiso,Yvette</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/01e08194d9fd549f920f23ff98f0bfd492c8c7d9" width="70px"></div> <div class="col s5">Good Life - ZHU</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/9e846f095398a12c04761ae11667b9f4b2eef854" width="70px"></div> <div class="col s5">Life's Been Good - Joe Walsh</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/9b0df3e37e24cd96a289262f21bd53f1d752848d" width="70px"></div> <div class="col s5">Good Life - Collie Buddz</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/7c8648bc3de1876779f37e8fd0a8a8387a13d134" width="70px"></div> <div class="col s5">Good Life - OneRepublic</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/827f95bd3e6c3c8b358ff2063f04256a6b0b70c2" width="70px"></div> <div class="col s5">Life Is Beautiful - Rend Collective</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/cc9d6ddaf6d0e50858c1cbaef48d8c92638179c9" width="70px"></div> <div class="col s5">Good Life - Collie Buddz</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/2ea29569e7a387c7f5c34afb0b57120048a9e751" width="70px"></div> <div class="col s5">Good Life (feat. Rick Ross) - Sammie,Rick Ross</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/79558cefc1db040dad38c5fb642b0d06dfc7df3c" width="70px"></div> <div class="col s5">Good Time Good Life - Erin Bowman</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/5d40a995b5cc164f602874d13f16b715e85d7b61" width="70px"></div> <div class="col s5">Lone Pine Hill - Justin Townes Earle</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div></div> -->
+        </div>
+    </div>
+    
 </script>
 <script src="scripts/main.es5.js"></script>
 </body>
