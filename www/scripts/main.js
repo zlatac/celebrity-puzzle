@@ -956,7 +956,7 @@ const spotify = Vue.component('spotify',{
         searchTrack(){
             if(this.safe(this.searchInput)){
                 this.loader = true
-                let token = 'BQDm8mWNgw4VBq7d0W6U9vkhoJ8tvR7FE7KHRw2ieqadmRiu6ND4-DUYgJGAkN89zlvc_RGgRK9LgDLsAWQ'
+                let token = 'BQAWtbj_FPuCnoRfNlFtOnu1prq1scnRRc0RMrFQ-P2LsPjSynpq49x6D3zp7BlG8r3Bop8w_fUQ2EBzRsg'
                 let query = encodeURIComponent(this.searchInput)
                 let type = 'track'
                 console.log(this.searchInput)

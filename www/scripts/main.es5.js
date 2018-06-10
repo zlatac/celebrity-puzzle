@@ -920,7 +920,7 @@ var spotify = Vue.component('spotify', {
 
             if (this.safe(this.searchInput)) {
                 this.loader = true;
-                var token = 'BQDm8mWNgw4VBq7d0W6U9vkhoJ8tvR7FE7KHRw2ieqadmRiu6ND4-DUYgJGAkN89zlvc_RGgRK9LgDLsAWQ';
+                var token = 'BQAWtbj_FPuCnoRfNlFtOnu1prq1scnRRc0RMrFQ-P2LsPjSynpq49x6D3zp7BlG8r3Bop8w_fUQ2EBzRsg';
                 var query = encodeURIComponent(this.searchInput);
                 var type = 'track';
                 console.log(this.searchInput);
