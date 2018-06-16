@@ -16,9 +16,21 @@ server.listen(app.get('port'));
 // })
 
 app.get('/', function (req, res) {
-    console.log(req.hostname)
-    res.sendFile(__dirname + '/www/index.html');
+    //console.log(req.hostname)
+    if(req.hostname.includes('celebrity')){
+        res.sendFile(__dirname + '/www/index.html');
+    }else if(req.hostname.includes('blessmyrequest')){
+        res.sendFile(__dirname + '/www/bmr/index.html');
+    }else{
+        // default is celebrity puzzle app
+        res.sendFile(__dirname + '/www/index.html');
+    }
+    
 });
+
+app.get('/dj', function(req,res){
+    res.sendFile(__dirname + '/www/bmr/index.html');
+})
 
 app.get('/myipaddress', function (req, res) {
     let ip = (req.headers['x-forwarded-for'] ||

@@ -1,0 +1,69 @@
+:root {
+    --main:linear-gradient(to right, #92fe9d 0%, #00c9ff 100%);
+    --dark-theme:#252525;
+}
+html { 
+    background-color: var(--dark-theme); 
+}
+
+.background {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    filter: blur(0px);
+    z-index: -5;
+    background-image: url(https://images.pexels.com/photos/156151/pexels-photo-156151.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940);
+    background-position: center;
+}
+.color-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    z-index: -4;
+    opacity: 0.6;
+    background: var(--main);
+}
+.spinner-white-only{
+    border-color: white;
+}
+.spinner-celeb{
+    border-color: #00c9ff;
+}
+.btn-floating{
+    background: var(--main);
+}
+input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):focus:not([readonly]), input[type=password]:not(.browser-default):focus:not([readonly]), input[type=email]:not(.browser-default):focus:not([readonly]), input[type=url]:not(.browser-default):focus:not([readonly]), input[type=time]:not(.browser-default):focus:not([readonly]), input[type=date]:not(.browser-default):focus:not([readonly]), input[type=datetime]:not(.browser-default):focus:not([readonly]), input[type=datetime-local]:not(.browser-default):focus:not([readonly]), input[type=tel]:not(.browser-default):focus:not([readonly]), input[type=number]:not(.browser-default):focus:not([readonly]), input[type=search]:not(.browser-default):focus:not([readonly]), textarea.materialize-textarea:focus:not([readonly]){
+    border-bottom: 1px solid #13d0f2;
+    -webkit-box-shadow: 0 1px 0 0 #13d0f2;
+    box-shadow: 0 1px 0 0 #13d0f2;
+}
+.lead-fixed{
+    position: fixed;
+    top: 0;
+    left:0;
+    width: 100%;
+    z-index: 5;
+}
+.dark-card{
+    background-color: var(--dark-theme);
+    color: white;
+}
+.lead-fab{
+    bottom:-3px;
+    position:absolute;
+    right:-6px;
+}
+.btn-opaque{
+    opacity:0.1;
+}
+.img-online{
+    border: solid 3px #24d5e5;
+}
+.p-space{
+    margin-top: 4px;
+    margin-bottom: 0px;
+}
