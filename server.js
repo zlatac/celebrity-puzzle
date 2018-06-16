@@ -2,7 +2,9 @@ var express = require('express');
 var path = require('path')
 var app = express();
 var server = require('http').Server(app);
-//var axios = require('axios');
+var io = require('socket.io')(server);
+var axios = require('axios');
+var querystring = require('querystring');
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
 
@@ -14,6 +16,7 @@ server.listen(app.get('port'));
 // })
 
 app.get('/', function (req, res) {
+    console.log(req.hostname)
     res.sendFile(__dirname + '/www/index.html');
 });
 
@@ -25,5 +28,75 @@ app.get('/myipaddress', function (req, res) {
     
     res.send(ip);
 });
+
 app.use(express.static(path.resolve(__dirname, 'www')));
+
+var dataStore = {acquiringToken:false};
+var authorize = Buffer.from('69b05d3b1a0a4bb9a404d8748c5f5a54:84a00b36aff4410a8fdaee869f7fec02').toString('base64')
+function spotifyToken(client){
+    if(dataStore.acquiringToken === false){
+        dataStore.acquiringToken = true
+        axios.request({
+            method:'post',
+            url:'https://accounts.spotify.com/api/token',
+            headers:{
+                Authorization: `Basic ${authorize}`
+            },
+            data:querystring.stringify({grant_type:'client_credentials'})
+        })
+        .then((res)=>{
+            //console.log(res)
+            dataStore.access_token = res.data.access_token
+            dataStore.getToken = true
+            //emit to everyone both DJ and club audience
+            io.sockets.emit('newToken', res.data.access_token);
+            dataStore.acquiringToken = false
+            //console.log('new token emitted bruh')
+        })
+        .catch((err)=>{
+            console.log('OMG',err)
+        })
+    }
+    
+}
+
+
+
+io.on('connection', function(client) {  
+    console.log('Client connected...');
+    if('getToken' in dataStore && dataStore.getToken === true){
+        io.sockets.connected[client.id].emit('newToken',dataStore.access_token);
+    }else{
+        //console.log('please go get an access token')
+        spotifyToken(client)
+    }
+
+    client.on('join', function(data) {
+        //console.log(client.id);
+        // client.emit('messages', 'Hello from server');
+        if(data.appName in dataStore){
+            //this is key for emitting to a specific client using the client id
+            io.sockets.connected[client.id].emit('question',dataStore[data.appName]);
+            //console.log(dataStore[data.appName]);
+        }
+    });
+
+    client.on('messages', function(data) {
+        //client.emit('broad', data);
+        client.broadcast.emit('broad',data);
+        //console.log(data, client.id);
+    });
+    
+    client.on('audience', function(data) {
+        //console.log(data);
+        client.broadcast.emit('answer', data);
+    });
+    client.on('analytics', function(data) {
+        //console.log(data);
+        client.broadcast.emit('sendMetrics', data);
+    });
+    client.on('newTokenPlease', function(data) {
+        spotifyToken(client)
+    });
+});
 

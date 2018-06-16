@@ -279,7 +279,8 @@ var serviceProvider = {
         },
         webSocket: function webSocket() {
             if ('io' in window) {
-                var socket = io('https://mochanow.com');
+                //var socket = io('https://mochanow.com');
+                var socket = io();
                 return socket;
             }
         }
@@ -906,7 +907,9 @@ var spotify = Vue.component('spotify', {
             isConnected: false,
             metrics: { requestNumber: 0 },
             appName: 'blessmyrequest',
-            accessNumber: 0
+            accessNumber: 0,
+            pendingSearch: [],
+            requestedSongs: {}
         };
     },
     computed: {
@@ -920,13 +923,18 @@ var spotify = Vue.component('spotify', {
 
             if (this.safe(this.searchInput)) {
                 this.loader = true;
-                var token = 'BQAWtbj_FPuCnoRfNlFtOnu1prq1scnRRc0RMrFQ-P2LsPjSynpq49x6D3zp7BlG8r3Bop8w_fUQ2EBzRsg';
+                // let token = 'BQCmVbA7pD8mZI9pCpUt5HcsO1Fb9nCRqlhcTAu52TpwCS4uxIi4BffjrENegBzfMjhMXHr_esCHR_R0O5M'
+                var token = this.$store.state.accessToken;
                 var query = encodeURIComponent(this.searchInput);
                 var type = 'track';
                 console.log(this.searchInput);
 
                 fetch('https://api.spotify.com/v1/search?q=' + query + '&type=' + type + '&access_token=' + token).then(function (res) {
-                    if (res.status === 200) return res.json();else return 'fail';
+                    if (res.status === 200) {
+                        return res.json();
+                    } else {
+                        return 'fail';
+                    }
                 }).catch(function (err) {
                     console.log(new Error(err));
                 }).then(function (res) {
@@ -941,9 +949,13 @@ var spotify = Vue.component('spotify', {
                             obj.id = item.id;
                             return obj;
                         });
+                        _this14.pendingSearch = [];
                         _this14.loader = false;
                         _this14.scrollToResultTop();
                         //this.searchInput = ''
+                    } else if (res === 'fail') {
+                        _this14.pendingSearch.push(_this14.searchInput);
+                        _this14.socket.emit('newTokenPlease');
                     }
                 });
             }
@@ -959,11 +971,12 @@ var spotify = Vue.component('spotify', {
                 payload.timestamp = moment().toISOString();
                 console.log(payload);
                 this.socket.emit('audience', { appName: this.appName, id: this.socket.id, task: 'request', song: payload });
+                this.requestedSongs[payload.id] = true;
             }
         },
         goToDjView: function goToDjView() {
             this.accessNumber++;
-            if (this.accessNumber === 3) {
+            if (this.accessNumber === 4) {
                 this.$router.push('/dj');
             }
         }
@@ -984,6 +997,12 @@ var spotify = Vue.component('spotify', {
                 //this.showMetrics = true;
             }
         });
+        this.socket.on('newToken', function (data) {
+            _this15.$store.commit('accessToken', data);
+            if (_this15.pendingSearch.length > 0) {
+                _this15.searchTrack();
+            }
+        });
     },
     destroyed: function destroyed() {
         //console.log('damn son am out')
@@ -998,8 +1017,10 @@ var djSpotify = Vue.component('djSpotify', {
         return {
             requestBasket: [],
             population: [],
+            pendingTrackDetails: [],
             isConnected: false,
-            appName: 'blessmyrequest'
+            appName: 'blessmyrequest',
+            musicNotes: ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B']
         };
     },
     computed: {
@@ -1013,8 +1034,18 @@ var djSpotify = Vue.component('djSpotify', {
                 }).sort(function (a, b) {
                     //requestCount takes primary precident in sort followed by timestamp
                     //1 (makes b a lower index than a) -1(makes b a higher index than a)
-                    if (b.requestCount > a.requestCount) return 1;
-                    if (b.requestCount === a.requestCount && b.timestamp > a.timestamp) return 1;
+                    if (b.requestCount > a.requestCount) {
+                        return 1;
+                    }
+                    if (b.requestCount < a.requestCount) {
+                        return -1;
+                    }
+                    if (b.requestCount === a.requestCount && b.timestamp > a.timestamp) {
+                        return 1;
+                    }
+                    if (b.requestCount === a.requestCount && b.timestamp < a.timestamp) {
+                        return -1;
+                    }
                 });
             } else {
                 return this.requestBasket;
@@ -1031,32 +1062,72 @@ var djSpotify = Vue.component('djSpotify', {
                     this.requestBasket[checkIdExist].hide = true;
                 }
             }
+        },
+        getTrackBpm: function getTrackBpm(trackObject) {
+            var _this16 = this;
+
+            var id = trackObject.id;
+            var token = this.$store.state.accessToken;
+            fetch('https://api.spotify.com/v1/audio-features/' + id + '?access_token=' + token).then(function (res) {
+                if (res.status === 200) {
+                    return res.json();
+                } else {
+                    return 'fail';
+                }
+            }).catch(function (err) {
+                console.log(new Error(err));
+            }).then(function (res) {
+                if (res !== 'fail') {
+                    var musicKey = _this16.musicNotes[res.key];
+                    var bpm = Math.floor(Number(res.tempo));
+                    var output = musicKey + ' - ' + bpm + ' bpm';
+                    var indexInBasket = _this16.requestBasket.findIndex(function (item) {
+                        return item.id === id;
+                    });
+                    _this16.requestBasket[indexInBasket].bpm = output;
+                } else if (res === 'fail') {
+                    _this16.pendingTrackDetails.push(trackObject);
+                    _this16.controlSocket.emit('newTokenPlease');
+                }
+            });
         }
     },
     created: function created() {
-        var _this16 = this;
+        var _this17 = this;
 
         this.controlSocket.on('answer', function (data) {
-            if (data.appName === _this16.appName) {
+            if (data.appName === _this17.appName) {
                 if ('task' in data && data.task === 'population') {
                     console.log('population gwoth complete', data);
-                    _this16.population.push(data);
+                    _this17.population.push(data);
                 }
                 if ('task' in data && data.task === 'request') {
                     console.log('request added bruh', data);
-                    var checkIdExist = _this16.requestBasket.findIndex(function (item) {
+                    var checkIdExist = _this17.requestBasket.findIndex(function (item) {
                         return item.id === data.song.id;
                     });
                     console.log(checkIdExist);
                     if (checkIdExist === -1) {
                         data.song.requestCount = 1;
                         data.song.hide = false;
-                        _this16.requestBasket.push(data.song);
+                        data.song.bpm = '';
+                        _this17.requestBasket.push(data.song);
+                        _this17.getTrackBpm(data.song);
                     } else {
-                        _this16.requestBasket[checkIdExist].requestCount += 1;
+                        _this17.requestBasket[checkIdExist].requestCount += 1;
                     }
-                    _this16.controlSocket.emit('analytics', { appName: _this16.appName, requestNumber: _this16.requestList.length, task: 'request' });
+                    _this17.controlSocket.emit('analytics', { appName: _this17.appName, requestNumber: _this17.requestList.length, task: 'request' });
                 }
+            }
+        });
+        this.controlSocket.on('newToken', function (data) {
+            _this17.$store.commit('accessToken', data);
+            if (_this17.pendingTrackDetails.length > 0) {
+                var tracks = _this17.pendingTrackDetails;
+                _this17.pendingTrackDetails = [];
+                tracks.forEach(function (item) {
+                    _this17.getTrackBpm(item);
+                });
             }
         });
     }
@@ -1128,7 +1199,8 @@ var store = new Vuex.Store({
         previousChamps: null,
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         challenge: null,
-        socialChallenge: null
+        socialChallenge: null,
+        accessToken: null
     },
     mutations: {
         insertName: function insertName(state, data) {
@@ -1148,6 +1220,9 @@ var store = new Vuex.Store({
         },
         socialChallenge: function socialChallenge(state, data) {
             state.socialChallenge = data;
+        },
+        accessToken: function accessToken(state, data) {
+            state.accessToken = data;
         }
     }
 });

@@ -14,7 +14,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Celebrity Puzzle</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -301,7 +301,7 @@
                     <div class="row" style="margin-bottom: 0px;">
                         <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
                              alt="" class="circle img-green animated infinite pulse" width="90px" height="90px" @click="goToDjView">
-                        <p>DJ Jaskambo</p>
+                        <p>DJ Jaskambo (District)</p>
                         <p>
                             <!-- <span><i class="material-icons">people</i>56</span> -->
                             <span class="chip">{{metrics.requestNumber}} Requests</span> 
@@ -312,7 +312,9 @@
                             <input type="text" name="search" placeholder="Search tracks" v-model="searchInput">
                         </div>
                         <div class="col s3">
-                            <span class="btn btn-floating" @click="searchTrack"><i class="material-icons">search</i></span>
+                            <span class="btn btn-floating waves-effect waves-light" @click="searchTrack">
+                                <i class="material-icons">search</i>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -323,9 +325,20 @@
             <div class="row " v-show="!loader">
                 <div class="card animated fadeInUp" v-for="(x, index) in searchResult" :class="{'firstresult': index === 0}">
                     <div class="row">
-                    <div class="col s4"><img :src="x.image" width="70px"></div>
-                    <div class="col s5">{{x.song}} - {{x.artist}}</div>
-                    <div class="col s3"><span class="btn btn-floating" @click="sendRequest(x)"><i class="material-icons">send</i></span></div>
+                        <div class="col s4">
+                            <div style="position: relative;">
+                                <img :src="x.image" width="70px">
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="requestedSongs[x.id] === true">
+                                    <i class="material-icons">check</i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col s5">{{x.song}} - {{x.artist}}</div>
+                        <div class="col s3">
+                            <span class="btn btn-floating waves-effect waves-light" @click="sendRequest(x)" :disabled="requestedSongs[x.id] === true">
+                                <i class="material-icons">send</i>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -360,7 +373,10 @@
                                 <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.requestCount}}</span>
                             </div>   
                         </div>                     
-                        <div class="col s5">{{x.song}} - {{x.artist}}</div>
+                        <div class="col s5">
+                            {{x.song}} - {{x.artist}} 
+                            <div><b>{{x.bpm}}</b></div>
+                        </div>
                         <div class="col s3"><span class="btn btn-floating" @click="hideRequest(x)"><i class="material-icons">delete</i></span></div>
                     </div>
                 </div>

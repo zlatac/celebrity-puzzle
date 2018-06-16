@@ -266,7 +266,8 @@ const serviceProvider = {
         },
         webSocket(){
             if('io' in window){
-                var socket = io('https://mochanow.com');
+                //var socket = io('https://mochanow.com');
+                var socket = io();
                 return socket;
             }
                     
@@ -944,7 +945,9 @@ const spotify = Vue.component('spotify',{
             isConnected: false,
             metrics:{requestNumber:0},
             appName: 'blessmyrequest',
-            accessNumber:0
+            accessNumber:0,
+            pendingSearch: [],
+            requestedSongs:{}
         }
     },
     computed:{
@@ -956,19 +959,24 @@ const spotify = Vue.component('spotify',{
         searchTrack(){
             if(this.safe(this.searchInput)){
                 this.loader = true
-                let token = 'BQAWtbj_FPuCnoRfNlFtOnu1prq1scnRRc0RMrFQ-P2LsPjSynpq49x6D3zp7BlG8r3Bop8w_fUQ2EBzRsg'
+                // let token = 'BQCmVbA7pD8mZI9pCpUt5HcsO1Fb9nCRqlhcTAu52TpwCS4uxIi4BffjrENegBzfMjhMXHr_esCHR_R0O5M'
+                let token = this.$store.state.accessToken
                 let query = encodeURIComponent(this.searchInput)
                 let type = 'track'
                 console.log(this.searchInput)
 
                 fetch(`https://api.spotify.com/v1/search?q=${query}&type=${type}&access_token=${token}`)
                 .then((res)=>{
-                    if(res.status === 200)
+                    if(res.status === 200){
                         return res.json()
-                    else
+                    }else{
                         return 'fail'
+                    }                    
+                        
                 })
-                .catch((err)=>{console.log(new Error(err))})
+                .catch((err)=>{
+                    console.log(new Error(err))
+                })
                 .then((res)=>{
                     if(res !== 'fail'){
                         this.searchResult = res.tracks.items.map((item)=>{
@@ -979,9 +987,13 @@ const spotify = Vue.component('spotify',{
                             obj.id = item.id
                             return obj
                         })
+                        this.pendingSearch = []
                         this.loader = false;
                         this.scrollToResultTop()
                         //this.searchInput = ''
+                    }else if(res === 'fail'){
+                        this.pendingSearch.push(this.searchInput)
+                        this.socket.emit('newTokenPlease')
                     }                    
                 })
             }
@@ -997,11 +1009,12 @@ const spotify = Vue.component('spotify',{
                 payload.timestamp = moment().toISOString()
                 console.log(payload)
                 this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'request',song:payload})
+                this.requestedSongs[payload.id] = true
             }
         },
         goToDjView(){
             this.accessNumber++
-            if(this.accessNumber === 3){
+            if(this.accessNumber === 4){
                 this.$router.push('/dj')
             }
         }
@@ -1020,6 +1033,12 @@ const spotify = Vue.component('spotify',{
                 //this.showMetrics = true;
             }
         });
+        this.socket.on('newToken',(data)=>{
+            this.$store.commit('accessToken',data)
+            if(this.pendingSearch.length > 0){
+                this.searchTrack()
+            }
+        });
         
     },
     destroyed: function(){
@@ -1035,8 +1054,10 @@ const djSpotify = Vue.component('djSpotify', {
         return{
             requestBasket:[],
             population: [],
+            pendingTrackDetails:[],
             isConnected: false,
-            appName: 'blessmyrequest'
+            appName: 'blessmyrequest',
+            musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B']
         }
     },
     computed:{
@@ -1050,8 +1071,18 @@ const djSpotify = Vue.component('djSpotify', {
                 .sort((a,b)=>{
                     //requestCount takes primary precident in sort followed by timestamp
                     //1 (makes b a lower index than a) -1(makes b a higher index than a)
-                    if(b.requestCount > a.requestCount) return 1
-                    if(b.requestCount === a.requestCount && b.timestamp > a.timestamp) return 1
+                    if(b.requestCount > a.requestCount){
+                        return 1
+                    } 
+                    if(b.requestCount < a.requestCount){
+                        return -1
+                    } 
+                    if(b.requestCount === a.requestCount && b.timestamp > a.timestamp){
+                        return 1
+                    }
+                    if(b.requestCount === a.requestCount && b.timestamp < a.timestamp){
+                        return -1
+                    }
                 })
             }else{
                 return this.requestBasket
@@ -1067,6 +1098,33 @@ const djSpotify = Vue.component('djSpotify', {
                     this.requestBasket[checkIdExist].hide = true
                 }
             }
+        },
+        getTrackBpm(trackObject){
+            let id = trackObject.id
+            let token = this.$store.state.accessToken
+            fetch(`https://api.spotify.com/v1/audio-features/${id}?access_token=${token}`)
+            .then((res)=>{
+                if(res.status === 200){
+                    return res.json()
+                }else{
+                    return 'fail'
+                }                          
+            })
+            .catch((err)=>{
+                console.log(new Error(err))
+            })
+            .then((res)=>{
+                if(res !== 'fail'){
+                    let musicKey = this.musicNotes[res.key]
+                    let bpm = Math.floor(Number(res.tempo))
+                    let output = `${musicKey} - ${bpm} bpm`
+                    let indexInBasket = this.requestBasket.findIndex((item)=> item.id === id)
+                    this.requestBasket[indexInBasket].bpm = output
+                }else if(res === 'fail'){
+                    this.pendingTrackDetails.push(trackObject)
+                    this.controlSocket.emit('newTokenPlease')
+                }                    
+            })
         }
     },
     created:function(){
@@ -1083,7 +1141,9 @@ const djSpotify = Vue.component('djSpotify', {
                     if(checkIdExist === -1){
                         data.song.requestCount = 1
                         data.song.hide = false
+                        data.song.bpm = ''
                         this.requestBasket.push(data.song)
+                        this.getTrackBpm(data.song)
                     }else{
                         this.requestBasket[checkIdExist].requestCount += 1
                     }
@@ -1093,6 +1153,16 @@ const djSpotify = Vue.component('djSpotify', {
             }
             
         })
+        this.controlSocket.on('newToken',(data)=>{
+            this.$store.commit('accessToken',data)
+            if(this.pendingTrackDetails.length > 0){
+                let tracks = this.pendingTrackDetails
+                this.pendingTrackDetails = []
+                tracks.forEach((item)=>{
+                    this.getTrackBpm(item)
+                })                
+            }
+        });
     }
 })
 
@@ -1183,7 +1253,8 @@ const store = new Vuex.Store({
         previousChamps: null,
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         challenge:null,
-        socialChallenge:null
+        socialChallenge:null,
+        accessToken:null
     },
     mutations:{
         insertName(state, data){
@@ -1203,6 +1274,9 @@ const store = new Vuex.Store({
         },
         socialChallenge(state,data){
             state.socialChallenge = data;
+        },
+        accessToken(state,data){
+            state.accessToken = data;
         }
     }
 })
