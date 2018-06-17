@@ -63,6 +63,9 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
 .img-online{
     border: solid 3px #24d5e5;
 }
+.img-offline{
+    border: solid 3px #e00000;
+}
 .p-space{
     margin-top: 4px;
     margin-bottom: 0px;

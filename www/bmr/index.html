@@ -60,8 +60,9 @@
                 <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
                     <div class="row" style="margin-bottom: 0px;">
                         <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
-                             alt="" class="circle img-online animated infinite pulse" width="90px" height="90px" @click="goToDjView">
-                        <p>DJ Jaskambo (District)</p>
+                             alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
+                             :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
+                        <p>Jaskambo (Dstrct Lounge)</p>
                         <p>
                             <!-- <span><i class="material-icons">people</i>56</span> -->
                             <span class="chip">{{metrics.requestNumber}} Requests</span> 
@@ -96,7 +97,7 @@
                         <div class="col s4">
                             <div style="position: relative;">
                                 <img :src="x.image" width="70px">
-                                <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="requestedSongs[x.id] === true">
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="alreadyRequested(x.id) === true">
                                     <i class="material-icons">check</i>
                                 </span>
                             </div>
@@ -107,11 +108,11 @@
                             
                         </div>
                         <div class="col s3">
-                            <span class="btn btn-floating waves-effect waves-light" @click="sendRequest(x)" :disabled="requestedSongs[x.id] === true"
-                                  :class="{'btn-opaque':requestedSongs[x.id] === true}">
+                            <span class="btn btn-floating waves-effect waves-light" @click="sendRequest(x)" :disabled="alreadyRequested(x.id) === true"
+                                  :class="{'btn-opaque':alreadyRequested(x.id) === true}">
                                 <i class="material-icons">send</i>
                             </span>
-                            <p class="grey-text animated bounce" style="font-size:12px" v-show="requestedSongs[x.id] === true">requested</p>
+                            <p class="grey-text animated bounce" style="font-size:12px" v-show="alreadyRequested(x.id) === true">requested</p>
                         </div>
                     </div>
                 </div>
@@ -127,7 +128,8 @@
                     <div class="row valign-wrapper"  style="margin-bottom: 0px;">
                         <div class="col s4">
                             <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
-                            alt="" class="circle img-online" width="90px" height="90px">
+                                 alt="" class="circle animated infinite" width="90px" height="90px"
+                                 :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
                         <div class="col s3"><span><i class="material-icons">people</i>{{population.length}}</span></div>
                         <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div>

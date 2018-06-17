@@ -43,7 +43,7 @@ app.get('/myipaddress', function (req, res) {
 
 app.use(express.static(path.resolve(__dirname, 'www')));
 
-var dataStore = {acquiringToken:false};
+var dataStore = {acquiringToken:false,pendingRequests:[]};
 var authorize = Buffer.from('69b05d3b1a0a4bb9a404d8748c5f5a54:84a00b36aff4410a8fdaee869f7fec02').toString('base64')
 function spotifyToken(client){
     if(dataStore.acquiringToken === false){
@@ -101,7 +101,34 @@ io.on('connection', function(client) {
     
     client.on('audience', function(data) {
         //console.log(data);
+        if('task' in data && data.task === 'request'){
+            dataStore.pendingRequests.push(data)
+        }
         client.broadcast.emit('answer', data);
+        dataStore.timeout = function(){
+            //this empties the question data saved after 20 minutes
+            let minutes = 60*60000; //60 minutes
+            if(!('timeout' in dataStore)){
+                return setTimeout(function(){
+                    dataStore.pendingRequests = [];
+                    //console.log('its deleted',dataStore)
+                },minutes);
+            }else{
+                clearTimeout(dataStore.timeout);
+                return setTimeout(function(){
+                    dataStore.pendingRequests = []; 
+                    //console.log('its deleted',dataStore)
+                },minutes);
+            }
+            
+        }();
+        //console.log(dataStore)
+    });
+    client.on('updateRequests', function(data) {
+        //when the dj gets disconnected send stored requests
+        let payload = {appName:'blessmyrequest',task:'pendingRequests', pendingRequests:dataStore.pendingRequests}
+        io.sockets.connected[client.id].emit('answer', payload);
+        //console.log('i have sent the updated requests you missed')
     });
     client.on('analytics', function(data) {
         //console.log(data);

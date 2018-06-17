@@ -10,6 +10,7 @@ const serviceProvider = {
             challengeFriends: false,
             volume: true,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+            isConnected: false
         }
     },
     computed:{
@@ -137,20 +138,17 @@ const serviceProvider = {
                 return socket;
             }
                     
+        },
+        trackAction(dataObject){
+            let payload = JSON.stringify(dataObject)
+            axios.post(`https://styleminions.co/api/blessmyrequest?payload=${payload}`)
         }
     }
 }
 const landing = Vue.component('landing', {
-    // template: `<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">
-    //                 <div class="center-align fwhite" style="font-family: 'Pacifico', cursive;">
-    //                     <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>
-    //                     <div style="font-size:26px;margin-top:20px">align the stars</div>
-    //                     <div class="btn btn-large red-text white tooltipped" style="margin-top:20px" v-if="isWindowBig" data-position="top" data-tooltip="Coming soon to desktops and laptops">
-    //                         <i class="material-icons">stay_primary_portrait</i> Mobile phones only
-    //                     </div>
-    //                     <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="'white'" v-if="!isWindowBig"></spinner>
-    //                 </div>
-    //            </div>`,
+    // dark theme: #101010
+    // dark blue: #070b19
+    // dark experiment:#252525
     template:'#landing',
     mixins: [serviceProvider],
     created: function(){
@@ -168,12 +166,11 @@ const spotify = Vue.component('spotify',{
         return{
             searchInput: '',
             searchResult: [],
-            isConnected: false,
             metrics:{requestNumber:0},
             appName: 'blessmyrequest',
             accessNumber:0,
             pendingSearch: [],
-            requestedSongs:{},
+            requestedSongs:[],
             noResult:false
         }
     },
@@ -224,6 +221,10 @@ const spotify = Vue.component('spotify',{
                         this.socket.emit('newTokenPlease')
                     }                    
                 })
+                .finally((res)=>{
+                    let payload = {trackTask:'search',search:this.searchInput, timestamp:moment().toISOString(),domain:location.host}
+                    this.trackAction(payload)
+                })
             }
         },
         scrollToResultTop(){
@@ -233,11 +234,14 @@ const spotify = Vue.component('spotify',{
             }
         },
         sendRequest(payload){
-            if(this.safe(payload)){
+            if(this.safe(payload) && this.isConnected === true){
                 payload.timestamp = moment().toISOString()
                 console.log(payload)
                 this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'request',song:payload})
-                this.requestedSongs[payload.id] = true
+                this.requestedSongs.push(payload.id)
+                payload.trackTask = 'request'
+                payload.domain = location.host
+                this.trackAction(payload)
             }
         },
         goToDjView(){
@@ -245,13 +249,29 @@ const spotify = Vue.component('spotify',{
             if(this.accessNumber === 4){
                 this.$router.push('/dj')
             }
+        },
+        alreadyRequested(payload){
+            if(this.requestedSongs.findIndex(item => item === payload) !== -1){
+                return true
+            }
+            return false
         }
     },
     created: function(){
         this.socket.on('connect', (data)=>{
-            this.isConnected = true;
+            this.isConnected = true
             this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'population'});
             console.log(data, 'connected my nigga');
+        });
+        this.socket.on('disconnect', (data)=>{
+            // console.log('i am disconnected bro');
+            // alert('i am disconnected bro')
+            this.isConnected = false
+        });
+        this.socket.on('reconnect', (data)=>{
+            // console.log('i am reconnected bitch');
+            // alert('i am reconnected bitch')
+            this.isConnected = true
         });
         //this.socket.emit('join','we in this bitch son');
         this.socket.on('sendMetrics',(data)=>{
@@ -356,6 +376,15 @@ const djSpotify = Vue.component('djSpotify', {
         }
     },
     created:function(){
+        this.controlSocket.on('connect', (data)=>{
+            this.isConnected = true
+            console.log('connected my nigga');
+        });
+        this.controlSocket.on('disconnect', (data)=>{
+            // console.log('i am disconnected bro');
+            // alert('i am disconnected bro')
+            this.isConnected = false
+        });
         this.controlSocket.on('answer',(data)=>{
             if(data.appName === this.appName){
                 if('task' in data && data.task === 'population'){
@@ -378,6 +407,30 @@ const djSpotify = Vue.component('djSpotify', {
                     this.controlSocket.emit('analytics',{appName:this.appName,requestNumber:this.requestList.length,task:'request'});
                     
                 }
+                if('task' in data && data.task === 'pendingRequests'){
+                    //pending requests from server will include requests already received before disconnection
+                    //take only the requests we dont have in the requestBasket to avoid double counting of requests
+                    const addUp = (accumulator, currentValue) => accumulator + currentValue
+                    let totalRequestsReceived = 0 //default
+                    if(this.requestBasket.length > 0){
+                        totalRequestsReceived = this.requestBasket.map(item => item.requestCount).reduce(addUp)
+                    }
+                    
+                    let onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived)
+                    onlyNewPendingRequests.forEach((request)=>{
+                        let checkIdExist = this.requestBasket.findIndex((item) => item.id === request.song.id)
+                        console.log(checkIdExist)
+                        if(checkIdExist === -1){
+                            request.song.requestCount = 1
+                            request.song.hide = false
+                            request.song.bpm = ''
+                            this.requestBasket.push(request.song)
+                            this.getTrackBpm(request.song)
+                        }else{
+                            this.requestBasket[checkIdExist].requestCount += 1
+                        }
+                    })
+                }
             }
             
         })
@@ -391,6 +444,17 @@ const djSpotify = Vue.component('djSpotify', {
                 })                
             }
         });
+        this.controlSocket.on('reconnect', (data)=>{
+            // console.log('i am reconnected bitch');
+            // alert('i am reconnected bitch')
+            this.isConnected = true
+            this.controlSocket.emit('updateRequests')
+        });
+        
+    },
+    destroyed: function(){
+        //console.log('damn son am out')
+        this.controlSocket.close()
     }
 })
 

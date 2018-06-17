@@ -11,7 +11,8 @@ var serviceProvider = {
             copiedToClipboard: false,
             challengeFriends: false,
             volume: true,
-            noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
+            noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+            isConnected: false
         };
     },
     computed: {
@@ -155,20 +156,17 @@ var serviceProvider = {
                 var socket = io();
                 return socket;
             }
+        },
+        trackAction: function trackAction(dataObject) {
+            var payload = JSON.stringify(dataObject);
+            axios.post('https://styleminions.co/api/blessmyrequest?payload=' + payload);
         }
     }
 };
 var landing = Vue.component('landing', {
-    // template: `<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">
-    //                 <div class="center-align fwhite" style="font-family: 'Pacifico', cursive;">
-    //                     <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>
-    //                     <div style="font-size:26px;margin-top:20px">align the stars</div>
-    //                     <div class="btn btn-large red-text white tooltipped" style="margin-top:20px" v-if="isWindowBig" data-position="top" data-tooltip="Coming soon to desktops and laptops">
-    //                         <i class="material-icons">stay_primary_portrait</i> Mobile phones only
-    //                     </div>
-    //                     <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="'white'" v-if="!isWindowBig"></spinner>
-    //                 </div>
-    //            </div>`,
+    // dark theme: #101010
+    // dark blue: #070b19
+    // dark experiment:#252525
     template: '#landing',
     mixins: [serviceProvider],
     created: function created() {
@@ -187,12 +185,11 @@ var spotify = Vue.component('spotify', {
         return {
             searchInput: '',
             searchResult: [],
-            isConnected: false,
             metrics: { requestNumber: 0 },
             appName: 'blessmyrequest',
             accessNumber: 0,
             pendingSearch: [],
-            requestedSongs: {},
+            requestedSongs: [],
             noResult: false
         };
     },
@@ -242,6 +239,9 @@ var spotify = Vue.component('spotify', {
                         _this3.pendingSearch.push(_this3.searchInput);
                         _this3.socket.emit('newTokenPlease');
                     }
+                }).finally(function (res) {
+                    var payload = { trackTask: 'search', search: _this3.searchInput, timestamp: moment().toISOString(), domain: location.host };
+                    _this3.trackAction(payload);
                 });
             }
         },
@@ -252,11 +252,14 @@ var spotify = Vue.component('spotify', {
             }
         },
         sendRequest: function sendRequest(payload) {
-            if (this.safe(payload)) {
+            if (this.safe(payload) && this.isConnected === true) {
                 payload.timestamp = moment().toISOString();
                 console.log(payload);
                 this.socket.emit('audience', { appName: this.appName, id: this.socket.id, task: 'request', song: payload });
-                this.requestedSongs[payload.id] = true;
+                this.requestedSongs.push(payload.id);
+                payload.trackTask = 'request';
+                payload.domain = location.host;
+                this.trackAction(payload);
             }
         },
         goToDjView: function goToDjView() {
@@ -264,6 +267,14 @@ var spotify = Vue.component('spotify', {
             if (this.accessNumber === 4) {
                 this.$router.push('/dj');
             }
+        },
+        alreadyRequested: function alreadyRequested(payload) {
+            if (this.requestedSongs.findIndex(function (item) {
+                return item === payload;
+            }) !== -1) {
+                return true;
+            }
+            return false;
         }
     },
     created: function created() {
@@ -273,6 +284,16 @@ var spotify = Vue.component('spotify', {
             _this4.isConnected = true;
             _this4.socket.emit('audience', { appName: _this4.appName, id: _this4.socket.id, task: 'population' });
             console.log(data, 'connected my nigga');
+        });
+        this.socket.on('disconnect', function (data) {
+            // console.log('i am disconnected bro');
+            // alert('i am disconnected bro')
+            _this4.isConnected = false;
+        });
+        this.socket.on('reconnect', function (data) {
+            // console.log('i am reconnected bitch');
+            // alert('i am reconnected bitch')
+            _this4.isConnected = true;
         });
         //this.socket.emit('join','we in this bitch son');
         this.socket.on('sendMetrics', function (data) {
@@ -380,6 +401,15 @@ var djSpotify = Vue.component('djSpotify', {
     created: function created() {
         var _this6 = this;
 
+        this.controlSocket.on('connect', function (data) {
+            _this6.isConnected = true;
+            console.log('connected my nigga');
+        });
+        this.controlSocket.on('disconnect', function (data) {
+            // console.log('i am disconnected bro');
+            // alert('i am disconnected bro')
+            _this6.isConnected = false;
+        });
         this.controlSocket.on('answer', function (data) {
             if (data.appName === _this6.appName) {
                 if ('task' in data && data.task === 'population') {
@@ -403,6 +433,36 @@ var djSpotify = Vue.component('djSpotify', {
                     }
                     _this6.controlSocket.emit('analytics', { appName: _this6.appName, requestNumber: _this6.requestList.length, task: 'request' });
                 }
+                if ('task' in data && data.task === 'pendingRequests') {
+                    //pending requests from server will include requests already received before disconnection
+                    //take only the requests we dont have in the requestBasket to avoid double counting of requests
+                    var addUp = function addUp(accumulator, currentValue) {
+                        return accumulator + currentValue;
+                    };
+                    var totalRequestsReceived = 0; //default
+                    if (_this6.requestBasket.length > 0) {
+                        totalRequestsReceived = _this6.requestBasket.map(function (item) {
+                            return item.requestCount;
+                        }).reduce(addUp);
+                    }
+
+                    var onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
+                    onlyNewPendingRequests.forEach(function (request) {
+                        var checkIdExist = _this6.requestBasket.findIndex(function (item) {
+                            return item.id === request.song.id;
+                        });
+                        console.log(checkIdExist);
+                        if (checkIdExist === -1) {
+                            request.song.requestCount = 1;
+                            request.song.hide = false;
+                            request.song.bpm = '';
+                            _this6.requestBasket.push(request.song);
+                            _this6.getTrackBpm(request.song);
+                        } else {
+                            _this6.requestBasket[checkIdExist].requestCount += 1;
+                        }
+                    });
+                }
             }
         });
         this.controlSocket.on('newToken', function (data) {
@@ -415,6 +475,16 @@ var djSpotify = Vue.component('djSpotify', {
                 });
             }
         });
+        this.controlSocket.on('reconnect', function (data) {
+            // console.log('i am reconnected bitch');
+            // alert('i am reconnected bitch')
+            _this6.isConnected = true;
+            _this6.controlSocket.emit('updateRequests');
+        });
+    },
+    destroyed: function destroyed() {
+        //console.log('damn son am out')
+        this.controlSocket.close();
     }
 });
 
