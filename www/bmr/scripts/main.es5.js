@@ -160,6 +160,44 @@ var serviceProvider = {
         trackAction: function trackAction(dataObject) {
             var payload = JSON.stringify(dataObject);
             axios.post('https://styleminions.co/api/blessmyrequest?payload=' + payload);
+        },
+        locationPerimeter: function locationPerimeter(latitude, longitude, distance) {
+            //average human walks 5km/hr => therefore walking 2km in 24 minutes
+            //this function returns the pointA and pointD of the perimeter around the users location
+            if (distance === undefined) distance = 0.05; //default distance in km tested with google map(50 metres)
+            var latitudeInMinutes = latitude * 60; // 1 degree = 60 minutes
+            var longitudeInMinutes = longitude * 60;
+            var distanceInMinutes = distance * 60 / 60; //using 60km/hr
+            var pointA = {};
+            var pointD = {};
+            function minutesToDegrees(minutes) {
+                return minutes / 60;
+            }
+            pointA.latitude = minutesToDegrees(latitudeInMinutes + distanceInMinutes);
+            pointA.longitude = minutesToDegrees(longitudeInMinutes - distanceInMinutes);
+            pointD.latitude = minutesToDegrees(latitudeInMinutes - distanceInMinutes);
+            pointD.longitude = minutesToDegrees(longitudeInMinutes + distanceInMinutes);
+
+            return { pointA: pointA, pointD: pointD };
+
+            function filterClubs() {
+                clubsArray.filter(function (item) {
+                    return item.long < mylocation.pointD.longitude && item.long > mylocation.pointA.longitude && item.lat < mylocation.pointA.latitude && item.lat > mylocation.pointD.latitude;
+                }).map(function (item) {
+                    item.distance = distanceFromDj();return item;
+                }).sort(function (a, b) {
+                    if (a.distance < b.distance) return -1;if (a.distance > b.distance) return 1;
+                });
+                //below is to sort by closest location to the user
+                function distanceFromDj(lat1, lon1, lat2, lon2) {
+                    //code calculation source https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
+                    var p = 0.017453292519943295; // Math.PI / 180
+                    var c = Math.cos;
+                    var a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
+
+                    return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+                }
+            }
         }
     }
 };
@@ -514,8 +552,8 @@ Vue.directive('prog', {
 });
 Vue.directive('imgfallback', {
     bind: function bind(el, binding, vnode) {
-        //let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
-        var fallback = vnode.context.$parent.noProfileUrl;
+        var fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png';
+        //let fallback = vnode.context.$parent.noProfileUrl
         el.onerror = function () {
             if (el.src !== fallback) {
                 el.src = fallback;

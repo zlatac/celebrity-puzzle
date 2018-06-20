@@ -142,6 +142,43 @@ const serviceProvider = {
         trackAction(dataObject){
             let payload = JSON.stringify(dataObject)
             axios.post(`https://styleminions.co/api/blessmyrequest?payload=${payload}`)
+        },
+        locationPerimeter(latitude,longitude,distance){
+            //average human walks 5km/hr => therefore walking 2km in 24 minutes
+            //this function returns the pointA and pointD of the perimeter around the users location
+            if(distance === undefined) distance = 0.05 //default distance in km tested with google map(50 metres)
+            let latitudeInMinutes = latitude*60 // 1 degree = 60 minutes
+            let longitudeInMinutes = longitude*60
+            let distanceInMinutes = (distance*60)/60 //using 60km/hr
+            let pointA = {}
+            let pointD = {}
+            function minutesToDegrees(minutes){return minutes/60}
+            pointA.latitude = minutesToDegrees(latitudeInMinutes + distanceInMinutes)
+            pointA.longitude = minutesToDegrees(longitudeInMinutes - distanceInMinutes)
+            pointD.latitude = minutesToDegrees(latitudeInMinutes - distanceInMinutes)
+            pointD.longitude = minutesToDegrees(longitudeInMinutes + distanceInMinutes)
+            
+            return {pointA,pointD}
+
+            function filterClubs(){
+                clubsArray
+                .filter((item)=>{
+                    return item.long < mylocation.pointD.longitude && item.long > mylocation.pointA.longitude && item.lat < mylocation.pointA.latitude && item.lat > mylocation.pointD.latitude
+                })
+                .map((item)=>{item.distance = distanceFromDj(); return item})
+                .sort((a,b)=>{if(a.distance < b.distance) return -1; if(a.distance > b.distance) return 1})
+                //below is to sort by closest location to the user
+                function distanceFromDj(lat1, lon1, lat2, lon2) {
+                    //code calculation source https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
+                    var p = 0.017453292519943295;    // Math.PI / 180
+                    var c = Math.cos;
+                    var a = 0.5 - c((lat2 - lat1) * p)/2 + 
+                            c(lat1 * p) * c(lat2 * p) * 
+                            (1 - c((lon2 - lon1) * p))/2;
+                  
+                    return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+                }
+            }
         }
     }
 }
@@ -504,8 +541,8 @@ Vue.directive('prog', {
 });
 Vue.directive('imgfallback', {
     bind: function(el,binding,vnode){
-        //let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
-        let fallback = vnode.context.$parent.noProfileUrl
+        let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
+        //let fallback = vnode.context.$parent.noProfileUrl
         el.onerror = function(){
             if(el.src !== fallback){
                 el.src = fallback

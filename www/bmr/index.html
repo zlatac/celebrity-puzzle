@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-    <meta name="keywords" content="blessmyrequest.com,blessmyrequest,bless my request,song request,dj request, club song request">
+    <meta name="description" content="A fun song request platform">
+    <meta name="keywords" content="blessmyrequest.com,blessmyrequest,bless,request,dj,club,bless my request,song request,dj request,club song request">
     <meta property="og:image" content="">
     <meta property="og:image:type" content="image/png">
     <meta property="og:url" content="http://blessmyrequest.com">
@@ -60,10 +61,10 @@
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
                     <div class="row" style="margin-bottom: 0px;">
-                        <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
+                        <img src="https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg" 
                              alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
-                             :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
-                        <p>Jaskambo (Dstrct Lounge)</p>
+                             :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}" v-imgfallback>
+                        <p>Dstrct Lounge</p>
                         <p>
                             <!-- <span><i class="material-icons">people</i>56</span> -->
                             <span class="chip">{{metrics.requestNumber}} Requests</span> 
@@ -128,8 +129,8 @@
                 <div class="card-panel" style="margin-top: 0px;">
                     <div class="row valign-wrapper"  style="margin-bottom: 0px;">
                         <div class="col s4">
-                            <img src="https://scontent-yyz1-1.cdninstagram.com/vp/d7a2a5e7c8aa86860e0d003c5f74e052/5BB71FC5/t51.2885-19/s150x150/29092647_1906358362988330_3707988920407949312_n.jpg" 
-                                 alt="" class="circle animated infinite" width="90px" height="90px"
+                            <img src="https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg" 
+                                 alt="" class="circle animated infinite" width="90px" height="90px" v-imgfallback
                                  :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
                         <div class="col s3"><span><i class="material-icons">people</i>{{population.length}}</span></div>
