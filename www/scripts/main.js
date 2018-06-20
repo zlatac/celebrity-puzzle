@@ -14,7 +14,7 @@ const serviceProvider = {
             volume: true,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [
-                {name:'kimkardashian', profile_url:"https://scontent-yyz1-1.cdninstagram.com/vp/a1578586761b73b52936c4a9ca4780df/5B94EF59/t51.2885-19/s150x150/19228783_1421845407904949_3402248722799656960_a.jpg"},
+                {name:'kimkardashian', profile_url:"https://scontent-yyz1-1.cdninstagram.com/vp/46546ea0f2c339a200fcec0f64e43c03/5BBF8CF3/t51.2885-19/s150x150/34094059_253817872036775_6127439634281529344_n.jpg"},
                 {name:'sofiavergara', profile_url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
                 {name:'shaq', profile_url:'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg'},
             ],
@@ -1054,8 +1054,6 @@ const routes = [
   { path: '/leaderboard', component: leaderboard },
   { path: '/dash', component: dash },
   { path: '/game/:category', component: game },
-  { path: '/blessmyrequest', component: spotify },
-  { path: '/dj', component: djSpotify },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },
   { path: '*', redirect: '/' }, //wild card situations since the shared url could be modified by users
