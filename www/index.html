@@ -14,7 +14,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Celebrity Puzzle</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -157,7 +157,7 @@
                     <div class="col s12"><b>Time</b>: {{test.timePlayed}} (mm:ss:ms)</div>
                     <div class="col s12" v-if="challenger !== null"><b>Challenge Time</b>: {{challenger.realtime}}</div>
                     <div class="col s12"><b>Best Time</b>: {{test.bestTime}}</div>  
-                    <div class="col s12"><b>World Rank (Today)</b>: Submit & See</div>
+                    <div class="col s12"><b>World Rank (Today)</b>: #{{test.rank}} <spinner class="animated fadeIn small-loader" :colorClass="'default'" v-show="test.rankLoader"></spinner></div>
                     <div class="center-align col s12" v-show="!challengeFriends" style="margin-top: 10px;">
                         <div class="chip waves-effect" style="margin-bottom:0px" @click="challengeFriends=true">Challenge A Friend</div>
                     </div>                  

@@ -347,6 +347,9 @@ var spotify = Vue.component('spotify', {
                 _this4.searchTrack();
             }
         });
+        this.socket.on('room', function (data) {
+            console.log(data);
+        });
     },
     destroyed: function destroyed() {
         //console.log('damn son am out')

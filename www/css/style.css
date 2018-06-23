@@ -148,6 +148,10 @@ a{
     width: 100%;
     z-index: 5
 }
+.small-loader{
+    width: 15px !important;
+    height: 15px !important;
+}
 
 /*moving hearts*/
 div.hearts {

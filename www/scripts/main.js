@@ -425,7 +425,7 @@ const game = Vue.component('game',{
             basket :[],
             output : '',
             prog : 0,
-            test: {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null},
+            test: {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null,rankLoader:false,rank:null},
             picColumn : 2,
             picRow : 2,
             puzzLevel: 1,
@@ -433,7 +433,9 @@ const game = Vue.component('game',{
             profile: {},
             modalPage:{page:'game',insta:false,loader:false,fail:false,imageacquired:false},
             challengeSeconds:0,
-            challengeInterval:null
+            challengeInterval:null,
+            fixedChallenge:false
+            
         }
     },
     computed:{
@@ -455,12 +457,13 @@ const game = Vue.component('game',{
             return null            
         },
         challengeUrl(){
-            let category = this.$route.params.category
+            // let category = this.$route.params.category
+            let imgShortcode = ('imageShortcode' in this.profile) ? this.profile.imageShortcode : this.$route.params.category
             let splitTime = (this.test.time_result !== null) ? `${this.test.time_result[0]} minutes ${this.test.time_result[1]} seconds` : '0'
             let playtime = this.test.timePlayed
             let instahandle = ('instahandle' in localStorage) ? localStorage.instahandle : '0'
             let message = `I challenge you to beat my time of ${splitTime} today on celebrity puzzle`
-            let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${category}`
+            let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${imgShortcode}`
             let url = {}
             url.encoded = encodeURIComponent(`${message} ${link}`)
             url.raw = `${message} ${link}`
@@ -522,6 +525,19 @@ const game = Vue.component('game',{
                     break
             }
         },
+        getRanking(){
+            this.test.rankLoader = true
+            let today = this.currentGameWeek
+            axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`)
+            .then((res)=>{
+                //console.log(res)
+                let leaderboard = res.data
+                let rank = leaderboard.filter((item)=> item.realtime < this.test.timePlayed).length + 1
+                //console.log(rank,this.test.timePlayed)
+                this.test.rank = (rank < 100) ? rank : '100+'
+                this.test.rankLoader = false
+            })
+        },
         levelUp : function(){
             if(this.puzzLevel < 2){
                 this.draw.clear();
@@ -539,6 +555,7 @@ const game = Vue.component('game',{
             }else{
                 // game is finished and time to move on
                 this.test.hideModal = false;
+                this.getRanking()
                 this.updateBestTime()
                 this.toggleModal()
                 this.clearInterval(this.challengeInterval)
@@ -559,7 +576,7 @@ const game = Vue.component('game',{
             this.picRow = 2;
             this.puzzLevel = 1;
             this.currentUrl= '',
-            this.test =  {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null},
+            this.test =  {end_time:null, start_time:null,time_result:'0:0',timePlayed:null,bestTime:null,rankLoader:false,rank:null},
             this.challengeSeconds = 0
             if(this.challengeInterval !== null) clearInterval(this.challengeInterval)
             this.challengeInterval = null
@@ -640,9 +657,20 @@ const game = Vue.component('game',{
                 })
             }
             let category = this.$route.params.category
-            let categoryList = this.$store.state.celebList.filter(item => item.category === category)
-            let randomIndex = Math.floor(Math.random()*(categoryList.length));
-            let handle = categoryList[randomIndex].handle
+            let categoryList = []
+            let randomIndex = null
+            let handle = ''
+            if(this.category.findIndex((item)=>item.name === category) === -1) this.fixedChallenge = true
+            if(!this.fixedChallenge){
+                // normal gameplay to run a random game
+                categoryList = this.$store.state.celebList.filter(item => item.category === category)
+                randomIndex = Math.floor(Math.random()*(categoryList.length));
+                handle = categoryList[randomIndex].handle
+            }else{
+                //this is a challenge and should get specific image played by the challenger
+                handle = `p/${category}`
+            }
+            
             return new Promise((resolve,reject)=>{
                 fetch(`https://www.instagram.com/${handle}/`)
                 .then((res)=>{
@@ -654,7 +682,7 @@ const game = Vue.component('game',{
                     }       
                 })
                 .then((data)=>{
-                    if(this.safe(data)){
+                    if(this.safe(data) && !this.fixedChallenge){
                         let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         let user = sift.entry_data.ProfilePage["0"].graphql.user
                         let instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges
@@ -668,10 +696,21 @@ const game = Vue.component('game',{
                                 fullname:user.full_name,
                                 url:user.profile_pic_url,
                                 fallback:categoryList[randomIndex],
-                                imageList: imageList
+                                imageList: imageList,
+                                imageShortcode:imageList[index].node.shortcode
                             }
                             resolve(imageList[index].node.display_url);
                         }
+                    }
+                    if(this.safe(data) && this.fixedChallenge){
+                        let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
+                        let user = sift.entry_data.PostPage["0"].graphql.shortcode_media
+                        this.profile = {
+                            fullname:user.owner.full_name,
+                            url:user.owner.profile_pic_url,
+                            imageShortcode:user.shortcode
+                        }
+                        resolve(user.display_url);
                     }
                     
                 });

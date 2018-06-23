@@ -95,8 +95,12 @@ io.on('connection', function(client) {
 
     client.on('messages', function(data) {
         //client.emit('broad', data);
-        client.broadcast.emit('broad',data);
+        //client.broadcast.emit('broad',data);
         //console.log(data, client.id);
+        client.join(data.room,()=>{
+            console.log(client.rooms)
+            io.to(data.room).emit('room','you are in the room now');
+        })
     });
     
     client.on('audience', function(data) {
