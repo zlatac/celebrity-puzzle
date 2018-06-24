@@ -267,7 +267,8 @@
                                         <img :src="url" class="circle responsive-img img-lead" v-imgfallback v-show="!modalPage.loader">
                                         <spinner class="animated fadeIn" :colorClass="'default'" v-show="modalPage.loader"></spinner>
                                     </div>
-                                    <div class="col s8">I challenge you to beat my time <b>{{socialChallenge.time}}</b></div>
+                                    <div class="col s8" v-if="socialChallenge.prize === undefined">I challenge you to beat my time <b>{{socialChallenge.time}}</b></div>
+                                    <div class="col s8" v-if="socialChallenge.prize !== undefined">Win {{socialChallenge.prize}} with the fastest time over <b>{{socialChallenge.time}}</b></div>
                                 </div>
                                 <div class="row">
                                     <div class="col s12">

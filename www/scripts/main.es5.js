@@ -249,6 +249,10 @@ var serviceProvider = {
                     //when a user shows up as a result of a social media challenge
                     _this5.$store.commit('socialChallenge', route.params);
                 }
+                if (route.path.includes('contest')) {
+                    //when a user shows up as a result of a social media challenge for brands
+                    _this5.$store.commit('socialChallenge', route.params);
+                }
                 _this5.$router.push('/dash');
             }, 3000);
         },
@@ -1035,7 +1039,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '/contest/:insta/:time/:category/:prize', component: landing }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

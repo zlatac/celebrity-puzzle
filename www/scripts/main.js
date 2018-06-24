@@ -245,6 +245,10 @@ const serviceProvider = {
                     //when a user shows up as a result of a social media challenge
                     this.$store.commit('socialChallenge',route.params)
                 }
+                if(route.path.includes('contest')){
+                    //when a user shows up as a result of a social media challenge for brands
+                    this.$store.commit('socialChallenge',route.params)
+                }
                 this.$router.push('/dash');
             },3000)
         },
@@ -1095,6 +1099,7 @@ const routes = [
   { path: '/game/:category', component: game },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },
+  { path: '/contest/:insta/:time/:category/:prize', component: landing },
   { path: '*', redirect: '/' }, //wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({
