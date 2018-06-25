@@ -251,7 +251,9 @@ var serviceProvider = {
                 }
                 if (route.path.includes('contest')) {
                     //when a user shows up as a result of a social media challenge for brands
+                    route.params.prize = route.params.prize.replace(/:/g, ' ');
                     _this5.$store.commit('socialChallenge', route.params);
+                    console.log(route.params);
                 }
                 _this5.$router.push('/dash');
             }, 3000);
