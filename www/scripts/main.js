@@ -1112,3 +1112,6 @@ var app = new Vue({
     router:router,
     store:store
 }).$mount('#myapp');
+
+//SQL query:
+//SELECT device_id, count(device_id) as play FROM `TABLE` WHERE category = 'BjlZvU4FL1F' and leaderboard = '0' group by device_id order by play desc
