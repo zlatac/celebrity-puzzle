@@ -14,8 +14,9 @@ var serviceProvider = {
             copiedToClipboard: false,
             challengeFriends: false,
             volume: true,
+            adsenseServed: false,
             noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-            testProfile: [{ name: 'kimkardashian', profile_url: "https://scontent-yyz1-1.cdninstagram.com/vp/46546ea0f2c339a200fcec0f64e43c03/5BBF8CF3/t51.2885-19/s150x150/34094059_253817872036775_6127439634281529344_n.jpg" }, { name: 'sofiavergara', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }],
+            testProfile: [{ name: 'kimkardashian', profile_url: "https://scontent-yyz1-1.cdninstagram.com/vp/fb2f9813830c704783a165569b95a6ff/5BEB2087/t51.2885-19/s150x150/35414722_1833801803589327_7624906533519753216_n.jpg" }, { name: 'sofiavergara', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'shaq', profile_url: 'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg' }],
             category: [{ name: 'fashion', color: '#e68213', text: 'fashion' }, { name: 'music', color: '#136ee6', text: 'music' }, { name: 'movie', color: '#b9499f', text: 'movies' }, { name: 'sport', color: '#136ee6', text: 'sports' }, { name: 'youtube', color: '#e61313', text: 'youtube', logoClass: 'fab fa-youtube red-text' }]
         };
     },
@@ -63,15 +64,19 @@ var serviceProvider = {
         }
     },
     mounted: function mounted() {
+        var _this = this;
+
         var modal = document.querySelector('.modal');
         var tooltip = document.querySelector('.tooltipped');
-        var modalOptions = {};
+        var modalOptions = { onOpenEnd: function onOpenEnd() {
+                _this.modalAdsense();
+            } };
         if (this.$route.path.includes('game')) modalOptions.dismissible = false;
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
     },
     beforeCreate: function beforeCreate() {
-        var _this = this;
+        var _this2 = this;
 
         if (this.$route.path.includes('game') && this.$store.state.celebList === null) {
             return router.push('/');
@@ -82,7 +87,7 @@ var serviceProvider = {
                 //get celebrity list
                 return res.json();
             }).then(function (data) {
-                _this.$store.commit('celebList', data);
+                _this2.$store.commit('celebList', data);
             });
         }
     },
@@ -159,6 +164,17 @@ var serviceProvider = {
             this.modalInstance.open();
             this.resumeAudioContext();
         },
+        modalAdsense: function modalAdsense() {
+            if (this.adsenseServed === false) {
+                //No need to call for the same ad unit 
+                this.adsenseServed = true;
+                setTimeout(function () {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                }, 100);
+            } else {
+                console.log('Ad served already');
+            }
+        },
         insta: function insta() {
             this.$store.commit('insertName', this.name);
         },
@@ -173,7 +189,7 @@ var serviceProvider = {
             }
         },
         getProfile: function getProfile() {
-            var _this2 = this;
+            var _this3 = this;
 
             this.modalPage.imageacquired = false; // remove submit button while typing
             if (this.profileTimeout !== null) {
@@ -181,12 +197,12 @@ var serviceProvider = {
             }
             this.profileTimeout = setTimeout(function () {
                 //console.log(this.inputProfile)
-                var profile = _this2.inputProfile.replace('@', '').toLowerCase();
-                _this2.fetchInstaProfile(profile);
+                var profile = _this3.inputProfile.replace('@', '').toLowerCase();
+                _this3.fetchInstaProfile(profile);
             }, 1200);
         },
         fetchInstaProfile: function fetchInstaProfile(profile) {
-            var _this3 = this;
+            var _this4 = this;
 
             this.modalPage.loader = true;
             if (profile === '') return this.modalPage.fail = true;
@@ -194,22 +210,22 @@ var serviceProvider = {
                 if (res.status === 200) {
                     return res.text();
                 } else {
-                    _this3.modalPage.fail = true;
+                    _this4.modalPage.fail = true;
                     return 'failed';
                 }
             }).then(function (data) {
                 if (data !== 'failed') {
                     var sift = data.match(/og:image.+(http.+)"/i)[1];
-                    _this3.$store.commit('url', sift);
-                    _this3.modalPage.fail = false;
-                    _this3.modalPage.loader = false;
-                    _this3.modalPage.imageacquired = true;
+                    _this4.$store.commit('url', sift);
+                    _this4.modalPage.fail = false;
+                    _this4.modalPage.loader = false;
+                    _this4.modalPage.imageacquired = true;
                 }
             });
             //this.url = profile;
         },
         generateDeviceId: function generateDeviceId(skipredirect) {
-            var _this4 = this;
+            var _this5 = this;
 
             //if skipredirect is not true redirect to dash page
             axios('/myipaddress').then(function (res) {
@@ -221,7 +237,7 @@ var serviceProvider = {
                 console.warn(new Error(error));
             }).finally(function () {
                 if (skipredirect !== true) {
-                    _this4.sendToCategory();
+                    _this5.sendToCategory();
                     console.log('wow');
                 }
             });
@@ -241,21 +257,21 @@ var serviceProvider = {
             }
         },
         sendToCategory: function sendToCategory() {
-            var _this5 = this;
+            var _this6 = this;
 
             var route = this.$route;
             setTimeout(function () {
                 if (route.path.includes('challenge')) {
                     //when a user shows up as a result of a social media challenge
-                    _this5.$store.commit('socialChallenge', route.params);
+                    _this6.$store.commit('socialChallenge', route.params);
                 }
                 if (route.path.includes('contest')) {
                     //when a user shows up as a result of a social media challenge for brands
                     route.params.prize = route.params.prize.replace(/:/g, ' ');
-                    _this5.$store.commit('socialChallenge', route.params);
+                    _this6.$store.commit('socialChallenge', route.params);
                     console.log(route.params);
                 }
-                _this5.$router.push('/dash');
+                _this6.$router.push('/dash');
             }, 3000);
         },
         clearInterval: function (_clearInterval) {
@@ -327,25 +343,25 @@ var dash = Vue.component('dash', {
         }
     },
     created: function created() {
-        var _this6 = this;
+        var _this7 = this;
 
         if (this.isWindowBig === true) return router.push('/');
         if (this.$store.state.previousChamps === null) {
             axios('https://styleminions.co/api/puzzleoldchamps?today=' + this.currentGameDay + '&yesterday=' + this.previousGameDay).then(function (res) {
                 var champs = res.data;
                 if (champs.length === 3) {
-                    _this6.$store.commit('previousChamps', champs);
-                    _this6.loader = true;
+                    _this7.$store.commit('previousChamps', champs);
+                    _this7.loader = true;
                 } else if (champs.length === 0) {
-                    _this6.$store.commit('previousChamps', _this6.testProfile);
-                    _this6.loader = true;
+                    _this7.$store.commit('previousChamps', _this7.testProfile);
+                    _this7.loader = true;
                 } else {
                     var startIndex = champs.length;
                     for (var i = startIndex; i < 3; i++) {
-                        champs.push({ name: '', profile_url: _this6.noProfileUrl });
+                        champs.push({ name: '', profile_url: _this7.noProfileUrl });
                     }
-                    _this6.$store.commit('previousChamps', champs);
-                    _this6.loader = true;
+                    _this7.$store.commit('previousChamps', champs);
+                    _this7.loader = true;
                 }
             });
         }
@@ -448,14 +464,14 @@ var game = Vue.component('game', {
             }
         },
         startChallenge: function startChallenge() {
-            var _this7 = this;
+            var _this8 = this;
 
             var store = this.challenge;
             if (this.safe(store)) {
                 this.challengeInterval = setInterval(function () {
-                    _this7.challengeSeconds += 1;
-                    if (_this7.challengeSeconds === _this7.totalChallengeSeconds) {
-                        _this7.clearInterval(_this7.challengeInterval);
+                    _this8.challengeSeconds += 1;
+                    if (_this8.challengeSeconds === _this8.totalChallengeSeconds) {
+                        _this8.clearInterval(_this8.challengeInterval);
                         console.log('time interval is cancelled');
                     }
                 }, 1000);
@@ -490,7 +506,7 @@ var game = Vue.component('game', {
             }
         },
         getRanking: function getRanking() {
-            var _this8 = this;
+            var _this9 = this;
 
             this.test.rankLoader = true;
             var today = this.currentGameWeek;
@@ -498,11 +514,11 @@ var game = Vue.component('game', {
                 //console.log(res)
                 var leaderboard = res.data;
                 var rank = leaderboard.filter(function (item) {
-                    return item.realtime < _this8.test.timePlayed;
+                    return item.realtime < _this9.test.timePlayed;
                 }).length + 1;
                 //console.log(rank,this.test.timePlayed)
-                _this8.test.rank = rank < 100 ? rank : '100+';
-                _this8.test.rankLoader = false;
+                _this9.test.rank = rank < 100 ? rank : '100+';
+                _this9.test.rankLoader = false;
             });
         },
 
@@ -516,8 +532,8 @@ var game = Vue.component('game', {
                 this.shuffle = [];
                 this.basket = [];
                 this.prog = 0;
-                this.picColumn = 4;
-                this.picRow = 5;
+                this.picColumn = 2;
+                this.picRow = 2;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
             } else {
@@ -549,7 +565,7 @@ var game = Vue.component('game', {
             this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
         },
         submitGame: function submitGame(inputProfile) {
-            var _this9 = this;
+            var _this10 = this;
 
             var timestamp = moment().toISOString();
             var playtime = this.test.timePlayed;
@@ -558,6 +574,7 @@ var game = Vue.component('game', {
             var leaderboard = 0;
             var deviceId = this.deviceId;
             var category = this.$route.params.category;
+            var imgShortCode = this.profile.imageShortcode;
             if (inputProfile === 'regular') {
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = this.safe(localStorage.instahandle) ? localStorage.instahandle : 'noname';
@@ -572,9 +589,9 @@ var game = Vue.component('game', {
             }
             var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl, leaderboard: leaderboard, deviceId: deviceId
                 //console.log(postData)
-            };axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId + '&category=' + category).then(function (response) {
+            };axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId + '&category=' + category + '&shortcode=' + imgShortCode).then(function (response) {
                 if (inputProfile !== 'regular') {
-                    _this9.modalInstance.close();
+                    _this10.modalInstance.close();
                     router.push('/leaderboard');
                 }
             }).catch(function (error) {
@@ -582,7 +599,7 @@ var game = Vue.component('game', {
             });
         },
         isLevelCompleted: function isLevelCompleted() {
-            var _this10 = this;
+            var _this11 = this;
 
             if (this.correct.length === this.picBoxes) {
                 if (this.test.start_time === null) {
@@ -596,7 +613,7 @@ var game = Vue.component('game', {
                 this.tones('f', 5, 500);
                 this.vibrate(2000);
                 setTimeout(function () {
-                    _this10.levelUp();
+                    _this11.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
@@ -620,11 +637,11 @@ var game = Vue.component('game', {
             this.isLevelCompleted();
         },
         getImage: function getImage() {
-            var _this11 = this;
+            var _this12 = this;
 
             if (this.currentUrl !== '') {
                 return new Promise(function (resolve, reject) {
-                    resolve(_this11.currentUrl);
+                    resolve(_this12.currentUrl);
                 });
             }
             var category = this.$route.params.category;
@@ -655,7 +672,7 @@ var game = Vue.component('game', {
                         reject('there was an error retreiving data from instagram');
                     }
                 }).then(function (data) {
-                    if (_this11.safe(data) && !_this11.fixedChallenge) {
+                    if (_this12.safe(data) && !_this12.fixedChallenge) {
                         var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         var user = sift.entry_data.ProfilePage["0"].graphql.user;
                         var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
@@ -664,10 +681,10 @@ var game = Vue.component('game', {
                             return item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height;
                         });
                         if (imageList.length < 1) {
-                            _this11.getImage();
+                            _this12.getImage();
                         } else {
                             var index = Math.floor(Math.random() * imageList.length);
-                            _this11.profile = {
+                            _this12.profile = {
                                 fullname: user.full_name,
                                 url: user.profile_pic_url,
                                 fallback: categoryList[randomIndex],
@@ -677,10 +694,10 @@ var game = Vue.component('game', {
                             resolve(imageList[index].node.display_url);
                         }
                     }
-                    if (_this11.safe(data) && _this11.fixedChallenge) {
+                    if (_this12.safe(data) && _this12.fixedChallenge) {
                         var _sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
                         var _user = _sift.entry_data.PostPage["0"].graphql.shortcode_media;
-                        _this11.profile = {
+                        _this12.profile = {
                             fullname: _user.owner.full_name,
                             url: _user.owner.profile_pic_url,
                             imageShortcode: _user.shortcode
@@ -760,7 +777,7 @@ var game = Vue.component('game', {
             });
         },
         setUp: function setUp(w, h) {
-            var _this12 = this;
+            var _this13 = this;
 
             this.loader = true;
             this.picBoxes = this.picColumn * this.picRow;
@@ -768,25 +785,25 @@ var game = Vue.component('game', {
             this.footnote = true;
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
             this.getImage().then(function (data) {
-                _this12.currentUrl = data;
-                return _this12.drawCanvas(w, h, data);
+                _this13.currentUrl = data;
+                return _this13.drawCanvas(w, h, data);
             }).catch(function (error) {
                 console.error(new Error(error));
-                _this12.setUp(w, h); //retry once there is a 404
+                _this13.setUp(w, h); //retry once there is a 404
             }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!_this12.safe(_this12.draw)) {
-                    _this12.svg = document.getElementById('svg');
-                    _this12.draw = SVG(_this12.svg).size(w, h);
+                if (!_this13.safe(_this13.draw)) {
+                    _this13.svg = document.getElementById('svg');
+                    _this13.draw = SVG(_this13.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
                 var z = 0;
-                _this12.basket.forEach(function (item) {
+                _this13.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    var elem = _this12.draw.image(item.img, _this12.dw, Math.round(_this12.sh * _this12.dw / _this12.sw));
-                    elem.x(_this12.shuffle[z].x);
-                    elem.y(_this12.shuffle[z].y);
+                    var elem = _this13.draw.image(item.img, _this13.dw, Math.round(_this13.sh * _this13.dw / _this13.sw));
+                    elem.x(_this13.shuffle[z].x);
+                    elem.y(_this13.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     function onTrigger() {
@@ -827,11 +844,11 @@ var game = Vue.component('game', {
                         }
                     }
                     elem.touchstart(function () {
-                        onTrigger.call(_this12);
+                        onTrigger.call(_this13);
                     });
-                    if (_this12.isWindowBig === true) {
+                    if (_this13.isWindowBig === true) {
                         elem.click(function () {
-                            onTrigger.call(_this12);
+                            onTrigger.call(_this13);
                         });
                     }
 
@@ -841,17 +858,17 @@ var game = Vue.component('game', {
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            _this12.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this13.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        _this12.progressFunc();
-                        _this12.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this13.progressFunc();
+                        _this13.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                _this12.loader = false;
-                _this12.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this12.footnote_msg + '</div>', displayLength: 2000 });
+                _this13.loader = false;
+                _this13.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this13.footnote_msg + '</div>', displayLength: 2000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
@@ -870,7 +887,7 @@ var leaderboard = Vue.component('leaderboard', {
     },
     methods: {
         makeHeart: function makeHeart() {
-            var _this13 = this;
+            var _this14 = this;
 
             var b = Math.floor(Math.random() * 100 + 1);
             var d = ["flowOne", "flowTwo", "flowThree"];
@@ -884,21 +901,21 @@ var leaderboard = Vue.component('leaderboard', {
             bucket.seconds = c;
             this.movingHearts.push(bucket);
             setTimeout(function () {
-                var index = _this13.movingHearts.findIndex(function (i) {
+                var index = _this14.movingHearts.findIndex(function (i) {
                     return i.id === b;
                 });
-                _this13.movingHearts.splice(index, 1);
+                _this14.movingHearts.splice(index, 1);
             }, c * 1200);
         },
         getLeaderboard: function getLeaderboard() {
-            var _this14 = this;
+            var _this15 = this;
 
             this.loader = true;
             var today = this.todayChip === true ? this.currentGameWeek : this.allTimeGame;
             axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 //console.log(res)
-                _this14.leaderboardList = res.data;
-                _this14.loader = false;
+                _this15.leaderboardList = res.data;
+                _this15.loader = false;
             });
         },
         selectedTime: function selectedTime(time) {
@@ -965,6 +982,15 @@ Vue.component('champion', {
 Vue.component('spinner', {
     props: ['colorClass'],
     template: '\n        <div class="preloader-wrapper small active">\n            <div class="spinner-layer" :class="{\'spinner-white-only\': colorClass === \'white\', \'spinner-celeb\': colorClass === \'default\'}">\n            <div class="circle-clipper left">\n                <div class="circle"></div>\n            </div><div class="gap-patch">\n                <div class="circle"></div>\n            </div><div class="circle-clipper right">\n                <div class="circle"></div>\n            </div>\n            </div>\n        </div>\n    '
+});
+Vue.component('adsense', {
+    template: '\n    <div style="margin-top:30px">\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="3445703421"\n            data-ad-format="horizontal"></ins>\n    </div>\n    ',
+    mounted: function mounted() {
+        // setTimeout(()=>{
+        //     (adsbygoogle = window.adsbygoogle || []).push({});
+        // },5000)
+
+    }
 });
 Vue.directive('prog', {
     update: function update(el, binding) {
@@ -1051,5 +1077,6 @@ var app = new Vue({
     store: store
 }).$mount('#myapp');
 
+//Adsense best size mobile 320 x 100
 //SQL query:
 //SELECT device_id, count(device_id) as play FROM `TABLE` WHERE category = 'BjlZvU4FL1F' and leaderboard = '0' group by device_id order by play desc

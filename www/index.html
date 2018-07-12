@@ -39,7 +39,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
     <script src="scripts/tones.js"></script>
-    <script src="https://mochanow.com/lib/socket.io.js"></script>
+    <!-- <script src="https://mochanow.com/lib/socket.io.js"></script> -->
 </head>
 <body>
     <div id="myapp">
@@ -161,7 +161,7 @@
                     <div class="center-align col s12" v-show="!challengeFriends" style="margin-top: 10px;">
                         <div class="chip waves-effect" style="margin-bottom:0px" @click="challengeFriends=true">Challenge A Friend</div>
                     </div>                  
-                    <div class="col s12" v-show="challengeFriends" style="margin-top: 10px;">
+                    <div class="col s12 center-align" v-show="challengeFriends" style="margin-top: 10px;">
                         <a :href="'whatsapp://send?text=' + urlChallenge.encoded"><i class="fab fa-whatsapp fa-2x green-text left-right-space"></i></a>
                         <a :href="'fb-messenger://share/?link=' + urlChallenge.encoded"><i class="fab fa-facebook-messenger fa-2x blue-text left-right-space"></i></a>
                         <a :href="'https://twitter.com/intent/tweet?text=' + urlChallenge.encoded"><i class="fab fa-twitter fa-2x blue-text left-right-space"></i></a>
@@ -227,6 +227,7 @@
                     </div>
                 </div>
             </div>
+            <adsense></adsense>
         </div>
         <!--<div class="modal-footer">
             <span class="modal-action modal-close waves-effect waves-green btn-flat ">Agree</span>
@@ -250,6 +251,7 @@
                 </div>
                 <div class="row animated fadeInDown tooltipped" data-position="bottom" data-tooltip="Yesterday's Champions" v-show="loader">
                     <div class="col s12">
+                        <!-- <div class="row"><adsense></adsense></div> -->
                         <div class="row" style="margin:0.5rem 0 0.1rem 0;">
                             <champion class="col s4" v-if="prevWinners !== null" v-for="(x, index) in prevWinners" :url="x.profile_url" :index="index"></champion>
                         </div>
@@ -294,6 +296,7 @@
             </div>
         </div>
 </script>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <script src="scripts/main.es5.js"></script>
 </body>
 </html>

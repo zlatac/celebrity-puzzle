@@ -12,9 +12,10 @@ const serviceProvider = {
             copiedToClipboard: false,
             challengeFriends: false,
             volume: true,
+            adsenseServed:false,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             testProfile: [
-                {name:'kimkardashian', profile_url:"https://scontent-yyz1-1.cdninstagram.com/vp/46546ea0f2c339a200fcec0f64e43c03/5BBF8CF3/t51.2885-19/s150x150/34094059_253817872036775_6127439634281529344_n.jpg"},
+                {name:'kimkardashian', profile_url:"https://scontent-yyz1-1.cdninstagram.com/vp/fb2f9813830c704783a165569b95a6ff/5BEB2087/t51.2885-19/s150x150/35414722_1833801803589327_7624906533519753216_n.jpg"},
                 {name:'sofiavergara', profile_url:'https://scontent-yyz1-1.cdninstagram.com/vp/58dce42512d59709c76790d416c635f9/5B7957B9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg'},
                 {name:'shaq', profile_url:'https://scontent-yyz1-1.cdninstagram.com/vp/545396c0bea9704c9e90093767a642da/5B91DEB6/t51.2885-19/s150x150/10818077_1772497556311865_1111187484_a.jpg'},
             ],
@@ -74,7 +75,7 @@ const serviceProvider = {
     mounted: function(){
         let modal = document.querySelector('.modal');
         let tooltip = document.querySelector('.tooltipped');
-        let modalOptions = {}
+        let modalOptions = {onOpenEnd:()=>{this.modalAdsense()}}
         if (this.$route.path.includes('game')) modalOptions.dismissible = false
         if (modal) this.modalInstance = M.Modal.init(modal,modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
@@ -158,6 +159,18 @@ const serviceProvider = {
             this.modalData = modalData
             this.modalInstance.open();
             this.resumeAudioContext()
+        },
+        modalAdsense:function(){
+            if(this.adsenseServed === false){
+                //No need to call for the same ad unit 
+                this.adsenseServed = true
+                setTimeout(()=>{
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                },100)
+            }else{
+                console.log('Ad served already')
+            }
+            
         },
         insta:function(){
             this.$store.commit('insertName',this.name);
@@ -554,8 +567,8 @@ const game = Vue.component('game',{
                 this.shuffle = [];
                 this.basket =[];
                 this.prog = 0;
-                this.picColumn = 4;
-                this.picRow = 5;
+                this.picColumn = 2;
+                this.picRow = 2;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
             }else{
@@ -596,6 +609,7 @@ const game = Vue.component('game',{
             let leaderboard = 0
             let deviceId = this.deviceId
             let category = this.$route.params.category
+            let imgShortCode = this.profile.imageShortcode
             if(inputProfile === 'regular'){
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = (this.safe(localStorage.instahandle)) ? localStorage.instahandle : 'noname'
@@ -611,7 +625,7 @@ const game = Vue.component('game',{
             let postData = {timestamp,playtime,name,picurl,leaderboard,deviceId}
             //console.log(postData)
             axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}
-            &leaderboard=${leaderboard}&deviceid=${deviceId}&category=${category}`)
+            &leaderboard=${leaderboard}&deviceid=${deviceId}&category=${category}&shortcode=${imgShortCode}`)
             .then((response)=>{
                 if(inputProfile !== 'regular'){
                     this.modalInstance.close()
@@ -1019,6 +1033,24 @@ Vue.component('spinner',{
         </div>
     `
 });
+Vue.component('adsense',{
+    template:`
+    <div style="margin-top:30px">
+        <!-- footer ad  data-adtest="on"-->
+        <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-8868040855394757"
+            data-ad-slot="3445703421"
+            data-ad-format="horizontal"></ins>
+    </div>
+    `,
+    mounted(){
+        // setTimeout(()=>{
+        //     (adsbygoogle = window.adsbygoogle || []).push({});
+        // },5000)
+        
+    }
+})
 Vue.directive('prog', {
     update: function(el,binding){
         el.style.width = binding.value + '%';
@@ -1113,5 +1145,6 @@ var app = new Vue({
     store:store
 }).$mount('#myapp');
 
+//Adsense best size mobile 320 x 100
 //SQL query:
 //SELECT device_id, count(device_id) as play FROM `TABLE` WHERE category = 'BjlZvU4FL1F' and leaderboard = '0' group by device_id order by play desc

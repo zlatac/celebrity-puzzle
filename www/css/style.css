@@ -116,7 +116,7 @@ div.progress{height: 20px !important;}
     padding-bottom: 75px;
 }
 .modal i.material-icons, .modal i.fa{
-    font-size: 45px;
+    font-size: 53px;
 }
 .input-field input[type=text].invalid {
     border-bottom: 1px solid red;
@@ -153,7 +153,17 @@ a{
     height: 15px !important;
 }
 .adsbygoogle{
-    background-color: red;
+    background-color: white;
+    width: 320px; 
+    height: 50px;
+}
+.modal .modal-content {
+    padding: 20px;
+}
+@media only screen and (max-width: 992px){
+    .modal {
+        width: 98%;
+    }
 }
 
 /*moving hearts*/
