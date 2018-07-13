@@ -14,7 +14,7 @@
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -72,7 +72,7 @@
                     </div>
                     <div class="row" style="margin-bottom: 0px;">
                         <div class="col s9">
-                            <input type="text" name="search" placeholder="Search tracks" v-model="searchInput">
+                            <input type="text" name="search" placeholder="Search tracks" v-model="searchInput" v-inputHighlight="searchInput">
                         </div>
                         <div class="col s3">
                             <span class="btn btn-floating waves-effect waves-light" @click="searchTrack">

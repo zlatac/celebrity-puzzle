@@ -532,8 +532,8 @@ var game = Vue.component('game', {
                 this.shuffle = [];
                 this.basket = [];
                 this.prog = 0;
-                this.picColumn = 2;
-                this.picRow = 2;
+                this.picColumn = 4;
+                this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
             } else {
@@ -985,11 +985,11 @@ Vue.component('spinner', {
 });
 Vue.component('adsense', {
     template: '\n    <div style="margin-top:30px">\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="3445703421"\n            data-ad-format="horizontal"></ins>\n    </div>\n    ',
+    mixins: [serviceProvider],
     mounted: function mounted() {
-        // setTimeout(()=>{
-        //     (adsbygoogle = window.adsbygoogle || []).push({});
-        // },5000)
-
+        if (this.$route.path.includes('leaderboard')) {
+            this.modalAdsense();
+        }
     }
 });
 Vue.directive('prog', {

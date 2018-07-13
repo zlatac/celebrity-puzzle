@@ -99,7 +99,7 @@ const serviceProvider = {
         
     },
     methods:{
-        safe : function safe (a){
+        safe : function(a){
             if(a === undefined || a === null || a === ''){
                 return false;
             }
@@ -567,8 +567,8 @@ const game = Vue.component('game',{
                 this.shuffle = [];
                 this.basket =[];
                 this.prog = 0;
-                this.picColumn = 2;
-                this.picRow = 2;
+                this.picColumn = 4;
+                this.picRow = 5;
                 this.puzzLevel += 1;
                 this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
             }else{
@@ -1044,11 +1044,11 @@ Vue.component('adsense',{
             data-ad-format="horizontal"></ins>
     </div>
     `,
+    mixins: [serviceProvider],
     mounted(){
-        // setTimeout(()=>{
-        //     (adsbygoogle = window.adsbygoogle || []).push({});
-        // },5000)
-        
+        if(this.$route.path.includes('leaderboard')){
+            this.modalAdsense()
+        }    
     }
 })
 Vue.directive('prog', {

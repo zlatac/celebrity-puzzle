@@ -131,6 +131,11 @@ const serviceProvider = {
                 clearInterval(intervalInstance)
             }            
         },
+        inputHighlight(){
+            let input = document.querySelector('#search')
+            input.focus()
+            input.setSelectionRange(0, 9999)
+        },
         webSocket(){
             if('io' in window){
                 //var socket = io('https://mochanow.com');
@@ -537,9 +542,14 @@ Vue.component('spinner',{
         </div>
     `
 });
-Vue.directive('prog', {
-    update: function(el,binding){
-        el.style.width = binding.value + '%';
+Vue.directive('inputHighlight', {
+    bind: function(el,binding){
+        el.onfocus = function(){
+            if(el.value !== ''){
+                el.setSelectionRange(0, 9999)
+            } 
+            //console.log('i am focused')
+        }
     }
 });
 Vue.directive('imgfallback', {

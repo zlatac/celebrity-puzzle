@@ -150,6 +150,11 @@ var serviceProvider = {
                 clearInterval(intervalInstance);
             }
         }),
+        inputHighlight: function inputHighlight() {
+            var input = document.querySelector('#search');
+            input.focus();
+            input.setSelectionRange(0, 9999);
+        },
         webSocket: function webSocket() {
             if ('io' in window) {
                 //var socket = io('https://mochanow.com');
@@ -548,9 +553,14 @@ Vue.component('spinner', {
     props: ['colorClass'],
     template: '\n        <div class="preloader-wrapper small active">\n            <div class="spinner-layer" :class="{\'spinner-white-only\': colorClass === \'white\', \'spinner-celeb\': colorClass === \'default\'}">\n            <div class="circle-clipper left">\n                <div class="circle"></div>\n            </div><div class="gap-patch">\n                <div class="circle"></div>\n            </div><div class="circle-clipper right">\n                <div class="circle"></div>\n            </div>\n            </div>\n        </div>\n    '
 });
-Vue.directive('prog', {
-    update: function update(el, binding) {
-        el.style.width = binding.value + '%';
+Vue.directive('inputHighlight', {
+    bind: function bind(el, binding) {
+        el.onfocus = function () {
+            if (el.value !== '') {
+                el.setSelectionRange(0, 9999);
+            }
+            //console.log('i am focused')
+        };
     }
 });
 Vue.directive('imgfallback', {

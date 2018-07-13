@@ -72,7 +72,7 @@
             <div class="col s12 center" v-show="loader"><spinner class="animated fadeIn" :colorClass="'default'"></spinner></div>
             <div class="col s12 animated fadeInUp" v-show="!loader && leaderboardList.length === 0">
                 <div class="card-panel z-depth-2 center-align" style="padding:9px;margin:0.5rem 0 0.1rem 0;">
-                    <div class="col s12">Claim the No 1 spot in the world now before others.</div>
+                    <div class="col s12">Claim the <i class="fa fa-trophy gold"></i> #1 spot in the world now before others.</div>
                     <div class="row" style="margin-top:20px;">
                         <router-link to="/dash">
                             <div class="col s12"><span class="btn chip-selected animated pulse">Play Now</span></div>
@@ -142,6 +142,7 @@
                     <i class="fa fa-star"></i>
                 </div>
             </div>
+            <adsense v-if="!loader && leaderboardList.length === 0" style="margin-left:0px;"></adsense>
         </div>
     </div>
 </script>
