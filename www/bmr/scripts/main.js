@@ -10,7 +10,8 @@ const serviceProvider = {
             challengeFriends: false,
             volume: true,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-            isConnected: false
+            isConnected: false,
+            adsenseServed:false
         }
     },
     computed:{
@@ -130,6 +131,18 @@ const serviceProvider = {
             if(this.safe(intervalInstance)){
                 clearInterval(intervalInstance)
             }            
+        },
+        modalAdsense:function(){
+            if(this.adsenseServed === false){
+                //No need to call for the same ad unit 
+                this.adsenseServed = true
+                setTimeout(()=>{
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                },100)
+            }else{
+                console.log('Ad served already')
+            }
+            
         },
         inputHighlight(){
             let input = document.querySelector('#search')
@@ -552,6 +565,22 @@ Vue.directive('inputHighlight', {
         }
     }
 });
+Vue.component('adsense',{
+    template:`
+    <div>
+        <!-- footer ad  data-adtest="on"-->
+        <ins class="adsbygoogle center-block"
+            style="display:block"
+            data-ad-client="ca-pub-8868040855394757"
+            data-ad-slot="3445703421"
+            data-ad-format="leaderboard"></ins>
+    </div>
+    `,
+    mixins: [serviceProvider],
+    mounted(){
+        this.modalAdsense()   
+    }
+})
 Vue.directive('imgfallback', {
     bind: function(el,binding,vnode){
         let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'

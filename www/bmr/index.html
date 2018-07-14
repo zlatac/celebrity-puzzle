@@ -64,8 +64,8 @@
                         <img src="https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg" 
                              alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
                              :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}" v-imgfallback>
-                        <p>Dstrct Lounge</p>
-                        <p>
+                        <p class="zero-margin">Dstrct Lounge <span class="grey-text animated fadeIn" v-show="!isConnected">- Reconnecting...</span></p>
+                        <p class="zero-margin-bottom">
                             <!-- <span><i class="material-icons">people</i>56</span> -->
                             <span class="chip">{{metrics.requestNumber}} Requests</span> 
                         </p>
@@ -83,8 +83,9 @@
                 </div>
             </div>
         </div>
-        <div style="margin-top: 320px;">
+        <div style="margin-top: 252px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
+            <adsense v-if="!loader && searchResult.length !== 0"></adsense>
             <div class="row " v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-show="noResult === true">
                     <div class="row">
@@ -165,6 +166,7 @@
     </div>
     
 </script>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <script src="bmr/scripts/main.es5.js"></script>
 </body>
 </html>

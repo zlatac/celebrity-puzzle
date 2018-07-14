@@ -70,3 +70,14 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     margin-top: 4px;
     margin-bottom: 0px;
 }
+.zero-margin{
+    margin:0px;
+}
+.zero-margin-bottom{
+    margin-bottom:0px;
+}
+.adsbygoogle{
+    background-color: white;
+    width: 320px; 
+    height: 50px;
+}
