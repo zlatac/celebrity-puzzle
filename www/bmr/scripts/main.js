@@ -572,9 +572,7 @@ Vue.component('adsense',{
         <ins class="adsbygoogle center-block"
             style="display:block"
             data-ad-client="ca-pub-8868040855394757"
-            data-ad-slot="3445703421"
-            data-ad-format="leaderboard"></ins>
-    </div>
+            data-ad-slot="1741308624"></ins>
     `,
     mixins: [serviceProvider],
     mounted(){

@@ -967,12 +967,12 @@ const leaderboard = Vue.component('leaderboard',{
         },
         challengePlayer(playerdetails){
             this.$store.commit('challenge',playerdetails)
-            let category = (playerdetails.category !== 'empty') ? playerdetails.category : 'movie'
+            let category = (playerdetails.short_code !== 'empty') ? playerdetails.short_code : 'movie'
             router.push(`/game/${category}`)
         },
         challengeUrl(profileObject, clipboard){
             //custom for the leaderboard
-            let category = profileObject.category
+            let category = profileObject.short_code
             let splitTime = profileObject.realtime.split(':')
             let splitTimeText = `${splitTime[0]} minutes ${splitTime[1]} seconds`
             let playtime = profileObject.realtime

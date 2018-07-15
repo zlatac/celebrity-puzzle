@@ -937,12 +937,12 @@ var leaderboard = Vue.component('leaderboard', {
         },
         challengePlayer: function challengePlayer(playerdetails) {
             this.$store.commit('challenge', playerdetails);
-            var category = playerdetails.category !== 'empty' ? playerdetails.category : 'movie';
+            var category = playerdetails.short_code !== 'empty' ? playerdetails.short_code : 'movie';
             router.push('/game/' + category);
         },
         challengeUrl: function challengeUrl(profileObject, clipboard) {
             //custom for the leaderboard
-            var category = profileObject.category;
+            var category = profileObject.short_code;
             var splitTime = profileObject.realtime.split(':');
             var splitTimeText = splitTime[0] + ' minutes ' + splitTime[1] + ' seconds';
             var playtime = profileObject.realtime;

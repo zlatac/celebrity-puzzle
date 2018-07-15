@@ -576,7 +576,7 @@ Vue.directive('inputHighlight', {
     }
 });
 Vue.component('adsense', {
-    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="3445703421"\n            data-ad-format="leaderboard"></ins>\n    </div>\n    ',
+    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    ',
     mixins: [serviceProvider],
     mounted: function mounted() {
         this.modalAdsense();
