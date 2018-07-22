@@ -573,6 +573,13 @@ Vue.directive('inputHighlight', {
             }
             //console.log('i am focused')
         };
+        el.onkeyup = function (event) {
+            if (event.keyCode === 13) {
+                //code for submit 
+                el.blur();
+            }
+            //console.log('am submitted',event) 
+        };
     }
 });
 Vue.component('adsense', {

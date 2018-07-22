@@ -71,14 +71,17 @@
                         </p>
                     </div>
                     <div class="row" style="margin-bottom: 0px;">
-                        <div class="col s9">
-                            <input type="text" name="search" placeholder="Search tracks" v-model="searchInput" v-inputHighlight="searchInput">
-                        </div>
-                        <div class="col s3">
-                            <span class="btn btn-floating waves-effect waves-light" @click="searchTrack">
-                                <i class="material-icons">search</i>
-                            </span>
-                        </div>
+                        <form  novalidate @submit.stop.prevent="searchTrack">
+                            <div class="col s9">
+                                <input type="text" name="q" placeholder="Search tracks" v-model="searchInput" 
+                                       v-inputHighlight autocomplete="off">
+                            </div>
+                            <div class="col s3">
+                                <button type="submit" class="btn btn-floating waves-effect waves-light">
+                                    <i class="material-icons">search</i>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

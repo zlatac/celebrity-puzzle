@@ -1037,7 +1037,7 @@ Vue.component('adsense',{
     template:`
     <div style="margin-top:30px">
         <!-- footer ad  data-adtest="on"-->
-        <ins class="adsbygoogle"
+        <ins class="adsbygoogle center-block"
             style="display:block"
             data-ad-client="ca-pub-8868040855394757"
             data-ad-slot="3445703421"

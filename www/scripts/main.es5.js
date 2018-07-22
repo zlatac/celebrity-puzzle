@@ -984,7 +984,7 @@ Vue.component('spinner', {
     template: '\n        <div class="preloader-wrapper small active">\n            <div class="spinner-layer" :class="{\'spinner-white-only\': colorClass === \'white\', \'spinner-celeb\': colorClass === \'default\'}">\n            <div class="circle-clipper left">\n                <div class="circle"></div>\n            </div><div class="gap-patch">\n                <div class="circle"></div>\n            </div><div class="circle-clipper right">\n                <div class="circle"></div>\n            </div>\n            </div>\n        </div>\n    '
 });
 Vue.component('adsense', {
-    template: '\n    <div style="margin-top:30px">\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="3445703421"\n            data-ad-format="horizontal"></ins>\n    </div>\n    ',
+    template: '\n    <div style="margin-top:30px">\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="3445703421"\n            data-ad-format="horizontal"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
     mounted: function mounted() {
         if (this.$route.path.includes('leaderboard')) {
