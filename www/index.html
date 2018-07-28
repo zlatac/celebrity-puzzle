@@ -14,7 +14,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Celebrity Puzzle</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -297,7 +297,9 @@
                                         <span class="btn chip-selected animated pulse" @click="toggleModal(null,true)">Accept Challenge</span>
                                     </div>
                                 </div>
-                                <div class="contest-end grey-text">Ends in <span class="animated flash infinite">24 hours</span></div>
+                                <div class="contest-end grey-text" v-if="safe(socialChallenge.prize)">
+                                    Ends in <span class="animated flash infinite">{{socialChallenge.endDate | endsIn }}</span>
+                                </div>
                             </div>                                                       
                         </div>
                     </div>

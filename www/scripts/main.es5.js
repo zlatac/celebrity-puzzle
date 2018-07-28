@@ -1064,6 +1064,15 @@ Vue.filter('truncate', function (value) {
     }
     return value;
 });
+Vue.filter('endsIn', function (value) {
+    if (value !== '') {
+        // expecting string date format DD-MM
+        value += '-' + moment().year();
+        var endDate = moment(value, 'DD-MM-YYYY').fromNow();
+        return endDate.slice(3, endDate.length);
+    }
+    return value;
+});
 
 var store = new Vuex.Store({
     //state management in VUE
@@ -1101,7 +1110,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '/contest/:insta/:time/:category/:prize', component: landing }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '/contest/:insta/:time/:category/:prize/:endDate', component: landing }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

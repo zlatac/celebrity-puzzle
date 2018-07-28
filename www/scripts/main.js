@@ -1126,6 +1126,15 @@ Vue.filter('truncate', function (value) {
     }
     return value
 });
+Vue.filter('endsIn', function (value) {
+    if(value !==''){
+        // expecting string date format DD-MM
+        value += '-' + moment().year()
+        let endDate = moment(value,'DD-MM-YYYY').fromNow()
+        return endDate.slice(3,endDate.length)
+    }
+    return value
+});
 
 const store = new Vuex.Store({
     //state management in VUE
@@ -1169,7 +1178,7 @@ const routes = [
   { path: '/game/:category', component: game },
   { path: '/', component: landing },
   { path: '/challenge/:insta/:time/:category', component: landing },
-  { path: '/contest/:insta/:time/:category/:prize', component: landing },
+  { path: '/contest/:insta/:time/:category/:prize/:endDate', component: landing },
   { path: '*', redirect: '/' }, //wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({
