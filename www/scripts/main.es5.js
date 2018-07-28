@@ -66,6 +66,8 @@ var serviceProvider = {
     mounted: function mounted() {
         var _this = this;
 
+        // let htmlBody = document.querySelector('body');
+        // htmlBody.style.overflow = 'auto' //modal plugin makes the body scroll stuck when modal isnt closed
         var modal = document.querySelector('.modal');
         var tooltip = document.querySelector('.tooltipped');
         var modalOptions = { onOpenEnd: function onOpenEnd() {
@@ -74,6 +76,9 @@ var serviceProvider = {
         if (this.$route.path.includes('game')) modalOptions.dismissible = false;
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
+    },
+    destroy: function destroy() {
+        this.modalInstance.destroy();
     },
     beforeCreate: function beforeCreate() {
         var _this2 = this;
@@ -159,8 +164,11 @@ var serviceProvider = {
                 });
             }
         },
-        toggleModal: function toggleModal(modalData) {
-            this.modalData = modalData;
+        toggleModal: function toggleModal(modalData, isChallenge) {
+            //isChallenge: Boolean
+            //modalData: Object
+            var challenge = { name: 'challenge', color: '#6da3cd', text: 'challenge' };
+            this.modalData = isChallenge !== true ? modalData : challenge;
             this.modalInstance.open();
             this.resumeAudioContext();
         },
@@ -328,7 +336,7 @@ var dash = Vue.component('dash', {
             message: 'Hello Vue!',
             show: false,
             contain: true,
-            modalPage: { page: 'dash', insta: false, loader: false, fail: false, imageacquired: false },
+            modalPage: { page: 'dash', insta: false, loader: false, fail: false, imageacquired: false, contest: false },
             socialChallengeUrl: null
         };
     },
@@ -366,6 +374,7 @@ var dash = Vue.component('dash', {
             });
         }
         if (this.$store.state.socialChallenge !== null && this.$store.state.socialChallenge.insta !== '0') {
+            this.modalPage.contest = this.safe(this.socialChallenge.prize) ? true : false; //checking if its a brand contest
             this.fetchInstaProfile(this.$store.state.socialChallenge.insta);
         }
         if (!('deviceId' in localStorage)) {
@@ -382,13 +391,16 @@ var dash = Vue.component('dash', {
             gamedetails.name = playerdetails.insta;
             this.$store.commit('challenge', gamedetails);
             this.resumeAudioContext();
+            //essential to close modal before moving on to next page programtically to avoid the modal plugin
+            //from making the html body overflow scroll stuck
+            this.modalInstance.close();
             this.$router.push('/game/' + category);
         }
     }
 });
 
 var game = Vue.component('game', {
-    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"\n                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                    <img :src="challenge.profile_url" class="animated circle flash img-green responsive-img" style="width: 25px;height: 25px;position: absolute;top: 0;"\n                         v-if="challenge !== null" :style="{left: challengeTimer + \'%\'}" :class="{\'hide\':challengeInterval === null}">\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" v-imgfallback class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                             :class="{\'img-lead\':challengeTimer === 0,\'img-green bounceIn\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                             \'img-red flash\': challengeTimer >= 100}">\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">\n                        <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>\n                        <i class="material-icons animated bounceIn" v-show="!volume" style="font-size: 34px;">volume_off</i>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person">\n                        {{(profile.fullname !== \'\') ? profile.fullname : profile.fallback.name | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;">\n                <div class="btn list-me animated shake" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"\n                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                    <img :src="challenge.profile_url" class="animated circle flash img-green responsive-img" style="width: 25px;height: 25px;position: absolute;top: 0;"\n                         v-if="challenge !== null" :style="{left: challengeTimer + \'%\'}" :class="{\'hide\':challengeInterval === null}"\n                         v-imgfallback>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                             :class="{\'img-lead\':challengeTimer === 0,\'img-green bounceIn\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                             \'img-red flash\': challengeTimer >= 100}" v-imgfallback>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">\n                        <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>\n                        <i class="material-icons animated bounceIn" v-show="!volume" style="font-size: 34px;">volume_off</i>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip">\n                        <img :src="profile.url" alt="Contact Person" v-imgfallback>\n                        {{(profile.fullname !== \'\') ? profile.fullname : profile.fallback.name | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;">\n                <div class="btn list-me animated shake" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -882,7 +894,8 @@ var leaderboard = Vue.component('leaderboard', {
         return {
             movingHearts: [],
             leaderboardList: [],
-            todayChip: true
+            todayChip: true,
+            viewChallengeList: {}
         };
     },
     methods: {
@@ -951,6 +964,27 @@ var leaderboard = Vue.component('leaderboard', {
             var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + category;
             if (clipboard === true) return message + ' ' + link;
             return encodeURIComponent(message + ' ' + link);
+        },
+        toggleChallengeView: function toggleChallengeView(name) {
+            var obj = this.viewChallengeList;
+            if (!obj.hasOwnProperty(name)) {
+                //set default 
+                obj[name] = null;
+            }
+            if (obj.hasOwnProperty(name)) {
+                switch (obj[name]) {
+                    case true:
+                        obj[name] = false;
+                        break;
+                    case false:
+                        obj[name] = true;
+                        break;
+                    case null:
+                        obj[name] = true;
+                        break;
+                }
+            }
+            this.$forceUpdate(); //vue force update render since this object isn't reactive from initialization
         }
     },
     created: function created() {
@@ -999,10 +1033,10 @@ Vue.directive('prog', {
 });
 Vue.directive('imgfallback', {
     bind: function bind(el, binding, vnode) {
-        //let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
-        var fallback = vnode.context.$parent.noProfileUrl;
+        var fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png';
+        //let fallback = vnode.context.$parent.noProfileUrl
         el.onerror = function () {
-            if (el.src !== fallback) {
+            if (el.src !== fallback && fallback !== undefined) {
                 el.src = fallback;
                 //console.log(vnode)
             }
