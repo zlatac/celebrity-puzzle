@@ -108,7 +108,8 @@ io.on('connection', function(client) {
         if('task' in data && data.task === 'request'){
             dataStore.pendingRequests.push(data)
         }
-        client.broadcast.emit('answer', data);
+        //client.broadcast.emit('answer', data);
+        io.to('99999').emit('answer', data);
         dataStore.timeout = function(){
             //this empties the question data saved after 20 minutes
             let minutes = 60*60000; //60 minutes

@@ -228,7 +228,7 @@ var landing = Vue.component('landing', {
         var _this2 = this;
 
         setTimeout(function () {
-            _this2.$router.push('/request');
+            _this2.$router.push('/home');
         }, 3000);
     }
 });
@@ -378,13 +378,27 @@ var djSpotify = Vue.component('djSpotify', {
     template: '#djspotify',
     mixins: [serviceProvider],
     data: function data() {
+        var _this5 = this;
+
         return {
             requestBasket: [],
             population: [],
             pendingTrackDetails: [],
             isConnected: false,
             appName: 'blessmyrequest',
-            musicNotes: ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B']
+            musicNotes: ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'],
+            isVerified: false,
+            passcode: '',
+            location: {},
+            geoLocation: {
+                success: function success(data) {
+                    _this5.location = data.coords;
+                    console.log(data);
+                },
+                error: function error(data) {
+                    console.warn('failed to get location', data);
+                }
+            }
         };
     },
     computed: {
@@ -428,7 +442,7 @@ var djSpotify = Vue.component('djSpotify', {
             }
         },
         getTrackBpm: function getTrackBpm(trackObject) {
-            var _this5 = this;
+            var _this6 = this;
 
             var id = trackObject.id;
             var token = this.$store.state.accessToken;
@@ -442,108 +456,128 @@ var djSpotify = Vue.component('djSpotify', {
                 console.log(new Error(err));
             }).then(function (res) {
                 if (res !== 'fail') {
-                    var musicKey = _this5.musicNotes[res.key];
+                    var musicKey = _this6.musicNotes[res.key];
                     var bpm = Math.floor(Number(res.tempo));
                     var output = musicKey + ' - ' + bpm + ' bpm';
-                    var indexInBasket = _this5.requestBasket.findIndex(function (item) {
+                    var indexInBasket = _this6.requestBasket.findIndex(function (item) {
                         return item.id === id;
                     });
-                    _this5.requestBasket[indexInBasket].bpm = output;
+                    _this6.requestBasket[indexInBasket].bpm = output;
                 } else if (res === 'fail') {
-                    _this5.pendingTrackDetails.push(trackObject);
-                    _this5.controlSocket.emit('newTokenPlease');
+                    _this6.pendingTrackDetails.push(trackObject);
+                    _this6.controlSocket.emit('newTokenPlease');
                 }
+            });
+        },
+        verifyPassCode: function verifyPassCode() {
+            if (this.safe(this.passcode)) {
+                this.isVerified = true;
+                var club = { name: 'district', room: this.passcode };
+                this.controlSocket.emit('messages', club);
+            } else {
+                console.log('passcode is failed', this.passcode);
+            }
+        },
+        initializeSocketEvents: function initializeSocketEvents() {
+            var _this7 = this;
+
+            this.controlSocket.on('connect', function (data) {
+                _this7.isConnected = true;
+                console.log('connected my nigga');
+            });
+            this.controlSocket.on('disconnect', function (data) {
+                // console.log('i am disconnected bro');
+                // alert('i am disconnected bro')
+                _this7.isConnected = false;
+            });
+            this.controlSocket.on('answer', function (data) {
+                if (data.appName === _this7.appName) {
+                    if ('task' in data && data.task === 'population') {
+                        console.log('population gwoth complete', data);
+                        _this7.population.push(data);
+                    }
+                    if ('task' in data && data.task === 'request') {
+                        console.log('request added bruh', data);
+                        var checkIdExist = _this7.requestBasket.findIndex(function (item) {
+                            return item.id === data.song.id;
+                        });
+                        console.log(checkIdExist);
+                        if (checkIdExist === -1) {
+                            data.song.requestCount = 1;
+                            data.song.hide = false;
+                            data.song.bpm = '';
+                            _this7.requestBasket.push(data.song);
+                            _this7.getTrackBpm(data.song);
+                        } else {
+                            _this7.requestBasket[checkIdExist].requestCount += 1;
+                        }
+                        _this7.controlSocket.emit('analytics', { appName: _this7.appName, requestNumber: _this7.requestList.length, task: 'request' });
+                    }
+                    if ('task' in data && data.task === 'pendingRequests') {
+                        //pending requests from server will include requests already received before disconnection
+                        //take only the requests we dont have in the requestBasket to avoid double counting of requests
+                        var addUp = function addUp(accumulator, currentValue) {
+                            return accumulator + currentValue;
+                        };
+                        var totalRequestsReceived = 0; //default
+                        if (_this7.requestBasket.length > 0) {
+                            totalRequestsReceived = _this7.requestBasket.map(function (item) {
+                                return item.requestCount;
+                            }).reduce(addUp);
+                        }
+
+                        var onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
+                        onlyNewPendingRequests.forEach(function (request) {
+                            var checkIdExist = _this7.requestBasket.findIndex(function (item) {
+                                return item.id === request.song.id;
+                            });
+                            console.log(checkIdExist);
+                            if (checkIdExist === -1) {
+                                request.song.requestCount = 1;
+                                request.song.hide = false;
+                                request.song.bpm = '';
+                                _this7.requestBasket.push(request.song);
+                                _this7.getTrackBpm(request.song);
+                            } else {
+                                _this7.requestBasket[checkIdExist].requestCount += 1;
+                            }
+                        });
+                    }
+                }
+            });
+            this.controlSocket.on('newToken', function (data) {
+                _this7.$store.commit('accessToken', data);
+                if (_this7.pendingTrackDetails.length > 0) {
+                    var tracks = _this7.pendingTrackDetails;
+                    _this7.pendingTrackDetails = [];
+                    tracks.forEach(function (item) {
+                        _this7.getTrackBpm(item);
+                    });
+                }
+            });
+            this.controlSocket.on('reconnect', function (data) {
+                // console.log('i am reconnected bitch');
+                // alert('i am reconnected bitch')
+                _this7.isConnected = true;
+                _this7.controlSocket.emit('updateRequests');
+            });
+            this.controlSocket.on('room', function (data) {
+                console.log(data);
             });
         }
     },
     created: function created() {
-        var _this6 = this;
-
-        this.controlSocket.on('connect', function (data) {
-            _this6.isConnected = true;
-            console.log('connected my nigga');
-        });
-        this.controlSocket.on('disconnect', function (data) {
-            // console.log('i am disconnected bro');
-            // alert('i am disconnected bro')
-            _this6.isConnected = false;
-        });
-        this.controlSocket.on('answer', function (data) {
-            if (data.appName === _this6.appName) {
-                if ('task' in data && data.task === 'population') {
-                    console.log('population gwoth complete', data);
-                    _this6.population.push(data);
-                }
-                if ('task' in data && data.task === 'request') {
-                    console.log('request added bruh', data);
-                    var checkIdExist = _this6.requestBasket.findIndex(function (item) {
-                        return item.id === data.song.id;
-                    });
-                    console.log(checkIdExist);
-                    if (checkIdExist === -1) {
-                        data.song.requestCount = 1;
-                        data.song.hide = false;
-                        data.song.bpm = '';
-                        _this6.requestBasket.push(data.song);
-                        _this6.getTrackBpm(data.song);
-                    } else {
-                        _this6.requestBasket[checkIdExist].requestCount += 1;
-                    }
-                    _this6.controlSocket.emit('analytics', { appName: _this6.appName, requestNumber: _this6.requestList.length, task: 'request' });
-                }
-                if ('task' in data && data.task === 'pendingRequests') {
-                    //pending requests from server will include requests already received before disconnection
-                    //take only the requests we dont have in the requestBasket to avoid double counting of requests
-                    var addUp = function addUp(accumulator, currentValue) {
-                        return accumulator + currentValue;
-                    };
-                    var totalRequestsReceived = 0; //default
-                    if (_this6.requestBasket.length > 0) {
-                        totalRequestsReceived = _this6.requestBasket.map(function (item) {
-                            return item.requestCount;
-                        }).reduce(addUp);
-                    }
-
-                    var onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
-                    onlyNewPendingRequests.forEach(function (request) {
-                        var checkIdExist = _this6.requestBasket.findIndex(function (item) {
-                            return item.id === request.song.id;
-                        });
-                        console.log(checkIdExist);
-                        if (checkIdExist === -1) {
-                            request.song.requestCount = 1;
-                            request.song.hide = false;
-                            request.song.bpm = '';
-                            _this6.requestBasket.push(request.song);
-                            _this6.getTrackBpm(request.song);
-                        } else {
-                            _this6.requestBasket[checkIdExist].requestCount += 1;
-                        }
-                    });
-                }
-            }
-        });
-        this.controlSocket.on('newToken', function (data) {
-            _this6.$store.commit('accessToken', data);
-            if (_this6.pendingTrackDetails.length > 0) {
-                var tracks = _this6.pendingTrackDetails;
-                _this6.pendingTrackDetails = [];
-                tracks.forEach(function (item) {
-                    _this6.getTrackBpm(item);
-                });
-            }
-        });
-        this.controlSocket.on('reconnect', function (data) {
-            // console.log('i am reconnected bitch');
-            // alert('i am reconnected bitch')
-            _this6.isConnected = true;
-            _this6.controlSocket.emit('updateRequests');
-        });
+        navigator.geolocation.getCurrentPosition(this.geoLocation.success, this.geoLocation.error);
+        this.initializeSocketEvents();
     },
     destroyed: function destroyed() {
         //console.log('damn son am out')
         this.controlSocket.close();
     }
+});
+
+var home = Vue.component('home', {
+    template: '\n        <div class="container">\n            <div class="row">\n                <router-link to="/request">\n                    <button class="btn btn-large">Find My DJ</button>\n                </router-link>\n            </div>\n            <div class="row">\n                <router-link to="/dj">\n                    <button class="btn btn-large">I\'m The DJ</button>\n                </router-link>\n            </div>\n        </div>\n    '
 });
 
 Vue.component('modal', {
@@ -583,7 +617,7 @@ Vue.directive('inputHighlight', {
     }
 });
 Vue.component('adsense', {
-    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    ',
+    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
     mounted: function mounted() {
         this.modalAdsense();
@@ -629,7 +663,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/request', component: spotify }, { path: '/dj', component: djSpotify }, { path: '/', component: landing }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/request', component: spotify }, { path: '/dj', component: djSpotify }, { path: '/', component: landing }, { path: '/home', component: home }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

@@ -208,7 +208,7 @@ const landing = Vue.component('landing', {
     mixins: [serviceProvider],
     created: function(){
         setTimeout(()=>{
-            this.$router.push('/request');
+            this.$router.push('/home');
         },3000)
     
     }
@@ -363,7 +363,19 @@ const djSpotify = Vue.component('djSpotify', {
             pendingTrackDetails:[],
             isConnected: false,
             appName: 'blessmyrequest',
-            musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B']
+            musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B'],
+            isVerified: false,
+            passcode: '',
+            location: {},
+            geoLocation: {
+                success:(data)=>{
+                    this.location = data.coords
+                    console.log(data)
+                },
+                error:(data)=>{
+                    console.warn('failed to get location',data)
+                }
+            }
         }
     },
     computed:{
@@ -431,89 +443,121 @@ const djSpotify = Vue.component('djSpotify', {
                     this.controlSocket.emit('newTokenPlease')
                 }                    
             })
-        }
-    },
-    created:function(){
-        this.controlSocket.on('connect', (data)=>{
-            this.isConnected = true
-            console.log('connected my nigga');
-        });
-        this.controlSocket.on('disconnect', (data)=>{
-            // console.log('i am disconnected bro');
-            // alert('i am disconnected bro')
-            this.isConnected = false
-        });
-        this.controlSocket.on('answer',(data)=>{
-            if(data.appName === this.appName){
-                if('task' in data && data.task === 'population'){
-                    console.log('population gwoth complete', data)
-                    this.population.push(data)
-                }
-                if('task' in data && data.task === 'request'){
-                    console.log('request added bruh', data)
-                    let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
-                    console.log(checkIdExist)
-                    if(checkIdExist === -1){
-                        data.song.requestCount = 1
-                        data.song.hide = false
-                        data.song.bpm = ''
-                        this.requestBasket.push(data.song)
-                        this.getTrackBpm(data.song)
-                    }else{
-                        this.requestBasket[checkIdExist].requestCount += 1
+        },
+        verifyPassCode(){
+            if(this.safe(this.passcode)){
+                this.isVerified = true
+                let club = {name:'district',room:this.passcode}
+                this.controlSocket.emit('messages',club)
+            }else{
+                console.log('passcode is failed',this.passcode)
+            }
+        },
+        initializeSocketEvents(){
+            this.controlSocket.on('connect', (data)=>{
+                this.isConnected = true
+                console.log('connected my nigga');
+            });
+            this.controlSocket.on('disconnect', (data)=>{
+                // console.log('i am disconnected bro');
+                // alert('i am disconnected bro')
+                this.isConnected = false
+            });
+            this.controlSocket.on('answer',(data)=>{
+                if(data.appName === this.appName){
+                    if('task' in data && data.task === 'population'){
+                        console.log('population gwoth complete', data)
+                        this.population.push(data)
                     }
-                    this.controlSocket.emit('analytics',{appName:this.appName,requestNumber:this.requestList.length,task:'request'});
-                    
-                }
-                if('task' in data && data.task === 'pendingRequests'){
-                    //pending requests from server will include requests already received before disconnection
-                    //take only the requests we dont have in the requestBasket to avoid double counting of requests
-                    const addUp = (accumulator, currentValue) => accumulator + currentValue
-                    let totalRequestsReceived = 0 //default
-                    if(this.requestBasket.length > 0){
-                        totalRequestsReceived = this.requestBasket.map(item => item.requestCount).reduce(addUp)
-                    }
-                    
-                    let onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived)
-                    onlyNewPendingRequests.forEach((request)=>{
-                        let checkIdExist = this.requestBasket.findIndex((item) => item.id === request.song.id)
+                    if('task' in data && data.task === 'request'){
+                        console.log('request added bruh', data)
+                        let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
                         console.log(checkIdExist)
                         if(checkIdExist === -1){
-                            request.song.requestCount = 1
-                            request.song.hide = false
-                            request.song.bpm = ''
-                            this.requestBasket.push(request.song)
-                            this.getTrackBpm(request.song)
+                            data.song.requestCount = 1
+                            data.song.hide = false
+                            data.song.bpm = ''
+                            this.requestBasket.push(data.song)
+                            this.getTrackBpm(data.song)
                         }else{
                             this.requestBasket[checkIdExist].requestCount += 1
                         }
-                    })
+                        this.controlSocket.emit('analytics',{appName:this.appName,requestNumber:this.requestList.length,task:'request'});
+                        
+                    }
+                    if('task' in data && data.task === 'pendingRequests'){
+                        //pending requests from server will include requests already received before disconnection
+                        //take only the requests we dont have in the requestBasket to avoid double counting of requests
+                        const addUp = (accumulator, currentValue) => accumulator + currentValue
+                        let totalRequestsReceived = 0 //default
+                        if(this.requestBasket.length > 0){
+                            totalRequestsReceived = this.requestBasket.map(item => item.requestCount).reduce(addUp)
+                        }
+                        
+                        let onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived)
+                        onlyNewPendingRequests.forEach((request)=>{
+                            let checkIdExist = this.requestBasket.findIndex((item) => item.id === request.song.id)
+                            console.log(checkIdExist)
+                            if(checkIdExist === -1){
+                                request.song.requestCount = 1
+                                request.song.hide = false
+                                request.song.bpm = ''
+                                this.requestBasket.push(request.song)
+                                this.getTrackBpm(request.song)
+                            }else{
+                                this.requestBasket[checkIdExist].requestCount += 1
+                            }
+                        })
+                    }
                 }
-            }
-            
-        })
-        this.controlSocket.on('newToken',(data)=>{
-            this.$store.commit('accessToken',data)
-            if(this.pendingTrackDetails.length > 0){
-                let tracks = this.pendingTrackDetails
-                this.pendingTrackDetails = []
-                tracks.forEach((item)=>{
-                    this.getTrackBpm(item)
-                })                
-            }
-        });
-        this.controlSocket.on('reconnect', (data)=>{
-            // console.log('i am reconnected bitch');
-            // alert('i am reconnected bitch')
-            this.isConnected = true
-            this.controlSocket.emit('updateRequests')
-        });
-        
+                
+            })
+            this.controlSocket.on('newToken',(data)=>{
+                this.$store.commit('accessToken',data)
+                if(this.pendingTrackDetails.length > 0){
+                    let tracks = this.pendingTrackDetails
+                    this.pendingTrackDetails = []
+                    tracks.forEach((item)=>{
+                        this.getTrackBpm(item)
+                    })                
+                }
+            });
+            this.controlSocket.on('reconnect', (data)=>{
+                // console.log('i am reconnected bitch');
+                // alert('i am reconnected bitch')
+                this.isConnected = true
+                this.controlSocket.emit('updateRequests')
+            });
+            this.controlSocket.on('room', (data)=>{
+                console.log(data);
+            });
+        }
+    },
+    created:function(){
+        navigator.geolocation.getCurrentPosition(this.geoLocation.success,this.geoLocation.error)
+        this.initializeSocketEvents()        
     },
     destroyed: function(){
         //console.log('damn son am out')
         this.controlSocket.close()
     }
+})
+
+const home = Vue.component('home',{
+    template:`
+        <div class="container">
+            <div class="row">
+                <router-link to="/request">
+                    <button class="btn btn-large">Find My DJ</button>
+                </router-link>
+            </div>
+            <div class="row">
+                <router-link to="/dj">
+                    <button class="btn btn-large">I'm The DJ</button>
+                </router-link>
+            </div>
+        </div>
+    `
 })
 
 Vue.component('modal',{
@@ -579,6 +623,7 @@ Vue.component('adsense',{
             style="display:block"
             data-ad-client="ca-pub-8868040855394757"
             data-ad-slot="1741308624"></ins>
+    </div>
     `,
     mixins: [serviceProvider],
     mounted(){
@@ -629,6 +674,7 @@ const routes = [
   { path: '/request', component: spotify },
   { path: '/dj', component: djSpotify },
   { path: '/', component: landing },
+  { path: '/home', component: home },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({

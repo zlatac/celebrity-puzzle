@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -39,7 +39,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
     <!-- <script src="scripts/tones.js"></script> -->
-    <script src="https://mochanow.com/lib/socket.io.js"></script>
+    <script src="http://mochanow.com/lib/socket.io.js"></script>
 </head>
 <body>
     <div id="myapp">
@@ -131,7 +131,16 @@
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;">
-                    <div class="row valign-wrapper"  style="margin-bottom: 0px;">
+                    <!-- DJ pass code verification needed -->
+                    <div class="row" v-if="!isVerified">
+                        <div class="col s9">
+                            <input type="password" name="q" placeholder="DJ PASS CODE" v-model="passcode" 
+                                    v-inputHighlight autocomplete="off" maxlength="5" style="font-size:36px;">
+                        </div>
+                        <div class="col s3"><button class="btn" @click="verifyPassCode">submit</button></div>
+                    </div>
+                    <!-- DJ pass code verified -->
+                    <div class="row valign-wrapper"  style="margin-bottom: 0px;" v-if="isVerified">
                         <div class="col s4">
                             <img src="https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg" 
                                  alt="" class="circle animated infinite" width="90px" height="90px" v-imgfallback
