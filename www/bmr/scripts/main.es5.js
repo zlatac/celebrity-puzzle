@@ -175,6 +175,7 @@ var serviceProvider = {
             }
         },
         trackAction: function trackAction(dataObject) {
+            dataObject.clubId = this.appName;
             var payload = JSON.stringify(dataObject);
             axios.post('https://styleminions.co/api/blessmyrequest?payload=' + payload);
         },

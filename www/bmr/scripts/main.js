@@ -158,6 +158,7 @@ const serviceProvider = {
                     
         },
         trackAction(dataObject){
+            dataObject.clubId = this.appName
             let payload = JSON.stringify(dataObject)
             axios.post(`https://styleminions.co/api/blessmyrequest?payload=${payload}`)
         },
