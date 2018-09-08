@@ -228,8 +228,23 @@ var landing = Vue.component('landing', {
         var _this2 = this;
 
         setTimeout(function () {
-            _this2.$router.push('/request');
+            _this2.$router.push('/home');
         }, 3000);
+    }
+});
+
+var home = Vue.component('home', {
+    template: '\n        <div>\n        <h4 class="center-align white-text" style="margin-bottom:40px;">Select Your Club</h4>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px">\n                        </div>\n                    </div>\n                    <div class="col s5">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.location}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)"">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
+    mixins: [serviceProvider],
+    computed: {
+        clubs: function clubs() {
+            return this.$store.state.clubs;
+        }
+    },
+    methods: {
+        joinRoom: function joinRoom(id) {
+            this.$router.push('/request/' + id.id);
+        }
     }
 });
 
@@ -241,7 +256,6 @@ var spotify = Vue.component('spotify', {
             searchInput: '',
             searchResult: [],
             metrics: { requestNumber: 0 },
-            appName: 'blessmyrequest',
             accessNumber: 0,
             pendingSearch: [],
             requestedSongs: [],
@@ -251,6 +265,12 @@ var spotify = Vue.component('spotify', {
     computed: {
         socket: function socket() {
             return this.webSocket();
+        },
+        appName: function appName() {
+            return String(this.$route.params.id);
+        },
+        club: function club() {
+            return this.$store.state.clubs[this.appName];
         }
     },
     methods: {
@@ -320,7 +340,7 @@ var spotify = Vue.component('spotify', {
         goToDjView: function goToDjView() {
             this.accessNumber++;
             if (this.accessNumber === 4) {
-                this.$router.push('/dj');
+                this.$router.push('/dj/' + this.appName);
             }
         },
         alreadyRequested: function alreadyRequested(payload) {
@@ -383,7 +403,6 @@ var djSpotify = Vue.component('djSpotify', {
             population: [],
             pendingTrackDetails: [],
             isConnected: false,
-            appName: 'blessmyrequest',
             musicNotes: ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B']
         };
     },
@@ -414,6 +433,12 @@ var djSpotify = Vue.component('djSpotify', {
             } else {
                 return this.requestBasket;
             }
+        },
+        club: function club() {
+            return this.$store.state.clubs[this.appName];
+        },
+        appName: function appName() {
+            return String(this.$route.params.id);
         }
     },
     methods: {
@@ -469,6 +494,7 @@ var djSpotify = Vue.component('djSpotify', {
             _this6.isConnected = false;
         });
         this.controlSocket.on('answer', function (data) {
+            console.log(data);
             if (data.appName === _this6.appName) {
                 if ('task' in data && data.task === 'population') {
                     console.log('population gwoth complete', data);
@@ -583,7 +609,7 @@ Vue.directive('inputHighlight', {
     }
 });
 Vue.component('adsense', {
-    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    ',
+    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
     mounted: function mounted() {
         this.modalAdsense();
@@ -617,7 +643,22 @@ var store = new Vuex.Store({
     //state management in VUE
     state: {
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-        accessToken: null
+        accessToken: null,
+        clubs: {
+            "222": {
+                name: 'Dstrct Lounge',
+                image: 'https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg',
+                location: 'Guelph',
+                id: 222
+            },
+            "444": {
+                name: 'Lavo Ultra Lounge',
+                image: 'https://instagram.fyto1-1.fna.fbcdn.net/vp/041688062a716ba91f9b7ad1ff8a17bc/5C280F78/t51.2885-19/s150x150/30604238_192226541572010_7830072766152835072_n.jpg',
+                location: 'Nashville',
+                id: 444
+            }
+
+        }
     },
     mutations: {
         url: function url(state, data) {
@@ -629,7 +670,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/request', component: spotify }, { path: '/dj', component: djSpotify }, { path: '/', component: landing }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/request/:id', component: spotify }, { path: '/dj/:id', component: djSpotify }, { path: '/', component: landing }, { path: '/home', component: home }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

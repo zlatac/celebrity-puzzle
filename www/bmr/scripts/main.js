@@ -208,9 +208,47 @@ const landing = Vue.component('landing', {
     mixins: [serviceProvider],
     created: function(){
         setTimeout(()=>{
-            this.$router.push('/request');
+            this.$router.push('/home');
         },3000)
     
+    }
+});
+
+const home = Vue.component('home', {
+    template:`
+        <div>
+        <h4 class="center-align white-text" style="margin-bottom:40px;">Select Your Club</h4>
+            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">
+                <div class="row">
+                    <div class="col s4">
+                        <div style="position: relative;">
+                            <img class="circle" :src="x.image" width="70px">
+                        </div>
+                    </div>
+                    <div class="col s5">
+                        {{x.name}}
+                        <p class="grey-text p-space">{{x.location}}</p>
+                        
+                    </div>
+                    <div class="col s3">
+                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)"">
+                            <i class="material-icons">send</i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `,
+    mixins: [serviceProvider],
+    computed:{
+        clubs(){
+            return this.$store.state.clubs
+        }
+    },
+    methods:{
+        joinRoom(id){
+            this.$router.push(`/request/${id.id}`)
+        }
     }
 });
 
@@ -222,7 +260,6 @@ const spotify = Vue.component('spotify',{
             searchInput: '',
             searchResult: [],
             metrics:{requestNumber:0},
-            appName: 'blessmyrequest',
             accessNumber:0,
             pendingSearch: [],
             requestedSongs:[],
@@ -232,6 +269,12 @@ const spotify = Vue.component('spotify',{
     computed:{
         socket(){
             return this.webSocket()
+        },
+        appName(){
+            return String(this.$route.params.id)
+        },
+        club(){
+            return this.$store.state.clubs[this.appName]
         }
     },
     methods: {
@@ -302,7 +345,7 @@ const spotify = Vue.component('spotify',{
         goToDjView(){
             this.accessNumber++
             if(this.accessNumber === 4){
-                this.$router.push('/dj')
+                this.$router.push(`/dj/${this.appName}`)
             }
         },
         alreadyRequested(payload){
@@ -362,7 +405,6 @@ const djSpotify = Vue.component('djSpotify', {
             population: [],
             pendingTrackDetails:[],
             isConnected: false,
-            appName: 'blessmyrequest',
             musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B']
         }
     },
@@ -394,7 +436,13 @@ const djSpotify = Vue.component('djSpotify', {
                 return this.requestBasket
             }
             
-        }
+        },
+        club(){
+            return this.$store.state.clubs[this.appName]
+        },
+        appName(){
+            return String(this.$route.params.id)
+        },
     },
     methods: {
         hideRequest(payload){
@@ -444,6 +492,7 @@ const djSpotify = Vue.component('djSpotify', {
             this.isConnected = false
         });
         this.controlSocket.on('answer',(data)=>{
+            console.log(data)
             if(data.appName === this.appName){
                 if('task' in data && data.task === 'population'){
                     console.log('population gwoth complete', data)
@@ -579,6 +628,7 @@ Vue.component('adsense',{
             style="display:block"
             data-ad-client="ca-pub-8868040855394757"
             data-ad-slot="1741308624"></ins>
+    </div>
     `,
     mixins: [serviceProvider],
     mounted(){
@@ -613,7 +663,22 @@ const store = new Vuex.Store({
     //state management in VUE
     state:{
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-        accessToken:null
+        accessToken:null,
+        clubs:{
+            "222": {
+                name:'Dstrct Lounge',
+                image:'https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg',
+                location:'Guelph',
+                id:222
+            },
+            "444":{
+                name:'Lavo Ultra Lounge',
+                image:'https://instagram.fyto1-1.fna.fbcdn.net/vp/041688062a716ba91f9b7ad1ff8a17bc/5C280F78/t51.2885-19/s150x150/30604238_192226541572010_7830072766152835072_n.jpg',
+                location:'Nashville',
+                id:444
+            },
+
+        }
     },
     mutations:{
         url(state, data){
@@ -626,9 +691,10 @@ const store = new Vuex.Store({
 })
 
 const routes = [
-  { path: '/request', component: spotify },
-  { path: '/dj', component: djSpotify },
+  { path: '/request/:id', component: spotify },
+  { path: '/dj/:id', component: djSpotify },
   { path: '/', component: landing },
+  { path: '/home', component: home },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({

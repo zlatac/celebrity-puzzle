@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -61,10 +61,10 @@
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
                     <div class="row" style="margin-bottom: 0px;">
-                        <img src="https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg" 
+                        <img :src="club.image" 
                              alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
                              :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}" v-imgfallback>
-                        <p class="zero-margin">Dstrct Lounge <span class="grey-text animated fadeIn" v-show="!isConnected">- Reconnecting...</span></p>
+                        <p class="zero-margin">{{club.name}} <span class="grey-text animated fadeIn" v-show="!isConnected">- Reconnecting...</span></p>
                         <p class="zero-margin-bottom">
                             <!-- <span><i class="material-icons">people</i>56</span> -->
                             <span class="chip">{{metrics.requestNumber}} Requests</span> 
@@ -133,7 +133,7 @@
                 <div class="card-panel" style="margin-top: 0px;">
                     <div class="row valign-wrapper"  style="margin-bottom: 0px;">
                         <div class="col s4">
-                            <img src="https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg" 
+                            <img :src="club.image" 
                                  alt="" class="circle animated infinite" width="90px" height="90px" v-imgfallback
                                  :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
