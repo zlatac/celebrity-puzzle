@@ -11,7 +11,8 @@ const serviceProvider = {
             volume: true,
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             isConnected: false,
-            adsenseServed:false
+            adsenseServed:false,
+            logo:"https://instagram.fyyz1-1.fna.fbcdn.net/vp/ad767216f2e2d2cc5f8493615ab09ab7/5C39A11E/t51.2885-15/e35/38996679_713264049016844_6242442262714777600_n.jpg"
         }
     },
     computed:{
@@ -144,6 +145,15 @@ const serviceProvider = {
             }
             
         },
+        validateId(){
+            let club = this.$store.state.clubs.findIndex((item) => String(item.id) === this.appName)
+            if(club === -1){
+                this.$router.push('/home')
+            }
+        },
+        getClubData(){
+            return this.$store.state.clubs.find((item) => String(item.id) === this.appName)
+        },
         inputHighlight(){
             let input = document.querySelector('#search')
             input.focus()
@@ -218,7 +228,30 @@ const landing = Vue.component('landing', {
 const home = Vue.component('home', {
     template:`
         <div>
-        <h4 class="center-align white-text" style="margin-bottom:40px;">Select Your Club</h4>
+            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">
+                Select Your Club
+            </h4>
+            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"
+                 @click="toggleSearch" v-show="!isSearchFocused">
+                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:7px;" v-show="!showSearch"></i>
+                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:7px;" v-show="showSearch"></i>
+            </div>
+            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;
+                    margin-top:20px;" v-show="showSearch">
+                <form  novalidate @submit.stop.prevent="searchClub">
+                    <div class="col s12">
+                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" 
+                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">
+                    </div>
+                </form>
+            </div>
+            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">
+                <div class="row">
+                    <div class="col s12 center">
+                        <p><b>Sorry!! Can't find "{{inputSearch}}".</b></p>
+                    </div>
+                </div>
+            </div>
             <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">
                 <div class="row">
                     <div class="col s4">
@@ -241,14 +274,47 @@ const home = Vue.component('home', {
         </div>
     `,
     mixins: [serviceProvider],
+    data: function(){
+        return{
+            showSearch:false,
+            isSearchFocused:false,
+            inputSearch:''
+        }
+    },
     computed:{
         clubs(){
+            if(this.safe(this.inputSearch)){
+                return this.$store.state.clubs.filter((item)=>{
+                    let search = this.inputSearch.toLowerCase()
+                    return item.name.toLowerCase().includes(search)
+                })
+            }
             return this.$store.state.clubs
         }
     },
     methods:{
         joinRoom(id){
             this.$router.push(`/request/${id.id}`)
+        },
+        resetInput(){
+            this.inputSearch = ''
+        },
+        toggleSearch(){
+            switch(this.showSearch){
+                case true:
+                    this.showSearch = false;
+                    this.resetInput()
+                    break;
+                case false:
+                    this.showSearch = true;
+                    break
+                default:
+                    this.showSearch = false;
+                    break;
+            }
+        },
+        searchClub(){
+
         }
     }
 });
@@ -275,7 +341,7 @@ const spotify = Vue.component('spotify',{
             return String(this.$route.params.id)
         },
         club(){
-            return this.$store.state.clubs[this.appName]
+            return this.getClubData()
         }
     },
     methods: {
@@ -357,6 +423,7 @@ const spotify = Vue.component('spotify',{
         }
     },
     created: function(){
+        this.validateId()
         this.socket.on('connect', (data)=>{
             this.isConnected = true
             this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'population'});
@@ -439,7 +506,7 @@ const djSpotify = Vue.component('djSpotify', {
             
         },
         club(){
-            return this.$store.state.clubs[this.appName]
+            return this.getClubData()
         },
         appName(){
             return String(this.$route.params.id)
@@ -483,6 +550,7 @@ const djSpotify = Vue.component('djSpotify', {
         }
     },
     created:function(){
+        this.validateId()
         this.controlSocket.on('connect', (data)=>{
             this.isConnected = true
             console.log('connected my nigga');
@@ -606,8 +674,9 @@ Vue.component('spinner',{
     `
 });
 Vue.directive('inputHighlight', {
-    bind: function(el,binding){
+    bind: function(el,binding,vnode){
         el.onfocus = function(){
+            vnode.context.isSearchFocused = true
             if(el.value !== ''){
                 el.setSelectionRange(0, 9999)
             } 
@@ -618,6 +687,24 @@ Vue.directive('inputHighlight', {
                 el.blur()
             }
             //console.log('am submitted',event) 
+        }
+        el.onblur = function(){
+            vnode.context.isSearchFocused = false
+            console.log('not in focus anymore')
+            //vnode.context.toggleSearch()
+
+        }
+    },
+    componentUpdated: function(el,binding,vnode,oldVnode){
+        console.log('a change happened for the directive',vnode)
+        if(binding.value !== binding.oldValue){
+            console.log('now i have a reason to do stuff')
+            if(binding.value === true){
+                el.focus()
+            }
+            if(binding.value === false){
+                el.blur()
+            }
         }
     }
 });
@@ -665,21 +752,21 @@ const store = new Vuex.Store({
     state:{
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         accessToken:null,
-        clubs:{
-            "222": {
+        clubs:[
+            {
                 name:'Dstrct Lounge',
                 image:'https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg',
                 location:'Guelph',
                 id:222
             },
-            "444":{
+            {
                 name:'Lavo Ultra Lounge',
                 image:'https://instagram.fyto1-1.fna.fbcdn.net/vp/041688062a716ba91f9b7ad1ff8a17bc/5C280F78/t51.2885-19/s150x150/30604238_192226541572010_7830072766152835072_n.jpg',
                 location:'Nashville',
                 id:444
             },
 
-        }
+        ]
     },
     mutations:{
         url(state, data){

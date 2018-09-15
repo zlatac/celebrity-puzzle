@@ -81,3 +81,15 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     width: 320px; 
     height: 50px;
 }
+
+.fab-menu{
+    position: fixed;
+    bottom: 5%;
+    right: 3%;
+    background: var(--main);
+}
+.btn-floating.btn-large.fab-menu {
+    width: 68px;
+    height: 68px;
+    padding: 0;
+}

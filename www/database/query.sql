@@ -9,3 +9,5 @@ SELECT b.name,b.playtime AS realtime,a.time,a.category,a.short_code,a.profile_ur
 (SELECT name, min(playtime) as playtime FROM TABLE WHERE time > ? AND leaderboard = 1 GROUP BY name)
 AS b ON a.name = b.name AND a.playtime = b.playtime WHERE time > ? AND leaderboard = 1 
 GROUP BY name ORDER BY realtime ASC LIMIT 100
+
+
