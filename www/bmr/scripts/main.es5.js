@@ -717,7 +717,7 @@ var store = new Vuex.Store({
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         accessToken: null,
         clubs: [{
-            name: 'Dstrct Lounge',
+            name: 'Dstrct Lounge - 3rd Floor',
             image: 'https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg',
             location: 'Guelph',
             id: 222
