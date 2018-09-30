@@ -1,12 +1,12 @@
 :root {
-    --main:linear-gradient(to right, #92fe9d 0%, #00c9ff 100%);
+    --main:linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%);
     --dark-theme:#252525;
 }
 html { 
     background-color: var(--dark-theme); 
 }
 
-.background {
+/* .background {
     position: absolute;
     left: 0;
     top: 0;
@@ -16,7 +16,7 @@ html {
     z-index: -5;
     background-image: url(https://images.pexels.com/photos/156151/pexels-photo-156151.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940);
     background-position: center;
-}
+} */
 .color-overlay {
     position: absolute;
     left: 0;
@@ -24,7 +24,7 @@ html {
     height: 100%;
     width: 100%;
     z-index: -4;
-    opacity: 0.6;
+    /* opacity: 0.6; */
     background: var(--main);
 }
 .spinner-white-only{
@@ -89,7 +89,7 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     background: var(--main);
 }
 .btn-floating.btn-large.fab-menu {
-    width: 68px;
-    height: 68px;
+    width: 60px;
+    height: 60px;
     padding: 0;
 }

@@ -12,7 +12,7 @@ const serviceProvider = {
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             isConnected: false,
             adsenseServed:false,
-            logo:"https://instagram.fyyz1-1.fna.fbcdn.net/vp/ad767216f2e2d2cc5f8493615ab09ab7/5C39A11E/t51.2885-15/e35/38996679_713264049016844_6242442262714777600_n.jpg"
+            logo:"https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q"
         }
     },
     computed:{
@@ -40,8 +40,8 @@ const serviceProvider = {
         if (tooltip) M.Tooltip.init(tooltip);
                             
     },
-    beforeCreate: function(){
-        
+    created: function(){
+        this.validateClubListState()
     },
     methods:{
         safe : function safe (a){
@@ -151,6 +151,12 @@ const serviceProvider = {
                 this.$router.push('/home')
             }
         },
+        validateClubListState(){
+            let landingRoute = this.$route.name === '/'
+            if(this.$store.state.clubs.length === 0 && !landingRoute){
+                this.$router.push('/')
+            }
+        },
         getClubData(){
             return this.$store.state.clubs.find((item) => String(item.id) === this.appName)
         },
@@ -218,9 +224,28 @@ const landing = Vue.component('landing', {
     template:'#landing',
     mixins: [serviceProvider],
     created: function(){
-        setTimeout(()=>{
-            this.$router.push('/home');
-        },3000)
+        fetch(`https://styleminions.co/api/bmrclients`)
+        .then((res)=>{
+            if(res.status === 200){
+                return res.json()
+            }else{
+                return 'fail'
+            }                           
+        })
+        .catch((err)=>{
+            console.log(new Error(err))
+        })
+        .then((res)=>{
+            if(res !== 'fail'){
+                this.$store.commit('clubs',res)
+                setTimeout(()=>{
+                    this.$router.push('/home');
+                },2000)
+            }else if(res === 'fail'){
+    
+            }                    
+        })
+        
     
     }
 });
@@ -233,8 +258,8 @@ const home = Vue.component('home', {
             </h4>
             <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"
                  @click="toggleSearch" v-show="!isSearchFocused">
-                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:7px;" v-show="!showSearch"></i>
-                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:7px;" v-show="showSearch"></i>
+                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>
+                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>
             </div>
             <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;
                     margin-top:20px;" v-show="showSearch">
@@ -752,21 +777,7 @@ const store = new Vuex.Store({
     state:{
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         accessToken:null,
-        clubs:[
-            {
-                name:'Dstrct Lounge - 3rd Floor',
-                image:'https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg',
-                location:'Guelph',
-                id:222
-            },
-            {
-                name:'Lavo Ultra Lounge',
-                image:'https://instagram.fyto1-1.fna.fbcdn.net/vp/041688062a716ba91f9b7ad1ff8a17bc/5C280F78/t51.2885-19/s150x150/30604238_192226541572010_7830072766152835072_n.jpg',
-                location:'Nashville',
-                id:444
-            },
-
-        ]
+        clubs:[]
     },
     mutations:{
         url(state, data){
@@ -774,6 +785,9 @@ const store = new Vuex.Store({
         },
         accessToken(state,data){
             state.accessToken = data;
+        },
+        clubs(state,data){
+            state.clubs = data;
         }
     }
 })

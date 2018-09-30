@@ -14,7 +14,7 @@ var serviceProvider = {
             noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             isConnected: false,
             adsenseServed: false,
-            logo: "https://instagram.fyyz1-1.fna.fbcdn.net/vp/ad767216f2e2d2cc5f8493615ab09ab7/5C39A11E/t51.2885-15/e35/38996679_713264049016844_6242442262714777600_n.jpg"
+            logo: "https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q"
         };
     },
     computed: {
@@ -40,7 +40,9 @@ var serviceProvider = {
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
     },
-    beforeCreate: function beforeCreate() {},
+    created: function created() {
+        this.validateClubListState();
+    },
     methods: {
         safe: function safe(a) {
             if (a === undefined || a === null || a === '') {
@@ -173,6 +175,12 @@ var serviceProvider = {
                 this.$router.push('/home');
             }
         },
+        validateClubListState: function validateClubListState() {
+            var landingRoute = this.$route.name === '/';
+            if (this.$store.state.clubs.length === 0 && !landingRoute) {
+                this.$router.push('/');
+            }
+        },
         getClubData: function getClubData() {
             var _this3 = this;
 
@@ -246,14 +254,27 @@ var landing = Vue.component('landing', {
     created: function created() {
         var _this4 = this;
 
-        setTimeout(function () {
-            _this4.$router.push('/home');
-        }, 3000);
+        fetch('https://styleminions.co/api/bmrclients').then(function (res) {
+            if (res.status === 200) {
+                return res.json();
+            } else {
+                return 'fail';
+            }
+        }).catch(function (err) {
+            console.log(new Error(err));
+        }).then(function (res) {
+            if (res !== 'fail') {
+                _this4.$store.commit('clubs', res);
+                setTimeout(function () {
+                    _this4.$router.push('/home');
+                }, 2000);
+            } else if (res === 'fail') {}
+        });
     }
 });
 
 var home = Vue.component('home', {
-    template: '\n        <div>\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:7px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:7px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px">\n                        </div>\n                    </div>\n                    <div class="col s5">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.location}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)"">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
+    template: '\n        <div>\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px">\n                        </div>\n                    </div>\n                    <div class="col s5">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.location}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)"">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -716,17 +737,7 @@ var store = new Vuex.Store({
     state: {
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         accessToken: null,
-        clubs: [{
-            name: 'Dstrct Lounge - 3rd Floor',
-            image: 'https://scontent-yyz1-1.cdninstagram.com/vp/f4b55339abe6e23a49ec3b745bb6a344/5BBBFA95/t51.2885-19/10005336_738724742906786_974893778_a.jpg',
-            location: 'Guelph',
-            id: 222
-        }, {
-            name: 'Lavo Ultra Lounge',
-            image: 'https://instagram.fyto1-1.fna.fbcdn.net/vp/041688062a716ba91f9b7ad1ff8a17bc/5C280F78/t51.2885-19/s150x150/30604238_192226541572010_7830072766152835072_n.jpg',
-            location: 'Nashville',
-            id: 444
-        }]
+        clubs: []
     },
     mutations: {
         url: function url(state, data) {
@@ -734,6 +745,9 @@ var store = new Vuex.Store({
         },
         accessToken: function accessToken(state, data) {
             state.accessToken = data;
+        },
+        clubs: function clubs(state, data) {
+            state.clubs = data;
         }
     }
 });
