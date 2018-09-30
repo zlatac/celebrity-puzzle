@@ -284,9 +284,9 @@ const home = Vue.component('home', {
                             <img class="circle" :src="x.image" width="70px">
                         </div>
                     </div>
-                    <div class="col s5">
+                    <div class="col s5" style="text-transform:capitalize;">
                         {{x.name}}
-                        <p class="grey-text p-space">{{x.location}}</p>
+                        <p class="grey-text p-space">{{x.city}}</p>
                         
                     </div>
                     <div class="col s3">
@@ -311,7 +311,7 @@ const home = Vue.component('home', {
             if(this.safe(this.inputSearch)){
                 return this.$store.state.clubs.filter((item)=>{
                     let search = this.inputSearch.toLowerCase()
-                    return item.name.toLowerCase().includes(search)
+                    return item.name.toLowerCase().includes(search) || item.city.toLowerCase().includes(search)
                 })
             }
             return this.$store.state.clubs
