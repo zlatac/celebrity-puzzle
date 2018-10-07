@@ -173,6 +173,44 @@
     </div>
     
 </script>
+<script type="text/x-template" id="report">
+    <div>
+        <h4 class="center-align white-text" style="margin-bottom:40px;">
+            Report
+        </h4>
+        <div class="row">
+            <div class="col s6">
+                <select name="clubs" v-model="clientId" @change="getReport" class="white">
+                    <option value="">All</option>
+                    <option :value="item.id" :key="index" v-for="(item, index) in clubs">{{item.name}}</option>
+                </select>
+            </div>
+            <div class="col s6">
+                <input type="text" class="datepicker white">
+            </div>
+        </div>
+        <div class="row center-align">
+            <spinner :colorClass="'default'" v-show="loader"></spinner>
+        </div>
+        <div class="card dark-card animated fadeInUp" v-for="(x, index) in reportDisplay" v-show="!loader">
+            <div class="row">
+                <div class="col s4">
+                    <div style="position: relative;">
+                        <img class="circle" :src="x.image" width="70px">
+                    </div>
+                </div>
+                <div class="col s5" style="text-transform:capitalize;">
+                    {{x.name}}
+                    <p class="grey-text p-space">{{x.city}}</p>
+                    
+                </div>
+                <div class="col s3">
+                    S:{{x.totalSearch}} | R:{{x.totalRequest}}
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <script src="bmr/scripts/main.es5.js"></script>
 </body>

@@ -274,7 +274,7 @@ var landing = Vue.component('landing', {
 });
 
 var home = Vue.component('home', {
-    template: '\n        <div>\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px">\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)"">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
+    template: '\n        <div>\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px">\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -288,6 +288,10 @@ var home = Vue.component('home', {
             var _this5 = this;
 
             if (this.safe(this.inputSearch)) {
+                if (this.inputSearch.toLowerCase() === 'bmr report') {
+                    this.$router.push('/report');
+                    return;
+                }
                 return this.$store.state.clubs.filter(function (item) {
                     var search = _this5.inputSearch.toLowerCase();
                     return item.name.toLowerCase().includes(search) || item.city.toLowerCase().includes(search);
@@ -647,6 +651,96 @@ var djSpotify = Vue.component('djSpotify', {
     }
 });
 
+var report = Vue.component('report', {
+    template: '#report',
+    mixins: [serviceProvider],
+    data: function data() {
+        return {
+            reportDate: '',
+            clientId: '',
+            reportResponse: [],
+            reportDisplay: []
+        };
+    },
+    computed: {
+        clubs: function clubs() {
+            return this.$store.state.clubs;
+        }
+    },
+    methods: {
+        getReport: function getReport() {
+            var _this10 = this;
+
+            var params = { clubId: this.clientId, date: this.reportDate };
+            if (this.safe(this.reportDate)) {
+                this.loader = true;
+                axios.get('https://styleminions.co/api/bmr-report', { params: params }).then(function (res) {
+                    _this10.reportResponse = res.data;
+                    _this10.buildReport();
+                });
+            }
+        },
+        getSelectedDate: function getSelectedDate(date) {
+            console.log(date);
+            this.reportDate = moment(date).format('YYYY-MM-DD');
+        },
+        buildReport: function buildReport() {
+            var _this11 = this;
+
+            var clubs = this.clubs;
+            var clubMapping = new Map();
+            for (var index in clubs) {
+                clubMapping.set(clubs[index].id, index);
+                clubs[index].search = [];
+                clubs[index].request = [];
+                clubs[index].totalSearch = 0;
+                clubs[index].totalRequest = 0;
+            }
+
+            this.reportResponse.forEach(function (item) {
+                var index = clubMapping.get(item.clubId);
+                switch (item.trackTask) {
+                    case 'search':
+                        clubs[index].search.push(item);
+                        clubs[index].totalSearch++;
+                        break;
+                    case 'request':
+                        clubs[index].request.push(item);
+                        clubs[index].totalRequest++;
+                        break;
+                }
+            });
+            console.log(clubMapping, clubs);
+            this.reportDisplay = !this.safe(this.clientId) ? clubs.sort(function (a, b) {
+                return b.totalRequest - a.totalRequest;
+            }) : clubs.filter(function (item) {
+                return item.id === _this11.clientId;
+            });
+            this.$forceUpdate();
+            this.loader = false;
+        }
+    },
+    mounted: function mounted() {
+        //Setup for MaterializeCss select plugin on the browser
+        var elems = document.querySelectorAll('select');
+        var options = {};
+        var today = new Date();
+        var datePickerOptions = {
+            format: 'yyyy-mm-dd',
+            defaultDate: today,
+            setDefaultDate: true,
+            maxDate: today,
+            onSelect: this.getSelectedDate,
+            onClose: this.getReport,
+            autoClose: true
+        };
+        this.selectInstances = M.FormSelect.init(elems, options);
+        //Setup datepicker
+        var datepicker = document.querySelectorAll('.datepicker');
+        var instances = M.Datepicker.init(datepicker, datePickerOptions);
+    }
+});
+
 Vue.component('modal', {
     props: ['modalData', 'test', 'url', 'modalPage', 'urlChallenge', 'challenger'],
     template: '#comp-modal',
@@ -752,7 +846,7 @@ var store = new Vuex.Store({
     }
 });
 
-var routes = [{ path: '/request/:id', component: spotify }, { path: '/dj/:id', component: djSpotify }, { path: '/', component: landing }, { path: '/home', component: home }, { path: '*', redirect: '/' }];
+var routes = [{ path: '/request/:id', component: spotify }, { path: '/dj/:id', component: djSpotify }, { path: '/', component: landing }, { path: '/home', component: home }, { path: '/report', component: report }, { path: '*', redirect: '/' }];
 var router = new VueRouter({
     routes: routes // short for `routes: routes`
 });

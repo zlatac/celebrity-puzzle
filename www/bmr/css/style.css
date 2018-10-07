@@ -93,3 +93,6 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     height: 60px;
     padding: 0;
 }
+input.select-dropdown{
+    background-color: white !important;
+}

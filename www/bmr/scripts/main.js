@@ -290,7 +290,7 @@ const home = Vue.component('home', {
                         
                     </div>
                     <div class="col s3">
-                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)"">
+                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">
                             <i class="material-icons">send</i>
                         </span>
                     </div>
@@ -309,6 +309,10 @@ const home = Vue.component('home', {
     computed:{
         clubs(){
             if(this.safe(this.inputSearch)){
+                if(this.inputSearch.toLowerCase() === 'bmr report'){
+                    this.$router.push('/report')
+                    return
+                }
                 return this.$store.state.clubs.filter((item)=>{
                     let search = this.inputSearch.toLowerCase()
                     return item.name.toLowerCase().includes(search) || item.city.toLowerCase().includes(search)
@@ -659,6 +663,92 @@ const djSpotify = Vue.component('djSpotify', {
     }
 })
 
+const report = Vue.component('report', {
+    template:'#report',
+    mixins: [serviceProvider],
+    data: function(){
+        return{
+            reportDate:'',
+            clientId:'',
+            reportResponse: [],
+            reportDisplay: []
+        }
+    },
+    computed:{
+        clubs(){
+            return this.$store.state.clubs
+        }
+    },
+    methods:{
+        getReport(){
+            const params = {clubId: this.clientId,date:this.reportDate}
+            if(this.safe(this.reportDate)){
+                this.loader = true
+                axios.get('https://styleminions.co/api/bmr-report', {params})
+                .then((res)=>{
+                    this.reportResponse = res.data
+                    this.buildReport()
+                })
+            }  
+        },
+        getSelectedDate(date){
+            console.log(date)
+            this.reportDate = moment(date).format('YYYY-MM-DD')
+        },
+        buildReport(){
+            let clubs = this.clubs
+            let clubMapping = new Map()
+            for(let index in clubs){
+                clubMapping.set(clubs[index].id, index)
+                clubs[index].search = []
+                clubs[index].request = []
+                clubs[index].totalSearch = 0
+                clubs[index].totalRequest = 0
+            }
+            
+            this.reportResponse.forEach((item)=>{
+                const index = clubMapping.get(item.clubId)
+                switch(item.trackTask){
+                    case 'search':
+                        clubs[index].search.push(item)
+                        clubs[index].totalSearch++
+                        break;
+                    case 'request':
+                        clubs[index].request.push(item)
+                        clubs[index].totalRequest++
+                        break;
+                }
+            })
+            console.log(clubMapping, clubs)
+            this.reportDisplay =
+                (!this.safe(this.clientId)) 
+                    ? clubs.sort((a,b) => b.totalRequest - a.totalRequest)
+                    : clubs.filter((item) => item.id === this.clientId)
+            this.$forceUpdate()
+            this.loader = false
+        }
+    },
+    mounted: function(){
+        //Setup for MaterializeCss select plugin on the browser
+        let elems = document.querySelectorAll('select');
+        let options = {}
+        const today = new Date()
+        const datePickerOptions = {
+            format:'yyyy-mm-dd',
+            defaultDate:today,
+            setDefaultDate: true,
+            maxDate:today,
+            onSelect:this.getSelectedDate,
+            onClose:this.getReport,
+            autoClose: true
+        };
+        this.selectInstances = M.FormSelect.init(elems, options);
+        //Setup datepicker
+        const datepicker = document.querySelectorAll('.datepicker');
+        const instances = M.Datepicker.init(datepicker, datePickerOptions);
+    }
+});
+
 Vue.component('modal',{
     props:['modalData','test','url','modalPage','urlChallenge','challenger'],
     template:'#comp-modal',
@@ -797,6 +887,7 @@ const routes = [
   { path: '/dj/:id', component: djSpotify },
   { path: '/', component: landing },
   { path: '/home', component: home },
+  { path: '/report', component: report },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({
