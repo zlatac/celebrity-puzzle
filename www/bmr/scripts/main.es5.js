@@ -14,7 +14,9 @@ var serviceProvider = {
             noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             isConnected: false,
             adsenseServed: false,
-            logo: "https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q"
+            holdEvent: false,
+            logo: "https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q",
+            baseUrl: 'https://styleminions.co/api'
         };
     },
     computed: {
@@ -30,13 +32,16 @@ var serviceProvider = {
             } else {
                 return 'empty';
             }
+        },
+        isLocalhost: function isLocalhost() {
+            return location.href.includes(':8000') || location.href.includes('localhost');
         }
     },
     mounted: function mounted() {
         var modal = document.querySelector('.modal');
         var tooltip = document.querySelector('.tooltipped');
         var modalOptions = {};
-        if (this.$route.path.includes('game')) modalOptions.dismissible = false;
+        //if (this.$route.path.includes('game')) modalOptions.dismissible = false
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
     },
@@ -71,41 +76,14 @@ var serviceProvider = {
             }
             return input;
         },
-        tones: function (_tones) {
-            function tones(_x, _x2, _x3, _x4, _x5) {
-                return _tones.apply(this, arguments);
-            }
-
-            tones.toString = function () {
-                return _tones.toString();
-            };
-
-            return tones;
-        }(function (key, octave, release, attack, type) {
-            tones.release = release || tones.release;
-            tones.attack = attack || tones.attack;
-            tones.type = type || tones.type;
-            if (this.volume === true) {
-                tones.play(key, octave);
-            }
-        }),
         vibrate: function vibrate(seconds) {
             if ('vibrate' in navigator && this.volume === true) {
                 navigator.vibrate(seconds);
             }
         },
-        resumeAudioContext: function resumeAudioContext() {
-            //fucking chrome suspends audio context till the user acts on an event in the browser
-            if (tones.context.state.includes('suspended')) {
-                tones.context.resume().then(function () {
-                    console.log('audio context back online');
-                });
-            }
-        },
         toggleModal: function toggleModal(modalData) {
             this.modalData = modalData;
             this.modalInstance.open();
-            this.resumeAudioContext();
         },
         generateDeviceId: function generateDeviceId(skipredirect) {
             var _this = this;
@@ -140,7 +118,7 @@ var serviceProvider = {
             }
         },
         clearInterval: function (_clearInterval) {
-            function clearInterval(_x6) {
+            function clearInterval(_x) {
                 return _clearInterval.apply(this, arguments);
             }
 
@@ -159,17 +137,101 @@ var serviceProvider = {
                 //No need to call for the same ad unit 
                 this.adsenseServed = true;
                 setTimeout(function () {
-                    (adsbygoogle = window.adsbygoogle || []).push({});
+                    try {
+                        (adsbygoogle = window.adsbygoogle || []).push({});
+                    } catch (error) {
+                        console.warn(new Error(error));
+                    }
                 }, 100);
             } else {
                 console.log('Ad served already');
             }
         },
-        validateId: function validateId() {
+        closeModal: function closeModal() {
+            this.modalInstance.close();
+        },
+
+        getProfile: function getProfile() {
             var _this2 = this;
 
+            this.modalPage.imageacquired = false; // remove submit button while typing
+            this.modalPage.verified = this.modalPage.unverified = false;
+            this.modalPage.showButton = true;
+            if (this.profileTimeout !== null) {
+                clearTimeout(this.profileTimeout);
+            }
+            this.profileTimeout = setTimeout(function () {
+                //console.log(this.inputProfile)
+                var profile = _this2.inputProfile.replace('@', '').toLowerCase();
+                _this2.fetchInstaProfile(profile);
+            }, 1200);
+        },
+        fetchInstaProfile: function fetchInstaProfile(profile) {
+            var _this3 = this;
+
+            if (this.$route.path.includes('request')) {
+                return this.getVipStatus(profile);
+            }
+            this.modalPage.loader = true;
+            if (profile === '') return this.modalPage.fail = true;
+            fetch('https://www.instagram.com/' + profile + '/').then(function (res) {
+                if (res.status === 200) {
+                    return res.text();
+                } else {
+                    _this3.modalPage.fail = true;
+                    return 'failed';
+                }
+            }).then(function (data) {
+                if (data !== 'failed') {
+                    var sift = data.match(/og:image.+(http.+)"/i)[1];
+                    _this3.$store.commit('url', sift);
+                    _this3.modalPage.fail = false;
+                    _this3.modalPage.loader = false;
+                    _this3.modalPage.imageacquired = true;
+                }
+            });
+            //this.url = profile;
+        },
+        getVipStatus: function getVipStatus(profile) {
+            var _this4 = this;
+
+            var club_id = this.modalPage.brand.id || this.$store.state.vipMode.club;
+            var date = moment().toISOString();
+            this.modalPage.showButton = false;
+            this.modalPage.loader = true;
+            if (profile === '') return this.modalPage.fail = true;
+            var promises = [];
+            promises.push(axios.get('https://www.instagram.com/' + profile + '/'));
+            promises.push(axios.get(this.baseUrl + '/bmr-vip/' + club_id + '/' + profile + '/' + date));
+            return Promise.all(promises).then(function (res) {
+                var instagram = res[0];
+                var verifyApi = res[1];
+                if (instagram.status === 200) {
+                    var sift = instagram.data.match(/og:image.+(http.+)"/i)[1];
+                    _this4.$store.commit('url', sift);
+                    _this4.modalPage.fail = false;
+                    _this4.modalPage.imageacquired = true;
+                } else {
+                    _this4.modalPage.fail = true;
+                }
+                if (verifyApi.status === 200) {
+                    verifyApi.data[0].insta = profile;
+                    verifyApi.data[0].club = club_id;
+                    _this4.$store.commit('vipMode', verifyApi.data[0]);
+                    _this4.modalPage.verified = true;
+                } else {
+                    _this4.modalPage.unverified = true;
+                    _this4.$store.commit('resetVipMode');
+                }
+            }).finally(function () {
+                _this4.modalPage.loader = false;
+            });
+        },
+        validateId: function validateId() {
+            var _this5 = this;
+
             var club = this.$store.state.clubs.findIndex(function (item) {
-                return String(item.id) === _this2.appName;
+                return String(item.id) === _this5.appName;
             });
             if (club === -1) {
                 this.$router.push('/home');
@@ -182,10 +244,10 @@ var serviceProvider = {
             }
         },
         getClubData: function getClubData() {
-            var _this3 = this;
+            var _this6 = this;
 
             return this.$store.state.clubs.find(function (item) {
-                return String(item.id) === _this3.appName;
+                return String(item.id) === _this6.appName;
             });
         },
         inputHighlight: function inputHighlight() {
@@ -252,7 +314,7 @@ var landing = Vue.component('landing', {
     template: '#landing',
     mixins: [serviceProvider],
     created: function created() {
-        var _this4 = this;
+        var _this7 = this;
 
         fetch('https://styleminions.co/api/bmrclients').then(function (res) {
             if (res.status === 200) {
@@ -264,9 +326,9 @@ var landing = Vue.component('landing', {
             console.log(new Error(err));
         }).then(function (res) {
             if (res !== 'fail') {
-                _this4.$store.commit('clubs', res);
+                _this7.$store.commit('clubs', res);
                 setTimeout(function () {
-                    _this4.$router.push('/home');
+                    _this7.$router.push('/home');
                 }, 2000);
             } else if (res === 'fail') {}
         });
@@ -274,18 +336,29 @@ var landing = Vue.component('landing', {
 });
 
 var home = Vue.component('home', {
-    template: '\n        <div>\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px">\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n    ',
+    template: '\n        <div style="margin-bottom: 65px;">\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"\n                                 @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n            <modal :modalPage="modalPage" :modalData="modalData" @submit="addVip" @close="closeModal">\n                <h5 style="text-align: center;margin-bottom: 30px">\n                    {{modalPage.brand.name}}\n                </h5>\n            </modal>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
             showSearch: false,
             isSearchFocused: false,
-            inputSearch: ''
+            inputSearch: '',
+            modalPage: {
+                page: 'home',
+                insta: false,
+                fail: false,
+                imageAcquired: false,
+                loader: false,
+                brand: {},
+                verified: false,
+                unverified: false,
+                showButton: true
+            }
         };
     },
     computed: {
         clubs: function clubs() {
-            var _this5 = this;
+            var _this8 = this;
 
             if (this.safe(this.inputSearch)) {
                 if (this.inputSearch.toLowerCase() === 'bmr report') {
@@ -293,7 +366,7 @@ var home = Vue.component('home', {
                     return;
                 }
                 return this.$store.state.clubs.filter(function (item) {
-                    var search = _this5.inputSearch.toLowerCase();
+                    var search = _this8.inputSearch.toLowerCase();
                     return item.name.toLowerCase().includes(search) || item.city.toLowerCase().includes(search);
                 });
             }
@@ -321,7 +394,46 @@ var home = Vue.component('home', {
                     break;
             }
         },
-        searchClub: function searchClub() {}
+        goToAdmin: function goToAdmin(brand, event) {
+            var _this9 = this;
+
+            event.preventDefault();
+            this.holdEvent = true;
+            setTimeout(function () {
+                if (_this9.holdEvent) {
+                    _this9.holdEvent = false;
+                    _this9.modalPage.insta = true;
+                    _this9.modalPage.spotify = true;
+                    _this9.modalPage.brand = brand;
+                    _this9.modalInstance.open();
+                }
+            }, 2000);
+        },
+        addVip: function addVip(insta) {
+            var _this10 = this;
+
+            this.modalPage.loader = true;
+            var club_id = this.modalPage.brand.id;
+            var date = moment().toISOString();
+            var expiry_date = moment().add(10, 'h').toISOString();
+            var limit = 3;
+            axios.get(this.baseUrl + '/bmr-vip/' + club_id + '/' + insta + '/' + date).then(function (res) {
+                if (res.status === 204) {
+                    return axios.post(_this10.baseUrl + '/bmr-vip/' + club_id + '/' + insta + '/' + expiry_date + '/' + limit);
+                } else {
+                    _this10.modalPage.unverified = true;
+                    _this10.modalPage.showButton = false;
+                    return { status: 0 };
+                }
+            }).then(function (res) {
+                if (res.status === 201) {
+                    _this10.modalPage.verified = true;
+                    _this10.modalPage.showButton = false;
+                }
+            }).finally(function () {
+                _this10.modalPage.loader = false;
+            });
+        }
     }
 });
 
@@ -336,7 +448,19 @@ var spotify = Vue.component('spotify', {
             accessNumber: 0,
             pendingSearch: [],
             requestedSongs: [],
-            noResult: false
+            noResult: false,
+            modalPage: {
+                page: 'spotify',
+                insta: false,
+                fail: false,
+                imageAcquired: false,
+                loader: false,
+                verified: false,
+                unverified: false,
+                showButton: false,
+                brand: {},
+                appName: this.appName
+            }
         };
     },
     computed: {
@@ -348,11 +472,17 @@ var spotify = Vue.component('spotify', {
         },
         club: function club() {
             return this.getClubData();
+        },
+        vipMode: function vipMode() {
+            return this.$store.state.vipMode;
+        },
+        isVip: function isVip() {
+            return this.vipMode.limit > 0 && this.vipMode.club === this.appName;
         }
     },
     methods: {
         searchTrack: function searchTrack() {
-            var _this6 = this;
+            var _this11 = this;
 
             if (this.safe(this.searchInput)) {
                 this.loader = true;
@@ -372,7 +502,7 @@ var spotify = Vue.component('spotify', {
                     console.log(new Error(err));
                 }).then(function (res) {
                     if (res !== 'fail') {
-                        _this6.searchResult = res.tracks.items.map(function (item) {
+                        _this11.searchResult = res.tracks.items.map(function (item) {
                             var obj = {};
                             obj.image = item.album.images[1].url;
                             obj.song = item.name;
@@ -382,18 +512,18 @@ var spotify = Vue.component('spotify', {
                             obj.id = item.id;
                             return obj;
                         });
-                        _this6.noResult = _this6.searchResult.length === 0 ? true : false;
-                        _this6.pendingSearch = [];
-                        _this6.loader = false;
-                        _this6.scrollToResultTop();
+                        _this11.noResult = _this11.searchResult.length === 0 ? true : false;
+                        _this11.pendingSearch = [];
+                        _this11.loader = false;
+                        _this11.scrollToResultTop();
                         //this.searchInput = ''
                     } else if (res === 'fail') {
-                        _this6.pendingSearch.push(_this6.searchInput);
-                        _this6.socket.emit('newTokenPlease');
+                        _this11.pendingSearch.push(_this11.searchInput);
+                        _this11.socket.emit('newTokenPlease');
                     }
                 }).finally(function (res) {
-                    var payload = { trackTask: 'search', search: _this6.searchInput, timestamp: moment().toISOString(), domain: location.host };
-                    _this6.trackAction(payload);
+                    var payload = { trackTask: 'search', search: _this11.searchInput, timestamp: moment().toISOString(), domain: location.host };
+                    _this11.trackAction(payload);
                 });
             }
         },
@@ -407,11 +537,33 @@ var spotify = Vue.component('spotify', {
             if (this.safe(payload) && this.isConnected === true) {
                 payload.timestamp = moment().toISOString();
                 console.log(payload);
-                this.socket.emit('audience', { appName: this.appName, id: this.socket.id, task: 'request', song: payload });
+                this.socket.emit('audience', {
+                    appName: this.appName,
+                    id: this.socket.id,
+                    task: 'request',
+                    song: payload,
+                    vip: this.vipMode
+                });
                 this.requestedSongs.push(payload.id);
                 payload.trackTask = 'request';
                 payload.domain = location.host;
                 this.trackAction(payload);
+            }
+        },
+        vipSendRequest: function vipSendRequest(payload) {
+            var _this12 = this;
+
+            if (!this.safe(payload.inProgress)) {
+                payload.inProgress = true;
+                this.getVipStatus(this.vipMode.insta).then(function () {
+                    if (_this12.isVip) {
+                        _this12.sendRequest(payload);
+                    } else {
+                        console.log('you are no longer a vip');
+                    }
+                }).then(function () {
+                    payload.inProgress = false;
+                });
             }
         },
         goToDjView: function goToDjView() {
@@ -427,39 +579,61 @@ var spotify = Vue.component('spotify', {
                 return true;
             }
             return false;
+        },
+        enterVip: function enterVip() {
+            this.modalPage.insta = true;
+            this.modalPage.spotify = true;
+            this.modalPage.brand = this.club;
+            this.modalPage.appName = this.appName;
+            this.modalInstance.open();
+        },
+        appColorScheme: function appColorScheme(vip) {
+            var doc = document.documentElement;
+            var normal = 'linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%)';
+            var gold = 'radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8a6e2f 40%, transparent 80%), radial-gradient(ellipse farthest-corner at left top, #FFFFFF 0%, #ffffac 8%, #d1b464 25%, #5d4a1f 62.5%, #5d4a1f 100%)';
+            var change = vip ? gold : normal;
+            doc.style.setProperty('--main', change);
+            console.log('fired', change);
+        }
+    },
+    watch: {
+        isVip: function isVip(newValue, oldValue) {
+            this.appColorScheme(newValue);
+            console.log('fired first', newValue);
         }
     },
     created: function created() {
-        var _this7 = this;
+        var _this13 = this;
 
         this.validateId();
+        if (this.isVip) this.getVipStatus(this.vipMode.insta);
         this.socket.on('connect', function (data) {
-            _this7.isConnected = true;
-            _this7.socket.emit('audience', { appName: _this7.appName, id: _this7.socket.id, task: 'population' });
+            _this13.isConnected = true;
+            _this13.socket.emit('audience', { appName: _this13.appName, id: _this13.socket.id, task: 'population' });
             console.log(data, 'connected my nigga');
         });
         this.socket.on('disconnect', function (data) {
             // console.log('i am disconnected bro');
             // alert('i am disconnected bro')
-            _this7.isConnected = false;
+            _this13.isConnected = false;
         });
         this.socket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
-            _this7.isConnected = true;
+            _this13.isConnected = true;
         });
         //this.socket.emit('join','we in this bitch son');
         this.socket.on('sendMetrics', function (data) {
             //console.log(data,'metric data');
-            if (data.appName === _this7.appName && 'task' in data && data.task === 'request') {
-                _this7.metrics = data;
+            if (data.appName === _this13.appName && 'task' in data && data.task === 'request') {
+                _this13.metrics = data;
                 //this.showMetrics = true;
             }
         });
         this.socket.on('newToken', function (data) {
-            _this7.$store.commit('accessToken', data);
-            if (_this7.pendingSearch.length > 0) {
-                _this7.searchTrack();
+            _this13.$store.commit('accessToken', data);
+            if (_this13.pendingSearch.length > 0) {
+                _this13.searchTrack();
             }
         });
         this.socket.on('room', function (data) {
@@ -526,12 +700,45 @@ var djSpotify = Vue.component('djSpotify', {
                     return item.id === payload.id;
                 });
                 if (checkIdExist !== -1) {
-                    this.requestBasket[checkIdExist].hide = true;
+                    var requestedSong = this.requestBasket[checkIdExist];
+                    requestedSong.hide = true;
+                    this.reduceVipLimit(requestedSong);
                 }
             }
         },
+        reduceVipLimit: function reduceVipLimit(requestedSong) {
+            if (requestedSong.vipList.size > 0 && requestedSong.playedVip === true) {
+                var promises = [];
+                var _iteratorNormalCompletion = true;
+                var _didIteratorError = false;
+                var _iteratorError = undefined;
+
+                try {
+                    for (var _iterator = requestedSong.vipList.values()[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                        var vip = _step.value;
+
+                        promises.push(axios.post(this.baseUrl + '/bmr-vip-limit/' + vip.club + '/' + vip.uuid));
+                    }
+                } catch (err) {
+                    _didIteratorError = true;
+                    _iteratorError = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion && _iterator.return) {
+                            _iterator.return();
+                        }
+                    } finally {
+                        if (_didIteratorError) {
+                            throw _iteratorError;
+                        }
+                    }
+                }
+
+                Promise.all(promises);
+            }
+        },
         getTrackBpm: function getTrackBpm(trackObject) {
-            var _this8 = this;
+            var _this14 = this;
 
             var id = trackObject.id;
             var token = this.$store.state.accessToken;
@@ -545,56 +752,61 @@ var djSpotify = Vue.component('djSpotify', {
                 console.log(new Error(err));
             }).then(function (res) {
                 if (res !== 'fail') {
-                    var musicKey = _this8.musicNotes[res.key];
+                    var musicKey = _this14.musicNotes[res.key];
                     var bpm = Math.floor(Number(res.tempo));
                     var output = musicKey + ' - ' + bpm + ' bpm';
-                    var indexInBasket = _this8.requestBasket.findIndex(function (item) {
+                    var indexInBasket = _this14.requestBasket.findIndex(function (item) {
                         return item.id === id;
                     });
-                    _this8.requestBasket[indexInBasket].bpm = output;
+                    _this14.requestBasket[indexInBasket].bpm = output;
                 } else if (res === 'fail') {
-                    _this8.pendingTrackDetails.push(trackObject);
-                    _this8.controlSocket.emit('newTokenPlease');
+                    _this14.pendingTrackDetails.push(trackObject);
+                    _this14.controlSocket.emit('newTokenPlease');
                 }
             });
         }
     },
     created: function created() {
-        var _this9 = this;
+        var _this15 = this;
 
         this.validateId();
         this.controlSocket.on('connect', function (data) {
-            _this9.isConnected = true;
+            _this15.isConnected = true;
             console.log('connected my nigga');
         });
         this.controlSocket.on('disconnect', function (data) {
             // console.log('i am disconnected bro');
             // alert('i am disconnected bro')
-            _this9.isConnected = false;
+            _this15.isConnected = false;
         });
         this.controlSocket.on('answer', function (data) {
             console.log(data);
-            if (data.appName === _this9.appName) {
+            if (data.appName === _this15.appName) {
                 if ('task' in data && data.task === 'population') {
                     console.log('population gwoth complete', data);
-                    _this9.population.push(data);
+                    _this15.population.push(data);
                 }
                 if ('task' in data && data.task === 'request') {
                     console.log('request added bruh', data);
-                    var checkIdExist = _this9.requestBasket.findIndex(function (item) {
+                    var checkIdExist = _this15.requestBasket.findIndex(function (item) {
                         return item.id === data.song.id;
                     });
                     console.log(checkIdExist);
                     if (checkIdExist === -1) {
+                        data.song.vipList = new Map();
                         data.song.requestCount = 1;
                         data.song.hide = false;
                         data.song.bpm = '';
-                        _this9.requestBasket.push(data.song);
-                        _this9.getTrackBpm(data.song);
+                        if (data.vip.limit > 0) data.song.vipList.set(data.vip.insta, data.vip);
+                        data.song.showVip = false;
+                        _this15.requestBasket.push(data.song);
+                        _this15.getTrackBpm(data.song);
                     } else {
-                        _this9.requestBasket[checkIdExist].requestCount += 1;
+                        var requestedSong = _this15.requestBasket[checkIdExist];
+                        requestedSong.requestCount += 1;
+                        if (data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip);
                     }
-                    _this9.controlSocket.emit('analytics', { appName: _this9.appName, requestNumber: _this9.requestList.length, task: 'request' });
+                    _this15.controlSocket.emit('analytics', { appName: _this15.appName, requestNumber: _this15.requestList.length, task: 'request' });
                 }
                 if ('task' in data && data.task === 'pendingRequests') {
                     //pending requests from server will include requests already received before disconnection
@@ -603,15 +815,15 @@ var djSpotify = Vue.component('djSpotify', {
                         return accumulator + currentValue;
                     };
                     var totalRequestsReceived = 0; //default
-                    if (_this9.requestBasket.length > 0) {
-                        totalRequestsReceived = _this9.requestBasket.map(function (item) {
+                    if (_this15.requestBasket.length > 0) {
+                        totalRequestsReceived = _this15.requestBasket.map(function (item) {
                             return item.requestCount;
                         }).reduce(addUp);
                     }
 
                     var onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
                     onlyNewPendingRequests.forEach(function (request) {
-                        var checkIdExist = _this9.requestBasket.findIndex(function (item) {
+                        var checkIdExist = _this15.requestBasket.findIndex(function (item) {
                             return item.id === request.song.id;
                         });
                         console.log(checkIdExist);
@@ -619,30 +831,30 @@ var djSpotify = Vue.component('djSpotify', {
                             request.song.requestCount = 1;
                             request.song.hide = false;
                             request.song.bpm = '';
-                            _this9.requestBasket.push(request.song);
-                            _this9.getTrackBpm(request.song);
+                            _this15.requestBasket.push(request.song);
+                            _this15.getTrackBpm(request.song);
                         } else {
-                            _this9.requestBasket[checkIdExist].requestCount += 1;
+                            _this15.requestBasket[checkIdExist].requestCount += 1;
                         }
                     });
                 }
             }
         });
         this.controlSocket.on('newToken', function (data) {
-            _this9.$store.commit('accessToken', data);
-            if (_this9.pendingTrackDetails.length > 0) {
-                var tracks = _this9.pendingTrackDetails;
-                _this9.pendingTrackDetails = [];
+            _this15.$store.commit('accessToken', data);
+            if (_this15.pendingTrackDetails.length > 0) {
+                var tracks = _this15.pendingTrackDetails;
+                _this15.pendingTrackDetails = [];
                 tracks.forEach(function (item) {
-                    _this9.getTrackBpm(item);
+                    _this15.getTrackBpm(item);
                 });
             }
         });
         this.controlSocket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
-            _this9.isConnected = true;
-            _this9.controlSocket.emit('updateRequests');
+            _this15.isConnected = true;
+            _this15.controlSocket.emit('updateRequests');
         });
     },
     destroyed: function destroyed() {
@@ -669,14 +881,14 @@ var report = Vue.component('report', {
     },
     methods: {
         getReport: function getReport() {
-            var _this10 = this;
+            var _this16 = this;
 
             var params = { clubId: this.clientId, date: this.reportDate };
             if (this.safe(this.reportDate)) {
                 this.loader = true;
                 axios.get('https://styleminions.co/api/bmr-report', { params: params }).then(function (res) {
-                    _this10.reportResponse = res.data;
-                    _this10.buildReport();
+                    _this16.reportResponse = res.data;
+                    _this16.buildReport();
                 });
             }
         },
@@ -685,7 +897,7 @@ var report = Vue.component('report', {
             this.reportDate = moment(date).format('YYYY-MM-DD');
         },
         buildReport: function buildReport() {
-            var _this11 = this;
+            var _this17 = this;
 
             var clubs = this.clubs;
             var clubMapping = new Map();
@@ -714,7 +926,7 @@ var report = Vue.component('report', {
             this.reportDisplay = !this.safe(this.clientId) ? clubs.sort(function (a, b) {
                 return b.totalRequest - a.totalRequest;
             }) : clubs.filter(function (item) {
-                return item.id === _this11.clientId;
+                return item.id === _this17.clientId;
             });
             this.$forceUpdate();
             this.loader = false;
@@ -742,7 +954,7 @@ var report = Vue.component('report', {
 });
 
 Vue.component('modal', {
-    props: ['modalData', 'test', 'url', 'modalPage', 'urlChallenge', 'challenger'],
+    props: ['modalPage'],
     template: '#comp-modal',
     mixins: [serviceProvider],
     data: function data() {
@@ -796,7 +1008,7 @@ Vue.directive('inputHighlight', {
     }
 });
 Vue.component('adsense', {
-    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
+    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-adtest="on"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
     mounted: function mounted() {
         this.modalAdsense();
@@ -831,7 +1043,13 @@ var store = new Vuex.Store({
     state: {
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         accessToken: null,
-        clubs: []
+        clubs: [],
+        vipMode: {
+            limit: 0,
+            uuid: 0,
+            insta: '',
+            club: ''
+        }
     },
     mutations: {
         url: function url(state, data) {
@@ -842,6 +1060,18 @@ var store = new Vuex.Store({
         },
         clubs: function clubs(state, data) {
             state.clubs = data;
+        },
+        vipMode: function vipMode(state, data) {
+            state.vipMode.limit = data.request_limit;
+            state.vipMode.uuid = data.unique_id;
+            state.vipMode.insta = data.insta;
+            state.vipMode.club = data.club;
+        },
+        reduceLimit: function reduceLimit(state) {
+            state.vipMode.limit--;
+        },
+        resetVipMode: function resetVipMode(state) {
+            state.vipMode.limit = 0;
         }
     }
 });

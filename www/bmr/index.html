@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -61,24 +61,31 @@
 </script>
 <script type="text/x-template" id="spotify">
     <div class="zontainer center-align animated fadeIn">
+        <modal :modalPage="modalPage">
+            <h5 style="text-align: center;margin-bottom: 30px">
+                Enter VIP
+            </h5>
+        </modal>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
                     <div class="row" style="margin-bottom: 0px;">
-                        <img :src="club.image" 
+                        <img :src="club.image"
+                             v-imgfallback 
                              alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
-                             :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}" v-imgfallback>
+                             :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected, 'img-vip': isVip}">
                         <p class="zero-margin">{{club.name}} <span class="grey-text animated fadeIn" v-show="!isConnected">- Reconnecting...</span></p>
                         <p class="zero-margin-bottom">
                             <!-- <span><i class="material-icons">people</i>56</span> -->
-                            <span class="chip">{{metrics.requestNumber}} Requests</span> 
+                            <span class="chip" v-show="!isVip" @click="enterVip">Enter VIP</span>
+                            <span class="chip vip-chip" v-show="isVip">VIP Room - {{vipMode.limit}} requests left</span>
                         </p>
                     </div>
                     <div class="row" style="margin-bottom: 0px;">
                         <form  novalidate @submit.stop.prevent="searchTrack">
                             <div class="col s9">
                                 <input type="text" name="q" placeholder="Search tracks" v-model="searchInput" 
-                                       v-inputHighlight autocomplete="off">
+                                       v-inputHighlight autocomplete="off" :class="{'vip-input': isVip}">
                             </div>
                             <div class="col s3">
                                 <button type="submit" class="btn btn-floating waves-effect waves-light">
@@ -92,7 +99,7 @@
         </div>
         <div style="margin-top: 252px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
-            <adsense v-if="!loader && searchResult.length !== 0"></adsense>
+            <adsense v-if="!loader && searchResult.length !== 0 && !isLocalhost"></adsense>
             <div class="row " v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-show="noResult === true">
                     <div class="row">
@@ -118,7 +125,8 @@
                             
                         </div>
                         <div class="col s3">
-                            <span class="btn btn-floating waves-effect waves-light" @click="sendRequest(x)" :disabled="alreadyRequested(x.id) === true"
+                            <span class="btn btn-floating waves-effect waves-light" @click="!isVip ? sendRequest(x) : vipSendRequest(x)" 
+                                  :disabled="alreadyRequested(x.id) === true"
                                   :class="{'btn-opaque':alreadyRequested(x.id) === true}">
                                 <i class="material-icons">send</i>
                             </span>
@@ -152,7 +160,7 @@
             <spinner :colorClass="'default'" v-show="loader"></spinner>
             <div class="row " v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-for="(x, index) in requestList" v-if="x.hide === false">
-                    <div class="row">
+                    <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
                             <div style="position: relative;">
                                 <img :src="x.image" width="70px">
@@ -160,15 +168,29 @@
                             </div>   
                         </div>                     
                         <div class="col s5">
+                            <div class="switch" style="margin-bottom: 10px;" v-show="x.showVip">
+                                <label>
+                                    No
+                                    <input type="checkbox" v-model="x.playedVip">
+                                    <span class="lever"></span>
+                                    Yes
+                                </label>
+                            </div>
                             {{x.song}} 
                             <p class="grey-text p-space">{{x.artist}}</p>
                             <p class="p-space"><b>[ {{x.bpm}} ]</b></p>
                         </div>
-                        <div class="col s3"><span class="btn btn-floating" @click="hideRequest(x)"><i class="material-icons">close</i></span></div>
+                        <div class="col s3">
+                            <span class="btn btn-floating" @click="hideRequest(x)" v-show="x.vipList.size <= 0 || x.showVip">
+                                <i class="material-icons" >close</i>
+                            </span>
+                            <span class="btn btn-floating" @click="x.showVip = true" v-show="x.vipList.size > 0 && !x.showVip">
+                                <i class="material-icons">attach_money</i>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- <div class="row " style=""><div class="card animated fadeInUp firstresult"><div class="row"><div class="col s4"><div style="position: relative;"><img src="https://i.scdn.co/image/af440b4e0d8d22cb46b3723164281dfb70cdb4f5" width="70px"><span class="btn btn-small btn-floating lead-fab z-depth-3">10</span></div></div> <div class="col s5">Good Life - Kanye West,T-Pain</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/1820ea91e0723b1ce8820bb2cedae9f1be9d1de9" width="70px"></div> <div class="col s5">Lush Life - Zara Larsson</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/9e01aaf171b64785c693335e1ce19dcf1d7823c7" width="70px"></div> <div class="col s5">Good Life (with G-Eazy &amp; Kehlani) - G-Eazy,Kehlani</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/851015118292bbee6e0da67750df9782b3f1ec4b" width="70px"></div> <div class="col s5">Good Riddance (Time of Your Life) - Green Day</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/ec1beabb340e7a8ead24450a865d15788091752b" width="70px"></div> <div class="col s5">Good Life - OneRepublic</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/f56acdbbadc334a3d3107a063f3b08e816103bde" width="70px"></div> <div class="col s5">The Good Life - Three Days Grace</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/1b46b9593b3d4826cbd146033ec67b934419d029" width="70px"></div> <div class="col s5">Good Life - The Young Escape</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/a91e0ebec554bf1d3fbbdd4e3b8676763d78dae0" width="70px"></div> <div class="col s5">Real Good Life - The Mowgli's</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/5420c212ea73eb2dc80acdcf7601167e903a9641" width="70px"></div> <div class="col s5">Good Life - Keiynan Lonsdale</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/1e11df0d51bf42ec5a7100050dd45d09066b220f" width="70px"></div> <div class="col s5">The Good Life - Weezer</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/19320480eb39647c1447478eab03340b56fd9c58" width="70px"></div> <div class="col s5">Good Life - Kiso,Yvette</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/01e08194d9fd549f920f23ff98f0bfd492c8c7d9" width="70px"></div> <div class="col s5">Good Life - ZHU</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/9e846f095398a12c04761ae11667b9f4b2eef854" width="70px"></div> <div class="col s5">Life's Been Good - Joe Walsh</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/9b0df3e37e24cd96a289262f21bd53f1d752848d" width="70px"></div> <div class="col s5">Good Life - Collie Buddz</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/7c8648bc3de1876779f37e8fd0a8a8387a13d134" width="70px"></div> <div class="col s5">Good Life - OneRepublic</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/827f95bd3e6c3c8b358ff2063f04256a6b0b70c2" width="70px"></div> <div class="col s5">Life Is Beautiful - Rend Collective</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/cc9d6ddaf6d0e50858c1cbaef48d8c92638179c9" width="70px"></div> <div class="col s5">Good Life - Collie Buddz</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/2ea29569e7a387c7f5c34afb0b57120048a9e751" width="70px"></div> <div class="col s5">Good Life (feat. Rick Ross) - Sammie,Rick Ross</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/79558cefc1db040dad38c5fb642b0d06dfc7df3c" width="70px"></div> <div class="col s5">Good Time Good Life - Erin Bowman</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div><div class="card animated fadeInUp"><div class="row"><div class="col s4"><img src="https://i.scdn.co/image/5d40a995b5cc164f602874d13f16b715e85d7b61" width="70px"></div> <div class="col s5">Lone Pine Hill - Justin Townes Earle</div> <div class="col s3"><span class="btn btn-floating"><i class="material-icons">delete</i></span></div></div></div></div> -->
         </div>
     </div>
     
@@ -206,6 +228,39 @@
                 </div>
                 <div class="col s3">
                     S:{{x.totalSearch}} | R:{{x.totalRequest}}
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+<script type="text/x-template" id="comp-modal">
+    <!-- Modal Structure -->
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <div>
+                <!-- <div class="row" style="margin: 0px;">
+                    <div class="col" @click="$emit('close')"><i class="material-icons" style="font-size: 20px;">arrow_back_ios</i></div>
+                </div> -->
+                <slot></slot>
+                <div class="row">
+                    <div class="col s8">
+                        <input type="text" placeholder="Instagram handle" :value="inputProfile" :class="{'invalid': modalPage.fail}"
+                         @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" @keyup="getProfile">
+                    </div>
+                    <div class="col s4" v-show="!modalPage.fail" style="position: relative;">
+                        <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!modalPage.loader">
+                        <span v-show="modalPage.verified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">check</i></span>
+                        <span v-show="modalPage.unverified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">close</i></span>
+                        <spinner class="animated fadeIn" :colorClass="'default'" v-show="modalPage.loader"></spinner>
+                    </div>
+                    <div class="col s4" v-show="modalPage.fail">
+                        <i class="material-icons">mood_bad</i><br><span style="font-size:10px">Oops! Not an instagram profile</span>
+                    </div>
+                </div>
+                <div class="row animated bounceIn" v-show="modalPage.showButton && !modalPage.loader && modalPage.imageacquired">
+                    <div class="col s12">
+                        <div class="btn btn-block z-depth-2" @click="$emit('submit',inputProfile)" style="background:var(--main)">Submit</div>
+                    </div>
                 </div>
             </div>
         </div>

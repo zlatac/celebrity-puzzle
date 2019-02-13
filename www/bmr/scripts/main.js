@@ -12,7 +12,9 @@ const serviceProvider = {
             noProfileUrl:'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
             isConnected: false,
             adsenseServed:false,
-            logo:"https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q"
+            holdEvent: false,
+            logo:"https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q",
+            baseUrl: 'https://styleminions.co/api'
         }
     },
     computed:{
@@ -28,6 +30,9 @@ const serviceProvider = {
             }else{
                 return 'empty'
             }
+        },
+        isLocalhost(){
+            return location.href.includes(':8000') || location.href.includes('localhost')
         }
 
     },
@@ -35,7 +40,7 @@ const serviceProvider = {
         let modal = document.querySelector('.modal');
         let tooltip = document.querySelector('.tooltipped');
         let modalOptions = {}
-        if (this.$route.path.includes('game')) modalOptions.dismissible = false
+        //if (this.$route.path.includes('game')) modalOptions.dismissible = false
         if (modal) this.modalInstance = M.Modal.init(modal,modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
                             
@@ -71,30 +76,14 @@ const serviceProvider = {
 			}
 			return input;
         },
-        tones : function(key, octave, release, attack,type){
-            tones.release = release || tones.release;
-            tones.attack = attack || tones.attack;
-            tones.type = type || tones.type;
-            if(this.volume === true){
-                tones.play(key,octave);
-            }            
-        },
         vibrate: function(seconds){
             if('vibrate' in navigator && this.volume === true){
                 navigator.vibrate(seconds)
             }
         },
-        resumeAudioContext: function(){
-            //fucking chrome suspends audio context till the user acts on an event in the browser
-            if(tones.context.state.includes('suspended')){
-                tones.context.resume()
-                .then(()=>{console.log('audio context back online')})
-            }
-        },
         toggleModal: function(modalData){
             this.modalData = modalData
             this.modalInstance.open();
-            this.resumeAudioContext()
         },
         generateDeviceId: function(skipredirect){
             //if skipredirect is not true redirect to dash page
@@ -138,11 +127,94 @@ const serviceProvider = {
                 //No need to call for the same ad unit 
                 this.adsenseServed = true
                 setTimeout(()=>{
-                    (adsbygoogle = window.adsbygoogle || []).push({});
+                    try {
+                        (adsbygoogle = window.adsbygoogle || []).push({});
+                    } catch (error) {
+                        console.warn(new Error(error))
+                    }                    
                 },100)
             }else{
                 console.log('Ad served already')
             }
+            
+        },
+        closeModal(){
+            this.modalInstance.close()
+        },
+        getProfile:function(){
+            this.modalPage.imageacquired = false // remove submit button while typing
+            this.modalPage.verified = this.modalPage.unverified = false
+            this.modalPage.showButton = true
+            if(this.profileTimeout !== null){
+                clearTimeout(this.profileTimeout)
+            }
+            this.profileTimeout = setTimeout(()=>{
+                //console.log(this.inputProfile)
+                let profile = this.inputProfile.replace('@','').toLowerCase()
+                this.fetchInstaProfile(profile)
+            },1200)
+        },
+        fetchInstaProfile: function(profile){
+            if(this.$route.path.includes('request')){
+                return this.getVipStatus(profile)
+            }
+            this.modalPage.loader = true
+            if(profile === '') return this.modalPage.fail = true
+            fetch(`https://www.instagram.com/${profile}/`)
+            .then((res)=>{
+                if(res.status === 200){
+                    return  res.text();
+                }else{
+                    this.modalPage.fail = true
+                    return 'failed'
+                }      
+            })
+            .then((data)=>{
+                if(data !== 'failed'){
+                    let sift = data.match(/og:image.+(http.+)"/i)[1];
+                    this.$store.commit('url',sift);
+                    this.modalPage.fail = false
+                    this.modalPage.loader = false
+                    this.modalPage.imageacquired = true
+                }
+            });
+            //this.url = profile;
+        },
+        getVipStatus(profile){
+            const club_id = this.modalPage.brand.id || this.$store.state.vipMode.club
+            const date = moment().toISOString()
+            this.modalPage.showButton = false
+            this.modalPage.loader = true
+            if(profile === '') return this.modalPage.fail = true
+            let promises = []
+            promises.push(axios.get(`https://www.instagram.com/${profile}/`))
+            promises.push(axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${profile}/${date}`))
+            return Promise.all(promises)
+            .then((res)=>{
+                const instagram = res[0]
+                const verifyApi = res[1]
+                if(instagram.status === 200){
+                    let sift = instagram.data.match(/og:image.+(http.+)"/i)[1];
+                    this.$store.commit('url',sift);
+                    this.modalPage.fail = false
+                    this.modalPage.imageacquired = true
+                }else{
+                    this.modalPage.fail = true
+                }
+                if(verifyApi.status === 200){
+                    verifyApi.data[0].insta = profile
+                    verifyApi.data[0].club = club_id
+                    this.$store.commit('vipMode',verifyApi.data[0])
+                    this.modalPage.verified = true
+                }else{
+                    this.modalPage.unverified = true
+                    this.$store.commit('resetVipMode')
+                }
+                
+            })
+            .finally(()=>{
+                this.modalPage.loader = false
+            })
             
         },
         validateId(){
@@ -252,7 +324,7 @@ const landing = Vue.component('landing', {
 
 const home = Vue.component('home', {
     template:`
-        <div>
+        <div style="margin-bottom: 65px;">
             <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">
                 Select Your Club
             </h4>
@@ -281,7 +353,8 @@ const home = Vue.component('home', {
                 <div class="row">
                     <div class="col s4">
                         <div style="position: relative;">
-                            <img class="circle" :src="x.image" width="70px">
+                            <img class="circle" :src="x.image" width="70px" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"
+                                 @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">
                         </div>
                     </div>
                     <div class="col s5" style="text-transform:capitalize;">
@@ -296,6 +369,11 @@ const home = Vue.component('home', {
                     </div>
                 </div>
             </div>
+            <modal :modalPage="modalPage" :modalData="modalData" @submit="addVip" @close="closeModal">
+                <h5 style="text-align: center;margin-bottom: 30px">
+                    {{modalPage.brand.name}}
+                </h5>
+            </modal>
         </div>
     `,
     mixins: [serviceProvider],
@@ -303,7 +381,18 @@ const home = Vue.component('home', {
         return{
             showSearch:false,
             isSearchFocused:false,
-            inputSearch:''
+            inputSearch:'',
+            modalPage: {
+                page: 'home',
+                insta: false,
+                fail: false,
+                imageAcquired: false,
+                loader: false,
+                brand: {},
+                verified: false,
+                unverified: false,
+                showButton: true,
+            }
         }
     },
     computed:{
@@ -342,8 +431,45 @@ const home = Vue.component('home', {
                     break;
             }
         },
-        searchClub(){
+        goToAdmin(brand, event){
+            event.preventDefault()
+            this.holdEvent = true
+            setTimeout(() => {
+                if (this.holdEvent) {
+                    this.holdEvent = false
+                    this.modalPage.insta = true
+                    this.modalPage.spotify = true
+                    this.modalPage.brand = brand
+                    this.modalInstance.open()
+                }
+            }, 2000)
+        },
+        addVip(insta){
+            this.modalPage.loader = true
+            const club_id = this.modalPage.brand.id
+            const date = moment().toISOString()
+            const expiry_date = moment().add(10, 'h').toISOString()
+            const limit = 3
+            axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${insta}/${date}`)
+            .then((res)=>{
+                if(res.status === 204){
+                    return axios.post(`${this.baseUrl}/bmr-vip/${club_id}/${insta}/${expiry_date}/${limit}`)
+                }else{
+                    this.modalPage.unverified = true
+                    this.modalPage.showButton = false
+                    return {status: 0}
+                }
 
+            })
+            .then((res)=>{
+                if(res.status === 201){
+                    this.modalPage.verified = true
+                    this.modalPage.showButton = false
+                }
+            })
+            .finally(()=>{
+                this.modalPage.loader = false
+            })
         }
     }
 });
@@ -359,7 +485,19 @@ const spotify = Vue.component('spotify',{
             accessNumber:0,
             pendingSearch: [],
             requestedSongs:[],
-            noResult:false
+            noResult:false,
+            modalPage: {
+                page: 'spotify',
+                insta: false,
+                fail: false,
+                imageAcquired: false,
+                loader: false,
+                verified: false,
+                unverified: false,
+                showButton: false,
+                brand:{},
+                appName: this.appName
+            }
         }
     },
     computed:{
@@ -371,7 +509,13 @@ const spotify = Vue.component('spotify',{
         },
         club(){
             return this.getClubData()
-        }
+        },
+        vipMode(){
+            return this.$store.state.vipMode
+        },
+        isVip(){
+            return this.vipMode.limit > 0 && this.vipMode.club === this.appName
+        },
     },
     methods: {
         searchTrack(){
@@ -431,12 +575,34 @@ const spotify = Vue.component('spotify',{
             if(this.safe(payload) && this.isConnected === true){
                 payload.timestamp = moment().toISOString()
                 console.log(payload)
-                this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'request',song:payload})
+                this.socket.emit('audience',{
+                    appName:this.appName,
+                    id:this.socket.id,
+                    task:'request',
+                    song:payload,
+                    vip: this.vipMode
+                })
                 this.requestedSongs.push(payload.id)
                 payload.trackTask = 'request'
                 payload.domain = location.host
                 this.trackAction(payload)
             }
+        },
+        vipSendRequest(payload){
+            if(!this.safe(payload.inProgress)){
+                payload.inProgress = true
+                this.getVipStatus(this.vipMode.insta)
+                .then(()=>{
+                    if(this.isVip){
+                        this.sendRequest(payload)
+                    }else{
+                        console.log('you are no longer a vip')
+                    }
+                })
+                .then(()=>{
+                    payload.inProgress = false
+                })
+            }           
         },
         goToDjView(){
             this.accessNumber++
@@ -449,10 +615,32 @@ const spotify = Vue.component('spotify',{
                 return true
             }
             return false
+        },
+        enterVip(){
+            this.modalPage.insta = true
+            this.modalPage.spotify = true
+            this.modalPage.brand = this.club
+            this.modalPage.appName = this.appName
+            this.modalInstance.open()
+        },
+        appColorScheme(vip){
+            const doc = document.documentElement
+            const normal = 'linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%)'
+            const gold = 'radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8a6e2f 40%, transparent 80%), radial-gradient(ellipse farthest-corner at left top, #FFFFFF 0%, #ffffac 8%, #d1b464 25%, #5d4a1f 62.5%, #5d4a1f 100%)'
+            const change = vip ? gold : normal
+            doc.style.setProperty('--main', change)
+            console.log('fired', change)
+        }
+    },
+    watch: {
+        isVip: function(newValue, oldValue){
+            this.appColorScheme(newValue)
+            console.log('fired first', newValue)
         }
     },
     created: function(){
         this.validateId()
+        if(this.isVip) this.getVipStatus(this.vipMode.insta)
         this.socket.on('connect', (data)=>{
             this.isConnected = true
             this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'population'});
@@ -546,8 +734,19 @@ const djSpotify = Vue.component('djSpotify', {
             if(this.safe(payload)){
                 let checkIdExist = this.requestBasket.findIndex((item) => item.id === payload.id)
                 if(checkIdExist !== -1){
-                    this.requestBasket[checkIdExist].hide = true
+                    let requestedSong = this.requestBasket[checkIdExist]
+                    requestedSong.hide = true
+                    this.reduceVipLimit(requestedSong)
                 }
+            }
+        },
+        reduceVipLimit(requestedSong){
+            if(requestedSong.vipList.size > 0 && requestedSong.playedVip === true){
+                let promises = []
+                for(let vip of requestedSong.vipList.values()){
+                    promises.push(axios.post(`${this.baseUrl}/bmr-vip-limit/${vip.club}/${vip.uuid}`))
+                }
+                Promise.all(promises)
             }
         },
         getTrackBpm(trackObject){
@@ -601,13 +800,18 @@ const djSpotify = Vue.component('djSpotify', {
                     let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
                     console.log(checkIdExist)
                     if(checkIdExist === -1){
+                        data.song.vipList = new Map()
                         data.song.requestCount = 1
                         data.song.hide = false
                         data.song.bpm = ''
+                        if (data.vip.limit > 0) data.song.vipList.set(data.vip.insta, data.vip)
+                        data.song.showVip = false
                         this.requestBasket.push(data.song)
                         this.getTrackBpm(data.song)
                     }else{
-                        this.requestBasket[checkIdExist].requestCount += 1
+                        let requestedSong = this.requestBasket[checkIdExist]
+                        requestedSong.requestCount += 1
+                        if (data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip)
                     }
                     this.controlSocket.emit('analytics',{appName:this.appName,requestNumber:this.requestList.length,task:'request'});
                     
@@ -750,7 +954,7 @@ const report = Vue.component('report', {
 });
 
 Vue.component('modal',{
-    props:['modalData','test','url','modalPage','urlChallenge','challenger'],
+    props:['modalPage'],
     template:'#comp-modal',
     mixins: [serviceProvider],
     data: function(){
@@ -829,6 +1033,7 @@ Vue.component('adsense',{
         <!-- footer ad  data-adtest="on"-->
         <ins class="adsbygoogle center-block"
             style="display:block"
+            data-adtest="on"
             data-ad-client="ca-pub-8868040855394757"
             data-ad-slot="1741308624"></ins>
     </div>
@@ -867,7 +1072,13 @@ const store = new Vuex.Store({
     state:{
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
         accessToken:null,
-        clubs:[]
+        clubs:[],
+        vipMode: {
+            limit: 0,
+            uuid: 0,
+            insta: '',
+            club: ''
+        },
     },
     mutations:{
         url(state, data){
@@ -878,6 +1089,18 @@ const store = new Vuex.Store({
         },
         clubs(state,data){
             state.clubs = data;
+        },
+        vipMode(state, data){
+            state.vipMode.limit = data.request_limit
+            state.vipMode.uuid = data.unique_id
+            state.vipMode.insta = data.insta
+            state.vipMode.club = data.club
+        },
+        reduceLimit(state){
+            state.vipMode.limit--
+        },
+        resetVipMode(state){
+            state.vipMode.limit = 0
         }
     }
 })

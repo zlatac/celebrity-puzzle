@@ -1,6 +1,10 @@
 :root {
     --main:linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%);
     --dark-theme:#252525;
+    --vip-main:linear-gradient(120deg, #daa520 0%, #ffffff 84%);
+    --default-main:linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%);
+    --gold-border:#b49850;
+    --real-gold:radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8a6e2f 40%, transparent 80%), radial-gradient(ellipse farthest-corner at left top, #FFFFFF 0%, #ffffac 8%, #d1b464 25%, #5d4a1f 62.5%, #5d4a1f 100%);
 }
 html { 
     background-color: var(--dark-theme); 
@@ -40,6 +44,11 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     border-bottom: 1px solid #13d0f2;
     -webkit-box-shadow: 0 1px 0 0 #13d0f2;
     box-shadow: 0 1px 0 0 #13d0f2;
+}
+.vip-input:focus{
+    border-bottom: 1px solid var(--gold-border);
+    -webkit-box-shadow: 0 1px 0 0 var(--gold-border);
+    box-shadow: 0 1px 0 0 var(--gold-border);
 }
 .lead-fixed{
     position: fixed;
@@ -95,4 +104,17 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
 }
 input.select-dropdown{
     background-color: white !important;
+}
+.vip-chip{
+    background-color: var(--gold-border);
+    color: #FFFFFF;
+}
+.img-online.img-vip{
+    border: solid 3px var(--gold-border);
+}
+.dj-vip .btn-floating {
+    background: var(--real-gold)
+}
+img{
+    user-select: none; 
 }
