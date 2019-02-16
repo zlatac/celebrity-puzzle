@@ -143,3 +143,22 @@ io.on('connection', function(client) {
     });
 });
 
+app.get('/profile', function(req,res){
+    const insta = req.query.insta;
+    //console.log(req)
+    if(insta !== undefined){
+        axios.get(`https://www.instagram.com/${insta}/`)
+        .then((data)=>{
+            res.send(data.data)
+            res.status(200)
+        })
+        .catch((error)=>{
+            res.send(error.data)
+            res.status(404)
+        });
+    }else{
+        res.status(400)
+        res.send(insta)
+    }
+});
+

@@ -208,7 +208,7 @@ const serviceProvider = {
         fetchInstaProfile: function(profile){
             this.modalPage.loader = true
             if(profile === '') return this.modalPage.fail = true
-            fetch(`https://www.instagram.com/${profile}/`)
+            fetch(`/profile?insta=${profile}`)
             .then((res)=>{
                 if(res.status === 200){
                     return  res.text();
@@ -706,7 +706,7 @@ const game = Vue.component('game',{
             }
             
             return new Promise((resolve,reject)=>{
-                fetch(`https://www.instagram.com/${handle}/`)
+                fetch(`/profile?insta=${handle}`)
                 .then((res)=>{
                     if(res.status === 200){
                         return  res.text();

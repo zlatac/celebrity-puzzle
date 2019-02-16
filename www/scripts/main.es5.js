@@ -214,7 +214,7 @@ var serviceProvider = {
 
             this.modalPage.loader = true;
             if (profile === '') return this.modalPage.fail = true;
-            fetch('https://www.instagram.com/' + profile + '/').then(function (res) {
+            fetch('/profile?insta=' + profile).then(function (res) {
                 if (res.status === 200) {
                     return res.text();
                 } else {
@@ -676,7 +676,7 @@ var game = Vue.component('game', {
             }
 
             return new Promise(function (resolve, reject) {
-                fetch('https://www.instagram.com/' + handle + '/').then(function (res) {
+                fetch('/profile?insta=' + handle).then(function (res) {
                     if (res.status === 200) {
                         return res.text();
                     } else {

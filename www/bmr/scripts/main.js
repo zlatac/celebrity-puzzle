@@ -45,6 +45,10 @@ const serviceProvider = {
         if (tooltip) M.Tooltip.init(tooltip);
                             
     },
+    destroy:function(){
+        this.modalInstance.destroy()
+        
+    },
     created: function(){
         this.validateClubListState()
     },
@@ -160,24 +164,23 @@ const serviceProvider = {
             }
             this.modalPage.loader = true
             if(profile === '') return this.modalPage.fail = true
-            fetch(`https://www.instagram.com/${profile}/`)
+            axios.get(`/profile`,{
+                params:{
+                    insta: profile,
+                }
+            })
             .then((res)=>{
                 if(res.status === 200){
-                    return  res.text();
-                }else{
-                    this.modalPage.fail = true
-                    return 'failed'
-                }      
-            })
-            .then((data)=>{
-                if(data !== 'failed'){
-                    let sift = data.match(/og:image.+(http.+)"/i)[1];
+                    let sift = res.data.match(/og:image.+(http.+)"/i)[1];
                     this.$store.commit('url',sift);
                     this.modalPage.fail = false
                     this.modalPage.loader = false
                     this.modalPage.imageacquired = true
-                }
-            });
+                }     
+            })
+            .catch((error)=>{
+                this.modalPage.fail = true
+            })
             //this.url = profile;
         },
         getVipStatus(profile){
@@ -187,7 +190,7 @@ const serviceProvider = {
             this.modalPage.loader = true
             if(profile === '') return this.modalPage.fail = true
             let promises = []
-            promises.push(axios.get(`https://www.instagram.com/${profile}/`))
+        promises.push(axios.get(`/profile`, {params:{insta: profile}} ))
             promises.push(axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${profile}/${date}`))
             return Promise.all(promises)
             .then((res)=>{
@@ -352,9 +355,10 @@ const home = Vue.component('home', {
             <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">
                 <div class="row">
                     <div class="col s4">
-                        <div style="position: relative;">
-                            <img class="circle" :src="x.image" width="70px" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"
-                                 @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">
+                        <div style="position: relative;" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"
+                             @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">
+                            <img class="circle" :src="x.image" width="70px" style="z-index: -1;">
+                            <div style="position:absolute; width:100%; height:100%; top:0"></div>
                         </div>
                     </div>
                     <div class="col s5" style="text-transform:capitalize;">
@@ -1033,7 +1037,6 @@ Vue.component('adsense',{
         <!-- footer ad  data-adtest="on"-->
         <ins class="adsbygoogle center-block"
             style="display:block"
-            data-adtest="on"
             data-ad-client="ca-pub-8868040855394757"
             data-ad-slot="1741308624"></ins>
     </div>

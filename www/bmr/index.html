@@ -61,7 +61,7 @@
 </script>
 <script type="text/x-template" id="spotify">
     <div class="zontainer center-align animated fadeIn">
-        <modal :modalPage="modalPage">
+        <modal :modalPage="modalPage" @close="closeModal">
             <h5 style="text-align: center;margin-bottom: 30px">
                 Enter VIP
             </h5>
@@ -99,7 +99,7 @@
         </div>
         <div style="margin-top: 252px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
-            <adsense v-if="!loader && searchResult.length !== 0 && !isLocalhost"></adsense>
+            <adsense v-if="!loader && searchResult.length !== 0"></adsense>
             <div class="row " v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-show="noResult === true">
                     <div class="row">
@@ -238,9 +238,9 @@
     <div id="modal1" class="modal">
         <div class="modal-content">
             <div>
-                <!-- <div class="row" style="margin: 0px;">
+                <div class="row" style="margin: 0px;">
                     <div class="col" @click="$emit('close')"><i class="material-icons" style="font-size: 20px;">arrow_back_ios</i></div>
-                </div> -->
+                </div>
                 <slot></slot>
                 <div class="row">
                     <div class="col s8">

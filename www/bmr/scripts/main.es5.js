@@ -45,6 +45,9 @@ var serviceProvider = {
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
     },
+    destroy: function destroy() {
+        this.modalInstance.destroy();
+    },
     created: function created() {
         this.validateClubListState();
     },
@@ -174,21 +177,20 @@ var serviceProvider = {
             }
             this.modalPage.loader = true;
             if (profile === '') return this.modalPage.fail = true;
-            fetch('https://www.instagram.com/' + profile + '/').then(function (res) {
-                if (res.status === 200) {
-                    return res.text();
-                } else {
-                    _this3.modalPage.fail = true;
-                    return 'failed';
+            axios.get('/profile', {
+                params: {
+                    insta: profile
                 }
-            }).then(function (data) {
-                if (data !== 'failed') {
-                    var sift = data.match(/og:image.+(http.+)"/i)[1];
+            }).then(function (res) {
+                if (res.status === 200) {
+                    var sift = res.data.match(/og:image.+(http.+)"/i)[1];
                     _this3.$store.commit('url', sift);
                     _this3.modalPage.fail = false;
                     _this3.modalPage.loader = false;
                     _this3.modalPage.imageacquired = true;
                 }
+            }).catch(function (error) {
+                _this3.modalPage.fail = true;
             });
             //this.url = profile;
         },
@@ -201,7 +203,7 @@ var serviceProvider = {
             this.modalPage.loader = true;
             if (profile === '') return this.modalPage.fail = true;
             var promises = [];
-            promises.push(axios.get('https://www.instagram.com/' + profile + '/'));
+            promises.push(axios.get('/profile', { params: { insta: profile } }));
             promises.push(axios.get(this.baseUrl + '/bmr-vip/' + club_id + '/' + profile + '/' + date));
             return Promise.all(promises).then(function (res) {
                 var instagram = res[0];
@@ -336,7 +338,7 @@ var landing = Vue.component('landing', {
 });
 
 var home = Vue.component('home', {
-    template: '\n        <div style="margin-bottom: 65px;">\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;">\n                            <img class="circle" :src="x.image" width="70px" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"\n                                 @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n            <modal :modalPage="modalPage" :modalData="modalData" @submit="addVip" @close="closeModal">\n                <h5 style="text-align: center;margin-bottom: 30px">\n                    {{modalPage.brand.name}}\n                </h5>\n            </modal>\n        </div>\n    ',
+    template: '\n        <div style="margin-bottom: 65px;">\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"\n                             @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">\n                            <img class="circle" :src="x.image" width="70px" style="z-index: -1;">\n                            <div style="position:absolute; width:100%; height:100%; top:0"></div>\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n            <modal :modalPage="modalPage" :modalData="modalData" @submit="addVip" @close="closeModal">\n                <h5 style="text-align: center;margin-bottom: 30px">\n                    {{modalPage.brand.name}}\n                </h5>\n            </modal>\n        </div>\n    ',
     mixins: [serviceProvider],
     data: function data() {
         return {
@@ -1008,7 +1010,7 @@ Vue.directive('inputHighlight', {
     }
 });
 Vue.component('adsense', {
-    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-adtest="on"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
+    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
     mounted: function mounted() {
         this.modalAdsense();
