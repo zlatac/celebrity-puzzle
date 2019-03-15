@@ -830,6 +830,7 @@ var djSpotify = Vue.component('djSpotify', {
                         });
                         console.log(checkIdExist);
                         if (checkIdExist === -1) {
+                            request.song.vipList = new Map();
                             request.song.requestCount = 1;
                             request.song.hide = false;
                             request.song.bpm = '';
@@ -855,8 +856,9 @@ var djSpotify = Vue.component('djSpotify', {
         this.controlSocket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
+            var payload = { appName: _this15.appName };
             _this15.isConnected = true;
-            _this15.controlSocket.emit('updateRequests');
+            _this15.controlSocket.emit('updateRequests', payload);
         });
     },
     destroyed: function destroyed() {

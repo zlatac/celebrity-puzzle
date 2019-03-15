@@ -834,6 +834,7 @@ const djSpotify = Vue.component('djSpotify', {
                         let checkIdExist = this.requestBasket.findIndex((item) => item.id === request.song.id)
                         console.log(checkIdExist)
                         if(checkIdExist === -1){
+                            request.song.vipList = new Map()
                             request.song.requestCount = 1
                             request.song.hide = false
                             request.song.bpm = ''
@@ -860,8 +861,9 @@ const djSpotify = Vue.component('djSpotify', {
         this.controlSocket.on('reconnect', (data)=>{
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
+            const payload = {appName: this.appName}
             this.isConnected = true
-            this.controlSocket.emit('updateRequests')
+            this.controlSocket.emit('updateRequests',payload)
         });
         
     },

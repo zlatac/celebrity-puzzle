@@ -130,9 +130,11 @@ io.on('connection', function(client) {
     });
     client.on('updateRequests', function(data) {
         //when the dj gets disconnected send stored requests
-        let payload = {appName:'blessmyrequest',task:'pendingRequests', pendingRequests:dataStore.pendingRequests}
+        const pendingFiltered = dataStore.pendingRequests.filter((item)=> item.appName === data.appName)
+        let payload = {appName:data.appName,task:'pendingRequests', pendingRequests:pendingFiltered}
         io.sockets.connected[client.id].emit('answer', payload);
-        //console.log('i have sent the updated requests you missed')
+        //console.log('i have sent the updated requests you missed',client.id)
+        //console.log('filtered list',pendingFiltered)
     });
     client.on('analytics', function(data) {
         //console.log(data);
