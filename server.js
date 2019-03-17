@@ -41,6 +41,11 @@ app.get('/myipaddress', function (req, res) {
     res.send(ip);
 });
 
+app.get('/engine', function(req,res){
+    res.status(200)
+    res.sendFile(__dirname + '/www/bmr/engine/dist/bundle.js');
+})
+
 app.use(express.static(path.resolve(__dirname, 'www')));
 
 var dataStore = {acquiringToken:false,pendingRequests:[]};
