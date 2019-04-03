@@ -80,10 +80,8 @@ const serviceProvider = {
 			}
 			return input;
         },
-        vibrate: function(seconds){
-            if('vibrate' in navigator && this.volume === true){
-                navigator.vibrate(seconds)
-            }
+        cleanInstaHandle(handle){
+            return handle.replace('@','').toLowerCase()
         },
         toggleModal: function(modalData){
             this.modalData = modalData
@@ -154,7 +152,7 @@ const serviceProvider = {
             }
             this.profileTimeout = setTimeout(()=>{
                 //console.log(this.inputProfile)
-                let profile = this.inputProfile.replace('@','').toLowerCase()
+                let profile = this.cleanInstaHandle(this.inputProfile)
                 this.fetchInstaProfile(profile)
             },1200)
         },
@@ -184,14 +182,15 @@ const serviceProvider = {
             //this.url = profile;
         },
         getVipStatus(profile){
+            const instaProfile = this.cleanInstaHandle(profile)
             const club_id = this.modalPage.brand.id || this.$store.state.vipMode.club
             const date = moment().toISOString()
             this.modalPage.showButton = false
             this.modalPage.loader = true
-            if(profile === '') return this.modalPage.fail = true
+            if(instaProfile === '') return this.modalPage.fail = true
             let promises = []
-        promises.push(axios.get(`/profile`, {params:{insta: profile}} ))
-            promises.push(axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${profile}/${date}`))
+            promises.push(axios.get(`/profile`, {params:{insta: instaProfile}} ))
+            promises.push(axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${instaProfile}/${date}`))
             return Promise.all(promises)
             .then((res)=>{
                 const instagram = res[0]
@@ -205,7 +204,7 @@ const serviceProvider = {
                     this.modalPage.fail = true
                 }
                 if(verifyApi.status === 200){
-                    verifyApi.data[0].insta = profile
+                    verifyApi.data[0].insta = instaProfile
                     verifyApi.data[0].club = club_id
                     this.$store.commit('vipMode',verifyApi.data[0])
                     this.modalPage.verified = true
@@ -448,7 +447,8 @@ const home = Vue.component('home', {
                 }
             }, 2000)
         },
-        addVip(insta){
+        addVip(instaProfile){
+            const insta = this.cleanInstaHandle(instaProfile)
             this.modalPage.loader = true
             const club_id = this.modalPage.brand.id
             const date = moment().toISOString()
