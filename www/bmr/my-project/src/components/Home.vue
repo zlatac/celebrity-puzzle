@@ -3,6 +3,12 @@
         <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">
             Select Your Club
         </h4>
+        <feature feature-name="wow">
+            <template slot-scope="{ data }">
+                <div>WOW THIS IS DOPE {{JSON.stringify(data)}} </div>
+                <spinner></spinner>
+            </template>
+        </feature>
         <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"
                 @click="toggleSearch" v-show="!isSearchFocused">
             <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>
