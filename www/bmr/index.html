@@ -252,13 +252,13 @@
         <div class="modal-content">
             <div>
                 <div class="row" style="margin: 0px;">
-                    <div class="col" @click="$emit('close')"><i class="material-icons" style="font-size: 20px;">arrow_back_ios</i></div>
+                    <div class="col" @click="closeModal"><i class="material-icons" style="font-size: 20px;">arrow_back_ios</i></div>
                 </div>
                 <slot></slot>
                 <div class="row">
                     <div class="col s8">
-                        <input type="text" placeholder="Instagram handle" v-model="inputProfile" :class="{'invalid': modalPage.fail}"
-                         @keyup="getProfile">
+                        <input type="text" placeholder="Instagram handle" :value="inputProfile" :class="{'invalid': modalPage.fail}"
+                         @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" @keyup="getProfile">
                     </div>
                     <div class="col s4" v-show="!modalPage.fail" style="position: relative;">
                         <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!modalPage.loader">
@@ -272,7 +272,7 @@
                 </div>
                 <div class="row animated bounceIn" v-show="modalPage.showButton && !modalPage.loader && modalPage.imageacquired">
                     <div class="col s12">
-                        <div class="btn btn-block z-depth-2" @click="$emit('submit',inputProfile)" style="background:var(--main)">Submit</div>
+                        <div class="btn btn-block z-depth-2" @click="submitModal" style="background:var(--main)">Submit</div>
                     </div>
                 </div>
             </div>

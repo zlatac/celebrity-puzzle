@@ -184,6 +184,8 @@ io.on('connection', function(client) {
                 djData: djExists,
             }
             io.sockets.connected[client.id].emit('djData', payload)
+        }else {
+            io.sockets.connected[client.id].emit('noDj')
         }
     });
 });

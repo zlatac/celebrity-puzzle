@@ -723,7 +723,7 @@ const game = Vue.component('game',{
                         //filter for only images with 3:4 and 1:1 dimensions
                         let imageList = instaList.filter(item => item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height)
                         if(imageList.length < 1){
-                            this.getImage()
+                            this.retry()
                         }else{
                             let index = Math.floor(Math.random()*(imageList.length));
                             this.profile = {

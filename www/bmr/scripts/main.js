@@ -146,7 +146,7 @@ const serviceProvider = {
             this.modalInstance.close()
         },
         getProfile:function(input){
-            if (typeof input === 'string' && this.safe(input)) this.inputProfile = input
+            if (typeof input === 'string' && this.safe(input)) this.inputProfile = input //$event gets passed by vue
             this.modalPage.imageacquired = false // remove submit button while typing
             this.modalPage.verified = this.modalPage.unverified = false
             this.modalPage.showButton = true
@@ -375,7 +375,7 @@ const home = Vue.component('home', {
                     <div class="col s4">
                         <div style="position: relative;" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"
                              @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">
-                            <img class="circle" :src="x.image" width="70px" style="z-index: -1;">
+                            <img class="circle" v-imgfallback :src="x.image" width="70px" style="z-index: -1;">
                             <div style="position:absolute; width:100%; height:100%; top:0"></div>
                         </div>
                     </div>
@@ -721,6 +721,9 @@ const spotify = Vue.component('spotify',{
                 console.warn(error)
             })
         });
+        this.socket.on('noDj',(data)=>{
+            this.$store.commit('noDj')
+        });
         
     },
     destroyed: function(){
@@ -1039,9 +1042,14 @@ Vue.component('modal',{
     props:['modalPage'],
     template:'#comp-modal',
     mixins: [serviceProvider],
-    data: function(){
-        return{
-            whyme:'heloo'
+    methods: {
+        submitModal(){
+            this.$emit('submit',this.inputProfile)
+            this.inputProfile = ''
+        },
+        closeModal(){
+            this.$emit('close')
+            this.inputProfile = ''
         }
     }
 })
@@ -1254,6 +1262,9 @@ const store = new Vuex.Store({
         },
         badgeImage(state, data){
             state.badge = data;
+        },
+        noDj(state){
+            state.badge.appName = ''
         }
     }
 })
