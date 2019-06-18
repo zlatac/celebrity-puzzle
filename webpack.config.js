@@ -27,5 +27,8 @@ module.exports = {
                 loader: 'css-loader!stylus-loader?paths=node_modules/bootstrap-stylus/stylus/'
             }
         ],
+    },
+    node: {
+        Buffer: false
     }
 };
