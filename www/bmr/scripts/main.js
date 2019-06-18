@@ -14,7 +14,9 @@ const serviceProvider = {
             adsenseServed:false,
             holdEvent: false,
             logo:"https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q",
-            baseUrl: 'https://styleminions.co/api'
+            baseUrl: 'https://styleminions.co/api',
+            profileTimeout: null,
+            instaName: ''
         }
     },
     computed:{
@@ -143,7 +145,8 @@ const serviceProvider = {
         closeModal(){
             this.modalInstance.close()
         },
-        getProfile:function(){
+        getProfile:function(input){
+            if (typeof input === 'string' && this.safe(input)) this.inputProfile = input
             this.modalPage.imageacquired = false // remove submit button while typing
             this.modalPage.verified = this.modalPage.unverified = false
             this.modalPage.showButton = true
@@ -169,8 +172,10 @@ const serviceProvider = {
             })
             .then((res)=>{
                 if(res.status === 200){
-                    let sift = res.data.match(/og:image.+(http.+)"/i)[1];
-                    this.$store.commit('url',sift);
+                    let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
+                    let user = sift.entry_data.ProfilePage["0"].graphql.user
+                    this.instaName = user.full_name
+                    this.$store.commit('url',user.profile_pic_url)
                     this.modalPage.fail = false
                     this.modalPage.loader = false
                     this.modalPage.imageacquired = true
@@ -179,7 +184,21 @@ const serviceProvider = {
             .catch((error)=>{
                 this.modalPage.fail = true
             })
-            //this.url = profile;
+        },
+        getInstaImage(handle){
+            return axios.get(`/profile`,{
+                params:{
+                    insta: handle,
+                }
+            })
+            .then((res)=>{
+                if(res.status === 200){
+                    let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
+                    let user = sift.entry_data.ProfilePage["0"].graphql.user
+                    let image = user.profile_pic_url
+                    return image
+                }     
+            })
         },
         getVipStatus(profile){
             const instaProfile = this.cleanInstaHandle(profile)
@@ -501,6 +520,11 @@ const spotify = Vue.component('spotify',{
                 showButton: false,
                 brand:{},
                 appName: this.appName
+            },
+            djData: {
+                handle: '',
+                image: '',
+                name: '',
             }
         }
     },
@@ -520,6 +544,13 @@ const spotify = Vue.component('spotify',{
         isVip(){
             return this.vipMode.limit > 0 && this.vipMode.club === this.appName
         },
+        isDjHere(){
+            const routeId = this.$route.params.id
+            if(routeId === this.$store.state.badge.appName && this.$route.path.includes('request')){
+                return true
+            }
+            return false
+        }
     },
     methods: {
         searchTrack(){
@@ -648,6 +679,7 @@ const spotify = Vue.component('spotify',{
         this.socket.on('connect', (data)=>{
             this.isConnected = true
             this.socket.emit('audience',{appName:this.appName,id:this.socket.id,task:'population'});
+            this.socket.emit('getDj',{appName:this.appName})
             console.log(data, 'connected my nigga');
         });
         this.socket.on('disconnect', (data)=>{
@@ -659,6 +691,8 @@ const spotify = Vue.component('spotify',{
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
             this.isConnected = true
+            const payload = {appName: this.appName}
+            this.socket.emit('getDj',payload)
         });
         //this.socket.emit('join','we in this bitch son');
         this.socket.on('sendMetrics',(data)=>{
@@ -674,8 +708,18 @@ const spotify = Vue.component('spotify',{
                 this.searchTrack()
             }
         });
-        this.socket.on('room',(data)=>{
-            console.log(data)
+        this.socket.on('djData',(data)=>{
+            this.djData.name = data.djData.name;
+            this.djData.handle = data.djData.handle;
+            this.getInstaImage(data.djData.handle)
+            .then((res) => {
+                const payload = {appName:this.appName, image: res}
+                this.$store.commit('badgeImage', payload)
+                this.djData.image = res
+            })
+            .catch(error => {
+                console.warn(error)
+            })
         });
         
     },
@@ -694,7 +738,19 @@ const djSpotify = Vue.component('djSpotify', {
             population: [],
             pendingTrackDetails:[],
             isConnected: false,
-            musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B']
+            musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B'],
+            modalPage: {
+                page: 'djspotify',
+                insta: false,
+                fail: false,
+                imageacquired: false,
+                loader: false,
+                verified: false,
+                unverified: false,
+                showButton: false,
+                brand:{},
+                appName: this.appName
+            }
         }
     },
     computed:{
@@ -779,12 +835,25 @@ const djSpotify = Vue.component('djSpotify', {
                     this.controlSocket.emit('newTokenPlease')
                 }                    
             })
+        },
+        setDj(){
+            //save to database first
+            const payload = {}
+            payload.appName = this.appName
+            payload.handle = this.inputProfile
+            payload.name = this.instaName
+            this.controlSocket.emit('setDj', payload)
+            this.modalPage.verified = true
+            this.modalPage.imageacquired = false
+            this.$store.commit('badgeImage', {image:this.url, appName:this.appName})
+            
         }
     },
     created:function(){
         this.validateId()
         this.controlSocket.on('connect', (data)=>{
             this.isConnected = true
+            this.controlSocket.emit('getDj',{appName:this.appName})
             console.log('connected my nigga');
         });
         this.controlSocket.on('disconnect', (data)=>{
@@ -864,6 +933,13 @@ const djSpotify = Vue.component('djSpotify', {
             const payload = {appName: this.appName}
             this.isConnected = true
             this.controlSocket.emit('updateRequests',payload)
+        });
+        this.controlSocket.on('djData', (data)=>{
+            this.getInstaImage(data.djData.handle)
+            .then(res => {
+                const payload = {appName:this.appName, image: res}
+                this.$store.commit('badgeImage', payload)
+            })
         });
         
     },
@@ -1047,7 +1123,72 @@ Vue.component('adsense',{
     mounted(){
         this.modalAdsense()   
     }
-})
+});
+
+Vue.component('badge', {
+    template: `
+    <div class="component">
+        <div class="dj-chip chip animated fadeInRight" @click="show = true">
+        <img :src="imageUrl" alt="Contact Person">
+        DJ
+        </div>
+        <slide-modal :show="show" @close="show = false">
+            <slot></slot>
+        </slide-modal>
+    </div>
+    `,
+    data: function(){
+        return {
+            show: false,
+            link: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+        }
+    },
+    computed: {
+        imageUrl(){
+            const routeId = this.$route.params.id
+            if(routeId === this.$store.state.badge.appName){
+                return this.$store.state.badge.image
+            }
+            
+            return this.link
+        }
+    }
+
+});
+Vue.component('slide-modal', {
+    template: `
+    <div class="dj-modal-container" v-if="show">
+        <div class="close-body" @click="$emit('close')"></div>
+        <div class="dj-modal-body animated slideInUp">
+            <slot></slot>
+        </div>
+    </div>
+    `,
+    props:['show'],
+
+});
+Vue.component('get-insta', {
+    template: `
+    <div class="row">
+        <div class="col s8">
+            <input type="text" placeholder="Instagram handle" :value="inputProfile" :class="{'invalid': comp.fail}"
+                @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" 
+                @keyup="$emit('get-profile', inputProfile)">
+        </div>
+        <div class="col s4" v-show="!comp.fail" style="position: relative;">
+            <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!comp.loader">
+            <span v-show="comp.verified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">check</i></span>
+            <span v-show="comp.unverified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">close</i></span>
+            <spinner class="animated fadeIn" :colorClass="'default'" v-show="comp.loader"></spinner>
+        </div>
+        <div class="col s4" v-show="comp.fail">
+            <i class="material-icons">mood_bad</i><br><span style="font-size:10px">Oops! Not an instagram profile</span>
+        </div>
+    </div>
+    `,
+    props:['comp'],
+    mixins:[serviceProvider],
+});
 Vue.directive('imgfallback', {
     bind: function(el,binding,vnode){
         let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png'
@@ -1084,6 +1225,10 @@ const store = new Vuex.Store({
             insta: '',
             club: ''
         },
+        badge: {
+            image: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+            appName: ''
+        }
     },
     mutations:{
         url(state, data){
@@ -1106,6 +1251,9 @@ const store = new Vuex.Store({
         },
         resetVipMode(state){
             state.vipMode.limit = 0
+        },
+        badgeImage(state, data){
+            state.badge = data;
         }
     }
 })

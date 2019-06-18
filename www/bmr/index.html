@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -66,6 +66,15 @@
                 Enter VIP
             </h5>
         </modal>
+        <badge v-if="isDjHere">
+            <div class="dj-insta">
+                <img class="circle img-online animated zoomIn" :src="djData.image">
+                <div class="dj-name">{{djData.name}}</div>
+                <a :href="`https://instagram.com/${djData.handle}`" target="_blank">
+                    <span><i class="fab fa-instagram" style="font-size: 23px;"></i></span>
+                </a>
+            </div>
+        </badge>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
@@ -140,6 +149,10 @@
 </script>
 <script type="text/x-template" id="djspotify">
     <div class="zontainer center-align animated fadeIn">
+        <badge>
+            <get-insta :comp="modalPage" @get-profile="getProfile" style="margin-top: 23px;padding: 0 10%;"></get-insta>
+            <div class="btn btn-background" v-if="modalPage.imageacquired" @click="setDj">Take The Spotlight</div>
+        </badge>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;">
@@ -244,8 +257,8 @@
                 <slot></slot>
                 <div class="row">
                     <div class="col s8">
-                        <input type="text" placeholder="Instagram handle" :value="inputProfile" :class="{'invalid': modalPage.fail}"
-                         @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" @keyup="getProfile">
+                        <input type="text" placeholder="Instagram handle" v-model="inputProfile" :class="{'invalid': modalPage.fail}"
+                         @keyup="getProfile">
                     </div>
                     <div class="col s4" v-show="!modalPage.fail" style="position: relative;">
                         <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!modalPage.loader">
