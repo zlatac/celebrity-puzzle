@@ -693,7 +693,7 @@ var game = Vue.component('game', {
                             return item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height;
                         });
                         if (imageList.length < 1) {
-                            _this12.getImage();
+                            _this12.retry();
                         } else {
                             var index = Math.floor(Math.random() * imageList.length);
                             _this12.profile = {

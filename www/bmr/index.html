@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -66,6 +66,15 @@
                 Enter VIP
             </h5>
         </modal>
+        <badge v-if="isDjHere">
+            <div class="dj-insta">
+                <img class="circle img-online animated zoomIn" :src="djData.image">
+                <div class="dj-name">{{djData.name}}</div>
+                <a :href="`https://instagram.com/${djData.handle}`" target="_blank">
+                    <span><i class="fab fa-instagram" style="font-size: 23px;"></i></span>
+                </a>
+            </div>
+        </badge>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;padding-top: 5px;">
@@ -140,6 +149,10 @@
 </script>
 <script type="text/x-template" id="djspotify">
     <div class="zontainer center-align animated fadeIn">
+        <badge>
+            <get-insta :comp="modalPage" @get-profile="getProfile" style="margin-top: 23px;padding: 0 10%;"></get-insta>
+            <div class="btn btn-background" v-if="modalPage.imageacquired" @click="setDj">Take The Spotlight</div>
+        </badge>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;">
@@ -179,6 +192,7 @@
                             {{x.song}} 
                             <p class="grey-text p-space">{{x.artist}}</p>
                             <p class="p-space"><b>[ {{x.bpm}} ]</b></p>
+                            <p class="p-space" v-if="x.explicit"><b>---- Explicit ----</b></p>
                         </div>
                         <div class="col s3">
                             <span class="btn btn-floating" @click="hideRequest(x)" v-show="x.vipList.size <= 0 || x.showVip">
@@ -239,7 +253,7 @@
         <div class="modal-content">
             <div>
                 <div class="row" style="margin: 0px;">
-                    <div class="col" @click="$emit('close')"><i class="material-icons" style="font-size: 20px;">arrow_back_ios</i></div>
+                    <div class="col" @click="closeModal"><i class="material-icons" style="font-size: 20px;">arrow_back_ios</i></div>
                 </div>
                 <slot></slot>
                 <div class="row">
@@ -259,7 +273,7 @@
                 </div>
                 <div class="row animated bounceIn" v-show="modalPage.showButton && !modalPage.loader && modalPage.imageacquired">
                     <div class="col s12">
-                        <div class="btn btn-block z-depth-2" @click="$emit('submit',inputProfile)" style="background:var(--main)">Submit</div>
+                        <div class="btn btn-block z-depth-2" @click="submitModal" style="background:var(--main)">Submit</div>
                     </div>
                 </div>
             </div>

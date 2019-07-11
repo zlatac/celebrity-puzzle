@@ -48,7 +48,7 @@ app.get('/engine', function(req,res){
 
 app.use(express.static(path.resolve(__dirname, 'www')));
 
-var dataStore = {acquiringToken:false,pendingRequests:[]};
+var dataStore = {acquiringToken:false,pendingRequests:[],djData:[]};
 var authorize = Buffer.from('69b05d3b1a0a4bb9a404d8748c5f5a54:84a00b36aff4410a8fdaee869f7fec02').toString('base64')
 function spotifyToken(client){
     if(dataStore.acquiringToken === false){
@@ -75,6 +75,30 @@ function spotifyToken(client){
         })
     }
     
+}
+
+function clearDataLater(){
+    dataStore.timeout = function(){
+        //this empties the question data saved after 20 minutes
+        const hours = 5;
+        const minutesInHour = 60
+        const secondsInMinute = 60000;
+        let seconds = hours*minutesInHour*secondsInMinute; //5 hours
+        if(!('timeout' in dataStore)){
+            return setTimeout(function(){
+                dataStore.pendingRequests = dataStore.djData =  [];
+                //console.log('its deleted',dataStore)
+            },seconds);
+        }else{
+            clearTimeout(dataStore.timeout);
+            return setTimeout(function(){
+                dataStore.pendingRequests = dataStore.djData =  [];
+                //console.log('its deleted',dataStore)
+            },seconds);
+        }
+        
+    }();
+    //console.log('wowowowowowo')
 }
 
 
@@ -112,31 +136,21 @@ io.on('connection', function(client) {
         //console.log(data);
         if('task' in data && data.task === 'request'){
             dataStore.pendingRequests.push(data)
+            clearDataLater();
         }
         client.broadcast.emit('answer', data);
-        dataStore.timeout = function(){
-            //this empties the question data saved after 20 minutes
-            let minutes = 60*60000; //60 minutes
-            if(!('timeout' in dataStore)){
-                return setTimeout(function(){
-                    dataStore.pendingRequests = [];
-                    //console.log('its deleted',dataStore)
-                },minutes);
-            }else{
-                clearTimeout(dataStore.timeout);
-                return setTimeout(function(){
-                    dataStore.pendingRequests = []; 
-                    //console.log('its deleted',dataStore)
-                },minutes);
-            }
-            
-        }();
         //console.log(dataStore)
     });
     client.on('updateRequests', function(data) {
         //when the dj gets disconnected send stored requests
         const pendingFiltered = dataStore.pendingRequests.filter((item)=> item.appName === data.appName)
-        let payload = {appName:data.appName,task:'pendingRequests', pendingRequests:pendingFiltered}
+        const djExists = dataStore.djData.find( i => i.appName === data.appName)
+        let payload = {
+            appName:data.appName,
+            task:'pendingRequests', 
+            pendingRequests:pendingFiltered,
+            djData: (djExists !== undefined) ? djExists : {},
+        }
         io.sockets.connected[client.id].emit('answer', payload);
         //console.log('i have sent the updated requests you missed',client.id)
         //console.log('filtered list',pendingFiltered)
@@ -147,6 +161,32 @@ io.on('connection', function(client) {
     });
     client.on('newTokenPlease', function(data) {
         spotifyToken(client)
+    });
+    client.on('setDj', function(data) {
+        //console.log(JSON.stringify(data))
+        const appNameExits = dataStore.djData.find( i => i.appName === data.appName)
+        if (appNameExits !== undefined && 'appName' in appNameExits) {
+            appNameExits.handle = data.handle
+            appNameExits.name = data.name
+            client.broadcast.emit('djData', {djData:appNameExits});
+        } else {
+            dataStore.djData.push(data)
+            client.broadcast.emit('djData', {djData:data});
+        }
+        clearDataLater()
+    });
+    client.on('getDj', function(data) {
+        //console.log('they need the DJ bruh')
+        //when the club user gets disconnected send djData
+        const djExists = dataStore.djData.find( i => i.appName === data.appName)
+        if (djExists !== undefined) {
+            let payload = {
+                djData: djExists,
+            }
+            io.sockets.connected[client.id].emit('djData', payload)
+        }else {
+            io.sockets.connected[client.id].emit('noDj')
+        }
     });
 });
 

@@ -69,6 +69,9 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
 .btn-opaque{
     opacity:0.1;
 }
+.btn-background {
+    background: var(--main);
+}
 .img-online{
     border: solid 3px #24d5e5;
 }
@@ -117,4 +120,43 @@ input.select-dropdown{
 }
 img{
     user-select: none; 
+}
+.dj-chip {
+    position: absolute;
+    top: 5px;
+    right: 0;
+    z-index: 20;
+}
+.dj-modal-container {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    z-index: 21;
+    background-color: #0000004d;
+    display: flex;
+    justify-content: flex-end;
+    flex-direction: column;
+}
+.dj-modal-body {
+    height: 72%;
+    background-color: white;
+    border-radius: 40px 40px 0 0;
+}
+.close-body {
+    flex-grow: 1;
+    background-color: transparent;
+}
+.dj-insta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3% 7%;
+}
+.dj-insta img.circle {
+    flex-basis: 30%;
+    width: 30%;
+}
+.dj-insta .dj-name {
+    flex-basis: 50%;
 }
