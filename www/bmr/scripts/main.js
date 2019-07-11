@@ -820,7 +820,6 @@ const djSpotify = Vue.component('djSpotify', {
                 fetch(`https://api.spotify.com/v1/tracks/${id}?access_token=${token}`)
             ]
             Promise.all(calls)
-            //fetch(`https://api.spotify.com/v1/audio-features/${id}?access_token=${token}`)
             .then((res)=>{
                 if(res.every(i => i.status === 200)){
                     return Promise.all(res.map(i => i.json()))
@@ -834,7 +833,6 @@ const djSpotify = Vue.component('djSpotify', {
             .then((res)=>{
                 if(res !== 'fail'){
                     const [audioFeatures, trackDetails] = [...res]
-                    console.log(audioFeatures,trackDetails, res)
                     let musicKey = this.musicNotes[audioFeatures.key]
                     let bpm = Math.floor(Number(audioFeatures.tempo))
                     let output = `${musicKey} - ${bpm} bpm`
