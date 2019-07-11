@@ -1,5 +1,7 @@
 'use strict';
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 var serviceProvider = {
     data: function data() {
         return {
@@ -801,9 +803,16 @@ var djSpotify = Vue.component('djSpotify', {
 
             var id = trackObject.id;
             var token = this.$store.state.accessToken;
-            fetch('https://api.spotify.com/v1/audio-features/' + id + '?access_token=' + token).then(function (res) {
-                if (res.status === 200) {
-                    return res.json();
+            var calls = [fetch('https://api.spotify.com/v1/audio-features/' + id + '?access_token=' + token), fetch('https://api.spotify.com/v1/tracks/' + id + '?access_token=' + token)];
+            Promise.all(calls)
+            //fetch(`https://api.spotify.com/v1/audio-features/${id}?access_token=${token}`)
+            .then(function (res) {
+                if (res.every(function (i) {
+                    return i.status === 200;
+                })) {
+                    return Promise.all(res.map(function (i) {
+                        return i.json();
+                    }));
                 } else {
                     return 'fail';
                 }
@@ -811,13 +820,19 @@ var djSpotify = Vue.component('djSpotify', {
                 console.log(new Error(err));
             }).then(function (res) {
                 if (res !== 'fail') {
-                    var musicKey = _this14.musicNotes[res.key];
-                    var bpm = Math.floor(Number(res.tempo));
+                    var _ref = [].concat(_toConsumableArray(res)),
+                        audioFeatures = _ref[0],
+                        trackDetails = _ref[1];
+
+                    console.log(audioFeatures, trackDetails, res);
+                    var musicKey = _this14.musicNotes[audioFeatures.key];
+                    var bpm = Math.floor(Number(audioFeatures.tempo));
                     var output = musicKey + ' - ' + bpm + ' bpm';
                     var indexInBasket = _this14.requestBasket.findIndex(function (item) {
                         return item.id === id;
                     });
                     _this14.requestBasket[indexInBasket].bpm = output;
+                    _this14.requestBasket[indexInBasket].explicit = trackDetails.explicit;
                 } else if (res === 'fail') {
                     _this14.pendingTrackDetails.push(trackObject);
                     _this14.controlSocket.emit('newTokenPlease');

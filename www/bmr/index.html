@@ -192,6 +192,7 @@
                             {{x.song}} 
                             <p class="grey-text p-space">{{x.artist}}</p>
                             <p class="p-space"><b>[ {{x.bpm}} ]</b></p>
+                            <p class="p-space" v-if="x.explicit"><b>---- Explicit ----</b></p>
                         </div>
                         <div class="col s3">
                             <span class="btn btn-floating" @click="hideRequest(x)" v-show="x.vipList.size <= 0 || x.showVip">
