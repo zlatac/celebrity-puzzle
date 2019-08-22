@@ -145,6 +145,9 @@ const serviceProvider = {
         closeModal(){
             this.modalInstance.close()
         },
+        instaLink(handle){
+            return `https://www.instagram.com/${handle}/`
+        },
         getProfile:function(input){
             if (typeof input === 'string' && this.safe(input)) this.inputProfile = input //$event gets passed by vue
             this.modalPage.imageacquired = false // remove submit button while typing
@@ -165,11 +168,7 @@ const serviceProvider = {
             }
             this.modalPage.loader = true
             if(profile === '') return this.modalPage.fail = true
-            axios.get(`/profile`,{
-                params:{
-                    insta: profile,
-                }
-            })
+            axios.get(this.instaLink(profile))
             .then((res)=>{
                 if(res.status === 200){
                     let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
@@ -186,11 +185,7 @@ const serviceProvider = {
             })
         },
         getInstaImage(handle){
-            return axios.get(`/profile`,{
-                params:{
-                    insta: handle,
-                }
-            })
+            return axios.get(this.instaLink(handle))
             .then((res)=>{
                 if(res.status === 200){
                     let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
@@ -208,7 +203,7 @@ const serviceProvider = {
             this.modalPage.loader = true
             if(instaProfile === '') return this.modalPage.fail = true
             let promises = []
-            promises.push(axios.get(`/profile`, {params:{insta: instaProfile}} ))
+            promises.push(axios.get(this.instaLink(instaProfile)))
             promises.push(axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${instaProfile}/${date}`))
             return Promise.all(promises)
             .then((res)=>{

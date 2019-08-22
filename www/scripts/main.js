@@ -194,6 +194,9 @@ const serviceProvider = {
                 this.getProfile()
             }
         },
+        instaLink(handle){
+            return `https://www.instagram.com/${handle}/`
+        },
         getProfile:function(){
             this.modalPage.imageacquired = false // remove submit button while typing
             if(this.profileTimeout !== null){
@@ -208,7 +211,7 @@ const serviceProvider = {
         fetchInstaProfile: function(profile){
             this.modalPage.loader = true
             if(profile === '') return this.modalPage.fail = true
-            fetch(`/profile?insta=${profile}`)
+            fetch(this.instaLink(profile))
             .then((res)=>{
                 if(res.status === 200){
                     return  res.text();
@@ -706,7 +709,7 @@ const game = Vue.component('game',{
             }
             
             return new Promise((resolve,reject)=>{
-                fetch(`/profile?insta=${handle}`)
+                fetch(this.instaLink(handle))
                 .then((res)=>{
                     if(res.status === 200){
                         return  res.text();
