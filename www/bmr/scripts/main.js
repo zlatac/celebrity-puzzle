@@ -146,7 +146,8 @@ const serviceProvider = {
             this.modalInstance.close()
         },
         instaLink(handle){
-            return `https://www.instagram.com/${handle}/`
+            //return `https://www.instagram.com/${handle}/`
+            return `/profile?insta=${handle}/`
         },
         getProfile:function(input){
             if (typeof input === 'string' && this.safe(input)) this.inputProfile = input //$event gets passed by vue
@@ -172,6 +173,7 @@ const serviceProvider = {
             .then((res)=>{
                 if(res.status === 200){
                     let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
+                    console.log(sift)
                     let user = sift.entry_data.ProfilePage["0"].graphql.user
                     this.instaName = user.full_name
                     this.$store.commit('url',user.profile_pic_url)
