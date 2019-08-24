@@ -147,7 +147,7 @@ const serviceProvider = {
         },
         instaLink(handle){
             //return `https://www.instagram.com/${handle}/`
-            return `/profile?insta=${handle}/`
+            return `/profile?insta=${handle}`
         },
         getProfile:function(input){
             if (typeof input === 'string' && this.safe(input)) this.inputProfile = input //$event gets passed by vue
