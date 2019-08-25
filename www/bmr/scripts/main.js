@@ -179,14 +179,15 @@ const serviceProvider = {
             return {pointA,pointD}
 
             function filterClubs(){
-                clubsArray
+                return clubsArray
                 .filter((item)=>{
                     return item.long < mylocation.pointD.longitude && item.long > mylocation.pointA.longitude && item.lat < mylocation.pointA.latitude && item.lat > mylocation.pointD.latitude
                 })
-                .map((item)=>{item.distance = distanceFromDj(); return item})
+                .map((item)=>{item.distance = distanceFromDj(mylocation.lat, mylocation.long, item.lat, item.long); return item})
                 .sort((a,b)=>{if(a.distance < b.distance) return -1; if(a.distance > b.distance) return 1})
                 //below is to sort by closest location to the user
                 function distanceFromDj(lat1, lon1, lat2, lon2) {
+                    // returns distance in miles
                     //code calculation source https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula
                     var p = 0.017453292519943295;    // Math.PI / 180
                     var c = Math.cos;
