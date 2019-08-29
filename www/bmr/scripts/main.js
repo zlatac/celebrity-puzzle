@@ -172,9 +172,8 @@ const serviceProvider = {
             axios.get(this.instaLink(profile))
             .then((res)=>{
                 if(res.status === 200){
-                    let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
-                    console.log(sift)
-                    let user = sift.entry_data.ProfilePage["0"].graphql.user
+                    console.log(res)
+                    let user = res.data.graphql.user
                     this.instaName = user.full_name
                     this.$store.commit('url',user.profile_pic_url)
                     this.modalPage.fail = false
@@ -190,8 +189,7 @@ const serviceProvider = {
             return axios.get(this.instaLink(handle))
             .then((res)=>{
                 if(res.status === 200){
-                    let sift = JSON.parse(res.data.match(/window._sharedData = ({.+);/i)[1]);
-                    let user = sift.entry_data.ProfilePage["0"].graphql.user
+                    let user = res.data.graphql.user
                     let image = user.profile_pic_url
                     return image
                 }     
@@ -212,7 +210,7 @@ const serviceProvider = {
                 const instagram = res[0]
                 const verifyApi = res[1]
                 if(instagram.status === 200){
-                    let sift = instagram.data.match(/og:image.+(http.+)"/i)[1];
+                    let sift = instagram.data.graphql.user.profile_pic_url;
                     this.$store.commit('url',sift);
                     this.modalPage.fail = false
                     this.modalPage.imageacquired = true

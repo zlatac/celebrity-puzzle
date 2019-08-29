@@ -194,7 +194,13 @@ app.get('/profile', function(req,res){
     const insta = req.query.insta;
     //console.log(req)
     if(insta !== undefined){
-        axios.get(`https://www.instagram.com/${insta}/`)
+        axios.get(`https://www.instagram.com/${insta}/?__a=1`,{
+            withCredentials: true,
+            headers: {
+                'Content-Type' : 'application/json',
+                'Cookie': `sessionid=${process.env.INSTASESSION};`
+            }
+        })
         .then((data)=>{
             res.send(data.data)
             res.status(200)
