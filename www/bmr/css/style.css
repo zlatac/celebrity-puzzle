@@ -121,6 +121,11 @@ input.select-dropdown{
 img{
     user-select: none; 
 }
+.img-result {
+    height: 70px;
+    object-fit: cover;
+    width: 70px;
+}
 .dj-chip {
     position: absolute;
     top: 5px;

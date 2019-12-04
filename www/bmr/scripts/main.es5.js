@@ -527,6 +527,10 @@ const spotify = Vue.component('spotify', {
     methods: {
         searchTrack() {
             if (this.safe(this.searchInput)) {
+                if (this.club.name.toLowerCase().includes('rouge')) {
+                    this.youtube(this.searchInput);
+                    return;
+                }
                 this.loader = true;
                 // let token = 'BQCmVbA7pD8mZI9pCpUt5HcsO1Fb9nCRqlhcTAu52TpwCS4uxIi4BffjrENegBzfMjhMXHr_esCHR_R0O5M'
                 let token = this.$store.state.accessToken;
@@ -630,6 +634,37 @@ const spotify = Vue.component('spotify', {
             const change = vip ? gold : normal;
             doc.style.setProperty('--main', change);
             console.log('fired', change);
+        },
+        youtube(query) {
+            this.loader = true;
+            const searchUrl = 'https://www.googleapis.com/youtube/v3/search';
+            const key = 'AIzaSyCZVImtMr37nqi5MPRuNtvr0D-kp0Eq0Bk';
+            const maxTime = 247; // 4 minutes - if longer than 4 minutes then set maxtime
+            const params = new URLSearchParams({
+                q: `${query} audio`,
+                part: 'snippet',
+                maxResults: 5,
+                key
+            });
+            fetch(`${searchUrl}?${params.toString()}`).then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                }
+            }).then(res => {
+                this.searchResult = res.items.map(item => {
+                    let obj = {};
+                    obj.image = item.snippet.thumbnails.default.url;
+                    obj.song = item.snippet.title.split(' - ')[1];
+                    obj.artist = item.snippet.title.split(' - ')[0];
+                    obj.id = item.id.videoId;
+                    return obj;
+                });
+                this.noResult = this.searchResult.length === 0 ? true : false;
+                this.pendingSearch = [];
+                this.loader = false;
+                this.scrollToResultTop();
+                console.log(res, 'am done');
+            });
         }
     },
     watch: {
@@ -702,7 +737,9 @@ const djSpotify = Vue.component('djSpotify', {
             requestBasket: [],
             population: [],
             pendingTrackDetails: [],
+            jukeBoxList: [],
             isConnected: false,
+            jukeBoxInstance: undefined,
             musicNotes: ['C', 'C♯/D♭', 'D', 'D♯/E♭', 'E', 'F', 'F♯/G♭', 'G', 'G♯/A♭', 'A', 'A♯/B♭', 'B'],
             modalPage: {
                 page: 'djspotify',
@@ -808,6 +845,57 @@ const djSpotify = Vue.component('djSpotify', {
             this.modalPage.verified = true;
             this.modalPage.imageacquired = false;
             this.$store.commit('badgeImage', { image: this.url, appName: this.appName });
+        },
+        getJukeboxApi() {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            tag.onload = () => {
+                console.log('i got the magic');
+                this.jukeBoxInstance = new YT.Player('jukebox', {
+                    height: '200',
+                    width: '200',
+                    events: {
+                        'onError': event => console.error(new Error(event.data)),
+                        'onStateChange': event => {
+                            console.log(event);
+                            this.jukeBoxStateChanged(event);
+                        }
+                    }
+                });
+            };
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        },
+        jukeBoxStateChanged(event) {
+            const states = ['ended', 'playing', 'paused', 'buffering', 'video cued'];
+            switch (states[event.data]) {
+                case 'ended':
+                    this.jukeBoxList.splice(0, 1);
+                    if (this.jukeBoxList.length > 0) {
+                        this.jukeBoxInstance.loadVideoById({
+                            videoId: this.jukeBoxList[0].id,
+                            startSeconds: 0,
+                            endSeconds: 180
+                        });
+                    }
+                    break;
+                case 'video cued':
+                    break;
+                default:
+                    break;
+            }
+        },
+        addToPlaylist(song) {
+            if (this.jukeBoxList.length < 1) {
+                this.jukeBoxList.push(song);
+                this.jukeBoxInstance.loadVideoById({
+                    videoId: song.id,
+                    startSeconds: 0,
+                    endSeconds: 180
+                });
+                return;
+            }
+            this.jukeBoxList.push(song);
         }
     },
     created: function () {
@@ -833,6 +921,10 @@ const djSpotify = Vue.component('djSpotify', {
                     console.log('request added bruh', data);
                     let checkIdExist = this.requestBasket.findIndex(item => item.id === data.song.id);
                     console.log(checkIdExist);
+                    if (this.club.name.toLowerCase().includes('rouge')) {
+                        this.addToPlaylist(data.song);
+                        return;
+                    }
                     if (checkIdExist === -1) {
                         data.song.vipList = new Map();
                         data.song.requestCount = 1;
@@ -899,6 +991,9 @@ const djSpotify = Vue.component('djSpotify', {
                 this.$store.commit('badgeImage', payload);
             });
         });
+    },
+    mounted: function () {
+        this.getJukeboxApi();
     },
     destroyed: function () {
         //console.log('damn son am out')
