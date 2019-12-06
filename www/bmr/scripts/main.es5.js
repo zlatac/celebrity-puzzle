@@ -848,21 +848,20 @@ const djSpotify = Vue.component('djSpotify', {
         },
         getJukeboxApi() {
             const tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
-            tag.onload = () => {
-                console.log('i got the magic');
+            // When api is ready to be used this will be called
+            window.onYouTubeIframeAPIReady = () => {
                 this.jukeBoxInstance = new YT.Player('jukebox', {
                     height: '200',
                     width: '200',
                     events: {
                         'onError': event => console.error(new Error(event.data)),
                         'onStateChange': event => {
-                            console.log(event);
                             this.jukeBoxStateChanged(event);
                         }
                     }
                 });
             };
+            tag.src = "https://www.youtube.com/iframe_api";
             const firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         },
