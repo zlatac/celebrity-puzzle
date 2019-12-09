@@ -165,3 +165,6 @@ img{
 .dj-insta .dj-name {
     flex-basis: 50%;
 }
+.song-details {
+    text-transform: capitalize;
+}

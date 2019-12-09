@@ -776,6 +776,7 @@ const djSpotify = Vue.component('djSpotify', {
             isConnected: false,
             jukeBoxInstance: undefined,
             musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B'],
+            endAtSeconds: 240,
             modalPage: {
                 page: 'djspotify',
                 insta: false,
@@ -914,16 +915,27 @@ const djSpotify = Vue.component('djSpotify', {
             const states = ['ended', 'playing', 'paused', 'buffering', 'video cued']
             switch (states[event.data]) {
                 case 'ended':
-                    this.jukeBoxList.splice(0, 1)
+                    this.jukeBoxList.shift()
                     if (this.jukeBoxList.length > 0) {
+                        this.jukeBoxInstance.setVolume(100)
                         this.jukeBoxInstance.loadVideoById({
                             videoId: this.jukeBoxList[0].id,
                             startSeconds: 0,
-                            endSeconds: 180
+                            endSeconds: this.endAtSeconds
                         })
                     }
                     break;
-                case 'video cued':
+                case 'playing':
+                    const overMaxTime = this.jukeBoxInstance.getDuration() > this.endAtSeconds
+                    const currentDuration = !overMaxTime
+                        ? this.jukeBoxInstance.getDuration() - this.jukeBoxInstance.getCurrentTime()
+                        : this.endAtSeconds
+                    const lastTenPercentOfDuration = 0.2 * currentDuration 
+                    const firstNinetyPercentOfDuration = 0.8 * currentDuration * 1000
+                    const volumeRate = Math.floor((lastTenPercentOfDuration * 1000) / 8)
+                    setTimeout(() => {
+                        this.fadeOutVolume(volumeRate)
+                    }, firstNinetyPercentOfDuration)
                     break;
                 default:
                     break;
@@ -932,14 +944,27 @@ const djSpotify = Vue.component('djSpotify', {
         addToPlaylist(song){
             if (this.jukeBoxList.length < 1) {
                 this.jukeBoxList.push(song)
+                this.jukeBoxInstance.setVolume(100)
                 this.jukeBoxInstance.loadVideoById({
                     videoId: song.id,
                     startSeconds: 0,
-                    endSeconds: 180
+                    endSeconds: this.endAtSeconds
                 })
                 return
             }
             this.jukeBoxList.push(song)
+        },
+        fadeOutVolume(milliseconds){
+            const currentVolume = this.jukeBoxInstance.getVolume()
+            const nextVolume = Math.floor(currentVolume / 2)
+            const playerState = this.jukeBoxInstance.getPlayerState()
+            console.log('yeah bitch i reduced the volume')
+            if (playerState === YT.PlayerState.PLAYING && currentVolume > 1) {
+                setTimeout(() => {
+                    this.jukeBoxInstance.setVolume(nextVolume)
+                    this.fadeOutVolume(milliseconds)
+                }, milliseconds)
+            }
         }
     },
     created:function(){
@@ -1310,6 +1335,13 @@ Vue.directive('imgfallback', {
 Vue.filter('number', function (value) {
   value = Number(value)
   return Math.round(value)
+});
+Vue.filter('songName', function (value) {
+    if (value !== undefined) {
+        return value.toLowerCase().replace(/ (\[.+\]|\(.+\)|\*.+\*|\W|official|vevo|music|audio|hd|hq|lyric?.)/gi, '')
+    }
+
+    return value
 });
 Vue.filter('truncate', function (value) {
     if(value && value.length > 20){

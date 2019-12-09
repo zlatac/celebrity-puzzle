@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
     <title>Bless My Request</title>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script> -->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
     <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
     <script src="https://unpkg.com/vuex"></script>
     <!-- Compiled and minified CSS -->
@@ -128,9 +128,9 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="col s5">
-                            {{x.song}}
-                            <p class="grey-text p-space">{{x.artist}}</p>
+                        <div class="col s5 song-details">
+                            <span>{{x.song | songName}}</span>
+                            <p class="grey-text p-space">{{x.artist | songName}}</p>
                             
                         </div>
                         <div class="col s3">
