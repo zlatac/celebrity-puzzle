@@ -112,6 +112,9 @@ input.select-dropdown{
     background-color: var(--gold-border);
     color: #FFFFFF;
 }
+.not-vip {
+    background: #ee4343;
+}
 .img-online.img-vip{
     border: solid 3px var(--gold-border);
 }
