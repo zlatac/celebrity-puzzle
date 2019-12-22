@@ -912,17 +912,32 @@ const djSpotify = Vue.component('djSpotify', {
             }
         },
         addToPlaylist(song) {
-            if (this.jukeBoxList.length < 1) {
+            try {
+                if (this.jukeBoxList.length < 1) {
+                    this.jukeBoxList.push(song);
+                    this.jukeBoxInstance.setVolume(100);
+                    this.jukeBoxInstance.loadVideoById({
+                        videoId: song.id,
+                        startSeconds: 0,
+                        endSeconds: this.endAtSeconds
+                    });
+                    return;
+                }
                 this.jukeBoxList.push(song);
-                this.jukeBoxInstance.setVolume(100);
-                this.jukeBoxInstance.loadVideoById({
-                    videoId: song.id,
-                    startSeconds: 0,
-                    endSeconds: this.endAtSeconds
-                });
-                return;
+            } catch (error) {
+                if (this.jukeBoxInstance === undefined && 'YT' in window) {
+                    window.onYouTubeIframeAPIReady();
+                    // Needs some time after generating a new instance of the API
+                    setTimeout(() => {
+                        this.jukeBoxInstance.loadVideoById({
+                            videoId: this.jukeBoxList[0].id,
+                            startSeconds: 0,
+                            endSeconds: this.endAtSeconds
+                        });
+                        console.log('restarting.....');
+                    }, 5000);
+                }
             }
-            this.jukeBoxList.push(song);
         },
         playNextSong() {
             this.jukeBoxList.shift();
@@ -1217,7 +1232,7 @@ Vue.directive('inputHighlight', {
         };
     },
     componentUpdated: function (el, binding, vnode, oldVnode) {
-        console.log('a change happened for the directive', vnode);
+        //console.log('a change happened for the directive',vnode)
         if (binding.value !== binding.oldValue) {
             console.log('now i have a reason to do stuff');
             if (binding.value === true) {
