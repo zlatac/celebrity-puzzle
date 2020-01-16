@@ -393,6 +393,18 @@ const home = Vue.component('home', {
                 <h5 style="text-align: center;margin-bottom: 30px">
                     {{modalPage.brand.name}}
                 </h5>
+                <div class="row">
+                    <div class="col s8">
+                        <input 
+                            type="password"
+                            placeholder="Bar code"
+                            v-model="modalPage.barCode"
+                            inputmode="numeric"
+                            minlength="4"
+                            maxlength="4"
+                            size="4"/>
+                    </div>
+                </div>
             </modal>
         </div>
     `,
@@ -412,6 +424,7 @@ const home = Vue.component('home', {
                 verified: false,
                 unverified: false,
                 showButton: true,
+                barCode: ''
             }
         }
     },
@@ -925,7 +938,11 @@ const djSpotify = Vue.component('djSpotify', {
                     height: '200',
                     width: '200',
                     events: {
-                        'onError': (event) => console.error(new Error(event.data)),
+                        'onError': (event) => {
+                            console.error(new Error(event.data))
+                            console.warn('Due to faliure i had to play the next song')
+                            this.playNextSong()
+                        },
                         'onStateChange': (event) => {
                             this.jukeBoxStateChanged(event)
                         }
@@ -939,7 +956,12 @@ const djSpotify = Vue.component('djSpotify', {
         jukeBoxStateChanged(event){
             switch (this.playerStates[event.data]) {
                 case 'ended':
-                    this.playNextSong()
+                    // Sometimes the event fires in the order -1 0 -1 3 1 at the start of a new track
+                    setTimeout(() => {
+                        if (this.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
+                            this.playNextSong()
+                        }
+                    }, 3000)
                     break;
                 case 'playing':
                     const overMaxTime = this.jukeBoxInstance.getDuration() > this.endAtSeconds
@@ -965,7 +987,7 @@ const djSpotify = Vue.component('djSpotify', {
                     this.jukeBoxInstance.loadVideoById({
                         videoId: song.id,
                         startSeconds: 0,
-                        endSeconds: this.endAtSeconds
+                        endSeconds: this.isLocalhost ? 30 : this.endAtSeconds
                     })
                     return
                 }
@@ -978,7 +1000,7 @@ const djSpotify = Vue.component('djSpotify', {
                         this.jukeBoxInstance.loadVideoById({
                             videoId: this.jukeBoxList[0].id,
                             startSeconds: 0,
-                            endSeconds: this.endAtSeconds
+                            endSeconds: this.isLocalhost ? 30 : this.endAtSeconds
                         })
                         console.log('restarting.....')
                     }, 5000)  
@@ -992,7 +1014,7 @@ const djSpotify = Vue.component('djSpotify', {
                 this.jukeBoxInstance.loadVideoById({
                     videoId: this.jukeBoxList[0].id,
                     startSeconds: 0,
-                    endSeconds: this.endAtSeconds
+                    endSeconds: this.isLocalhost ? 30 : this.endAtSeconds
                 })
             }
         },
@@ -1046,7 +1068,6 @@ const djSpotify = Vue.component('djSpotify', {
                 if('task' in data && data.task === 'request'){
                     console.log('request added bruh', data)
                     let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
-                    console.log(checkIdExist)
                     if(checkIdExist === -1){
                         data.song.vipList = new Map()
                         data.song.requestCount = 1
