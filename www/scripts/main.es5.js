@@ -1,5 +1,7 @@
-const serviceProvider = {
-    data: function () {
+'use strict';
+
+var serviceProvider = {
+    data: function data() {
         return {
             modalInstance: null,
             modalData: {},
@@ -13,99 +15,102 @@ const serviceProvider = {
             challengeFriends: false,
             volume: true,
             adsenseServed: false,
-            noProfileUrl: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-            testProfile: [{ name: 'kimkardashian', profile_url: "https://instagram.fyyz1-1.fna.fbcdn.net/vp/2d77e5a00add3ab48866ade4b576eb8d/5C283D8C/t51.2885-19/s150x150/40337940_336890713718114_8255950002258444288_n.jpg" }, { name: 'sofiavergara', profile_url: 'https://instagram.fyyz1-1.fna.fbcdn.net/vp/a3b9e743f8d24852a1cb641b6f5a96b3/5C178BB9/t51.2885-19/s150x150/22159185_179929515914042_379745688163975168_n.jpg' }, { name: 'neymarjr', profile_url: 'https://instagram.fyyz1-1.fna.fbcdn.net/vp/c2062e05a1572d6a7916c8edc776179a/5C3A5884/t51.2885-19/s150x150/37069144_2096375747284694_7062971558179897344_n.jpg' }],
-            category: [{ name: 'fashion', color: '#e68213', text: 'fashion' }, { name: 'music', color: '#136ee6', text: 'music' }, { name: 'movie', color: '#b9499f', text: 'movies' }, { name: 'sport', color: '#136ee6', text: 'sports' }, { name: 'youtube', color: '#e61313', text: 'youtube', logoClass: 'fab fa-youtube red-text' }]
+            noProfileUrl: 'data:image/png;base64,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',
+            testProfile: [{ name: 'kimkardashian', profile_url: "https://instagram.fyyz1-1.fna.fbcdn.net/v/t51.2885-19/s150x150/79825544_470124460599150_1224692418167701504_n.jpg?_nc_ht=instagram.fyyz1-1.fna.fbcdn.net&_nc_ohc=DBwyusjED88AX9HL9V-&oh=509adbe0c1fd6468c0958da02a39cf8b&oe=5EA8ADEC" }, { name: 'sofiavergara', profile_url: 'https://instagram.fyyz1-1.fna.fbcdn.net/v/t51.2885-19/s150x150/44369635_198578574367275_543617098736205824_n.jpg?_nc_ht=instagram.fyyz1-1.fna.fbcdn.net&_nc_ohc=aqPIBVoT8rAAX8WsSe1&oh=a2ad4e11df2143518e3c02c719578483&oe=5EAAA4DB' }, { name: 'champagnepapi', profile_url: 'https://instagram.fyyz1-1.fna.fbcdn.net/v/t51.2885-19/s150x150/78964845_582853779208367_1558803722329391104_n.jpg?_nc_ht=instagram.fyyz1-1.fna.fbcdn.net&_nc_ohc=yZyqGdCGfZMAX8scGZm&oh=9b03fb5a6e48fc075e06e9f55cf5283f&oe=5EA790F4' }],
+            category: [{ name: 'fashion', color: '#e68213', text: 'fashion' }, { name: 'music', color: '#136ee6', text: 'music' }, { name: 'movie', color: '#b9499f', text: 'movies' }, { name: 'sexy', color: '#e61313', text: 'sexy girls' }, { name: 'sport', color: '#136ee6', text: 'sports' }, { name: 'youtube', color: '#e61313', text: 'youtube', logoClass: 'fab fa-youtube red-text' }]
         };
     },
     computed: {
-        instaName() {
+        instaName: function instaName() {
             return this.$store.state.instaName;
         },
-        url() {
+        url: function url() {
             return this.$store.state.url;
         },
-        previousChampion() {
+        previousChampion: function previousChampion() {
             return this.leadList.slice(0, 3);
         },
-        currentGameDay() {
+        currentGameDay: function currentGameDay() {
             return moment().startOf('day').toISOString();
             //return moment('2018/05/11','YYYY/MM/DD').toISOString();
         },
-        allTimeGame() {
+        allTimeGame: function allTimeGame() {
             return moment('2018/05/11', 'YYYY/MM/DD').toISOString();
         },
-        currentGameWeek() {
+        currentGameWeek: function currentGameWeek() {
             return moment().startOf('week').toISOString();
         },
-        previousGameDay() {
+        previousGameDay: function previousGameDay() {
             return moment().subtract(1, 'days').startOf('day').toISOString();
         },
-        currentGameMonth() {
+        currentGameMonth: function currentGameMonth() {
             return moment().startOf('month').toISOString();
         },
-        savedProfile() {
+        savedProfile: function savedProfile() {
             if (this.safe(localStorage.instahandle)) {
                 return localStorage.instahandle;
             }
             return '';
         },
-        isWindowBig() {
+        isWindowBig: function isWindowBig() {
             return this.checkWindow();
         },
-        deviceId() {
+        deviceId: function deviceId() {
             if ('deviceId' in localStorage) {
                 return localStorage.deviceId;
             } else {
                 return 'empty';
             }
         }
-
     },
-    mounted: function () {
+    mounted: function mounted() {
+        var _this = this;
+
         // let htmlBody = document.querySelector('body');
         // htmlBody.style.overflow = 'auto' //modal plugin makes the body scroll stuck when modal isnt closed
-        let modal = document.querySelector('.modal');
-        let tooltip = document.querySelector('.tooltipped');
-        let modalOptions = { onOpenEnd: () => {
-                this.modalAdsense();
+        var modal = document.querySelector('.modal');
+        var tooltip = document.querySelector('.tooltipped');
+        var modalOptions = { onOpenEnd: function onOpenEnd() {
+                _this.modalAdsense();
             } };
         if (this.$route.path.includes('game')) modalOptions.dismissible = false;
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
     },
-    destroy: function () {
+    destroy: function destroy() {
         this.modalInstance.destroy();
     },
-    beforeCreate: function () {
+    beforeCreate: function beforeCreate() {
+        var _this2 = this;
+
         if (this.$route.path.includes('game') && this.$store.state.celebList === null) {
             return router.push('/');
         }
         if (this.$store.state.celebList === null) {
-            let location = window.location.port === '5500' ? '/www/scripts/celebs.json' : '/scripts/celebs.json';
-            fetch(location).then(res => {
+            var location = window.location.port === '5500' ? '/www/scripts/celebs.json' : '/scripts/celebs.json';
+            fetch(location).then(function (res) {
                 //get celebrity list
                 return res.json();
-            }).then(data => {
-                this.$store.commit('celebList', data);
+            }).then(function (data) {
+                _this2.$store.commit('celebList', data);
             });
         }
     },
     methods: {
-        safe: function (a) {
+        safe: function safe(a) {
             if (a === undefined || a === null || a === '') {
                 return false;
             }
             return true;
         },
-        checkWindow: function () {
+        checkWindow: function checkWindow() {
             if (window.innerWidth > 600 && window.innerWidth > 768) {
                 //768px is for tablet (ipad)
                 return true;
             }
             return false;
         },
-        randomize: function (array) {
+        randomize: function randomize(array) {
             //Algorithm to shuffle an array
             var input = array;
 
@@ -119,156 +124,185 @@ const serviceProvider = {
             }
             return input;
         },
-        tones: function (key, octave, release, attack, type) {
+        tones: function (_tones) {
+            function tones(_x, _x2, _x3, _x4, _x5) {
+                return _tones.apply(this, arguments);
+            }
+
+            tones.toString = function () {
+                return _tones.toString();
+            };
+
+            return tones;
+        }(function (key, octave, release, attack, type) {
             tones.release = release || tones.release;
             tones.attack = attack || tones.attack;
             tones.type = type || tones.type;
             if (this.volume === true) {
                 tones.play(key, octave);
             }
-        },
-        vibrate: function (seconds) {
+        }),
+        vibrate: function vibrate(seconds) {
             if ('vibrate' in navigator && this.volume === true) {
                 navigator.vibrate(seconds);
             }
         },
-        gameTimePlayed: function ($scope) {
+        gameTimePlayed: function gameTimePlayed($scope) {
             //get current time
             $scope.test.end_time = moment();
             //get difference between start and end in miliseconds
-            let dif = $scope.test.end_time.diff($scope.test.start_time);
+            var dif = $scope.test.end_time.diff($scope.test.start_time);
             //format the miliseconds to minutes,seconds and milliseconds
             $scope.test.timePlayed = moment(dif).format("mm:ss:SS");
             return $scope.test.timePlayed;
         },
-        resumeAudioContext: function () {
+        resumeAudioContext: function resumeAudioContext() {
             //fucking chrome suspends audio context till the user acts on an event in the browser
             if (tones.context.state.includes('suspended')) {
-                tones.context.resume().then(() => {
+                tones.context.resume().then(function () {
                     console.log('audio context back online');
                 });
             }
         },
-        toggleModal: function (modalData, isChallenge) {
+        toggleModal: function toggleModal(modalData, isChallenge) {
             //isChallenge: Boolean
             //modalData: Object
-            let challenge = { name: 'challenge', color: '#6da3cd', text: 'challenge' };
+            var challenge = { name: 'challenge', color: '#6da3cd', text: 'challenge' };
             this.modalData = isChallenge !== true ? modalData : challenge;
             this.modalInstance.open();
             this.resumeAudioContext();
         },
-        modalAdsense: function () {
+        modalAdsense: function modalAdsense() {
             if (this.adsenseServed === false) {
                 //No need to call for the same ad unit 
                 this.adsenseServed = true;
-                setTimeout(() => {
+                setTimeout(function () {
                     (adsbygoogle = window.adsbygoogle || []).push({});
                 }, 100);
             } else {
                 console.log('Ad served already');
             }
         },
-        insta: function () {
+        insta: function insta() {
             this.$store.commit('insertName', this.name);
         },
-        showSubmit: function () {
+        showSubmit: function showSubmit() {
             this.modalPage.insta = true;
             this.profileExist();
         },
-        profileExist: function () {
+        profileExist: function profileExist() {
             if (this.savedProfile !== '') {
                 this.inputProfile = this.savedProfile;
                 this.getProfile();
             }
         },
-        instaLink(handle) {
-            return `https://www.instagram.com/${handle}/`;
+        instaLink: function instaLink(handle) {
+            return 'https://www.instagram.com/' + handle + '/';
         },
-        getProfile: function () {
+
+        getProfile: function getProfile() {
+            var _this3 = this;
+
             this.modalPage.imageacquired = false; // remove submit button while typing
             if (this.profileTimeout !== null) {
                 clearTimeout(this.profileTimeout);
             }
-            this.profileTimeout = setTimeout(() => {
+            this.profileTimeout = setTimeout(function () {
                 //console.log(this.inputProfile)
-                let profile = this.inputProfile.replace('@', '').toLowerCase();
-                this.fetchInstaProfile(profile);
+                var profile = _this3.inputProfile.replace('@', '').toLowerCase();
+                _this3.fetchInstaProfile(profile);
             }, 1200);
         },
-        fetchInstaProfile: function (profile) {
+        fetchInstaProfile: function fetchInstaProfile(profile) {
+            var _this4 = this;
+
             this.modalPage.loader = true;
             if (profile === '') return this.modalPage.fail = true;
-            fetch(this.instaLink(profile)).then(res => {
+            fetch(this.instaLink(profile)).then(function (res) {
                 if (res.status === 200) {
                     return res.text();
                 } else {
-                    this.modalPage.fail = true;
+                    _this4.modalPage.fail = true;
                     return 'failed';
                 }
-            }).then(data => {
+            }).then(function (data) {
                 if (data !== 'failed') {
-                    let sift = data.match(/og:image.+(http.+)"/i)[1];
-                    this.$store.commit('url', sift);
-                    this.modalPage.fail = false;
-                    this.modalPage.loader = false;
-                    this.modalPage.imageacquired = true;
+                    var sift = data.match(/og:image.+(http.+)"/i)[1];
+                    _this4.$store.commit('url', sift);
+                    _this4.modalPage.fail = false;
+                    _this4.modalPage.loader = false;
+                    _this4.modalPage.imageacquired = true;
                 }
             });
             //this.url = profile;
         },
-        generateDeviceId: function (skipredirect) {
+        generateDeviceId: function generateDeviceId(skipredirect) {
+            var _this5 = this;
+
             //if skipredirect is not true redirect to dash page
-            axios('/myipaddress').then(res => {
-                let ip = res.data;
-                let unixtime = moment().unix();
-                let hash = generateHash(ip, unixtime);
+            axios('/myipaddress').then(function (res) {
+                var ip = res.data;
+                var unixtime = moment().unix();
+                var hash = generateHash(ip, unixtime);
                 localStorage.deviceId = hash;
-            }).catch(error => {
+            }).catch(function (error) {
                 console.warn(new Error(error));
-            }).finally(() => {
+            }).finally(function () {
                 if (skipredirect !== true) {
-                    this.sendToCategory();
+                    _this5.sendToCategory();
                     console.log('wow');
                 }
             });
             function generateHash(ip, time) {
                 //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
-                let address = ip.replace('.', '');
-                let stringtime = String(time);
-                let hash = '';
-                for (let i = 0; i < 3; i++) {
+                var address = ip.replace('.', '');
+                var stringtime = String(time);
+                var hash = '';
+                for (var i = 0; i < 3; i++) {
                     if (i !== 1) {
                         hash += address[Math.floor(Math.random() * address.length)];
                     } else {
                         hash += stringtime[Math.floor(Math.random() * stringtime.length)];
                     }
                 }
-                return `${ip}-${time}-${hash}`;
+                return ip + '-' + time + '-' + hash;
             }
         },
-        sendToCategory: function () {
-            let route = this.$route;
-            setTimeout(() => {
+        sendToCategory: function sendToCategory() {
+            var _this6 = this;
+
+            var route = this.$route;
+            setTimeout(function () {
                 if (route.path.includes('challenge')) {
                     //when a user shows up as a result of a social media challenge
-                    this.$store.commit('socialChallenge', route.params);
+                    _this6.$store.commit('socialChallenge', route.params);
                 }
                 if (route.path.includes('contest')) {
                     //when a user shows up as a result of a social media challenge for brands
                     route.params.prize = route.params.prize.replace(/:/g, ' ');
-                    this.$store.commit('socialChallenge', route.params);
+                    _this6.$store.commit('socialChallenge', route.params);
                     console.log(route.params);
                 }
-                this.$router.push('/dash');
+                _this6.$router.push('/dash');
             }, 3000);
         },
-        clearInterval: function (intervalInstance) {
+        clearInterval: function (_clearInterval) {
+            function clearInterval(_x6) {
+                return _clearInterval.apply(this, arguments);
+            }
+
+            clearInterval.toString = function () {
+                return _clearInterval.toString();
+            };
+
+            return clearInterval;
+        }(function (intervalInstance) {
             if (this.safe(intervalInstance)) {
                 clearInterval(intervalInstance);
             }
-        },
-        copyToClipboard() {
-            let input = document.querySelector('#copy-link');
+        }),
+        copyToClipboard: function copyToClipboard() {
+            var input = document.querySelector('#copy-link');
             input.focus();
             input.setSelectionRange(0, 9999);
             try {
@@ -277,28 +311,22 @@ const serviceProvider = {
                 alert(e);
             }
         },
-        webSocket() {
+        webSocket: function webSocket() {
             if ('io' in window) {
                 //var socket = io('https://mochanow.com');
                 var socket = io();
                 return socket;
             }
+        },
+        goHome: function goHome() {
+            this.$router.push('/dash');
         }
     }
 };
-const landing = Vue.component('landing', {
-    template: `<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">
-                    <div class="center-align fwhite" style="font-family: 'Pacifico', cursive;">
-                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>
-                        <div style="font-size:26px;margin-top:20px">align the stars</div>
-                        <div class="btn btn-large red-text white tooltipped" style="margin-top:20px" v-if="isWindowBig" data-position="top" data-tooltip="Coming soon to desktops and laptops">
-                            <i class="material-icons">stay_primary_portrait</i> Mobile phones only
-                        </div>
-                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="'white'" v-if="!isWindowBig"></spinner>
-                    </div>
-               </div>`,
+var landing = Vue.component('landing', {
+    template: '<div class="landing animated fadeIn" main="height: 100%;width: 100%;position: absolute;background:var(--main)">\n                    <div class="center-align fwhite" style="font-family: \'Pacifico\', cursive;">\n                        <div style="font-size:45px;margin-top:15%">Celebrity Puzzle</div>\n                        <div style="font-size:26px;margin-top:20px">align the stars</div>\n                        <div class="btn btn-large red-text white tooltipped" style="margin-top:20px" v-if="isWindowBig" data-position="top" data-tooltip="Coming soon to desktops and laptops">\n                            <i class="material-icons">stay_primary_portrait</i> Mobile phones only\n                        </div>\n                        <spinner class="animated fadeIn" style="margin-top:250px" :colorClass="\'white\'" v-if="!isWindowBig"></spinner>\n                    </div>\n               </div>',
     mixins: [serviceProvider],
-    created: function () {
+    created: function created() {
         if (this.isWindowBig !== true) {
             if (!('deviceId' in localStorage)) {
                 return this.generateDeviceId();
@@ -307,10 +335,10 @@ const landing = Vue.component('landing', {
         }
     }
 });
-const dash = Vue.component('dash', {
+var dash = Vue.component('dash', {
     template: '#dashboard',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             message: 'Hello Vue!',
             show: false,
@@ -320,33 +348,35 @@ const dash = Vue.component('dash', {
         };
     },
     computed: {
-        prevWinners() {
-            let x = this.$store.state.previousChamps;
+        prevWinners: function prevWinners() {
+            var x = this.$store.state.previousChamps;
             if (x !== null) this.loader = true;
             return x;
         },
-        socialChallenge() {
+        socialChallenge: function socialChallenge() {
             return this.$store.state.socialChallenge;
         }
     },
-    created: function () {
+    created: function created() {
+        var _this7 = this;
+
         if (this.isWindowBig === true) return router.push('/');
         if (this.$store.state.previousChamps === null) {
-            axios(`https://styleminions.co/api/puzzleoldchamps?today=${this.currentGameDay}&yesterday=${this.previousGameDay}`).then(res => {
-                let champs = res.data;
+            axios('https://styleminions.co/api/puzzleoldchamps?today=' + this.currentGameDay + '&yesterday=' + this.previousGameDay).then(function (res) {
+                var champs = res.data;
                 if (champs.length === 3) {
-                    this.$store.commit('previousChamps', champs);
-                    this.loader = true;
+                    _this7.$store.commit('previousChamps', champs);
+                    _this7.loader = true;
                 } else if (champs.length === 0) {
-                    this.$store.commit('previousChamps', this.testProfile);
-                    this.loader = true;
+                    _this7.$store.commit('previousChamps', _this7.testProfile);
+                    _this7.loader = true;
                 } else {
-                    let startIndex = champs.length;
-                    for (let i = startIndex; i < 3; i++) {
-                        champs.push({ name: '', profile_url: this.noProfileUrl });
+                    var startIndex = champs.length;
+                    for (var i = startIndex; i < 3; i++) {
+                        champs.push({ name: '', profile_url: _this7.noProfileUrl });
                     }
-                    this.$store.commit('previousChamps', champs);
-                    this.loader = true;
+                    _this7.$store.commit('previousChamps', champs);
+                    _this7.loader = true;
                 }
             });
         }
@@ -359,10 +389,10 @@ const dash = Vue.component('dash', {
         }
     },
     methods: {
-        startSocialChallenge: function () {
-            let playerdetails = this.socialChallenge;
-            let category = playerdetails.category !== '0' ? playerdetails.category : 'movie';
-            let gamedetails = {};
+        startSocialChallenge: function startSocialChallenge() {
+            var playerdetails = this.socialChallenge;
+            var category = playerdetails.category !== '0' ? playerdetails.category : 'movie';
+            var gamedetails = {};
             gamedetails.profile_url = this.url;
             gamedetails.realtime = playerdetails.time;
             gamedetails.name = playerdetails.insta;
@@ -371,61 +401,15 @@ const dash = Vue.component('dash', {
             //essential to close modal before moving on to next page programtically to avoid the modal plugin
             //from making the html body overflow scroll stuck
             this.modalInstance.close();
-            this.$router.push(`/game/${category}`);
+            this.$router.push('/game/' + category);
         }
     }
 });
 
-const game = Vue.component('game', {
-    template: `
-        <div class="background center-align">
-            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"
-                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>
-            <div style="background-color:white; width:100%;" >
-                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">
-                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>
-                    <div style="position: absolute;left: 50%;top: 5%;" :class="{'white-text': prog >= 54}">{{prog | number}}%</div>
-                    <img :src="challenge.profile_url" class="animated circle flash img-green responsive-img" style="width: 25px;height: 25px;position: absolute;top: 0;"
-                         v-if="challenge !== null" :style="{left: challengeTimer + '%'}" :class="{'hide':challengeInterval === null}"
-                         v-imgfallback>
-                </div>
-                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">
-                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">
-                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"
-                             :class="{'img-lead':challengeTimer === 0,'img-green bounceIn':challengeTimer > 0 && challengeTimer < 80,'img-orange flip':challengeTimer >= 80 && challengeTimer < 100,
-                             'img-red flash': challengeTimer >= 100}" v-imgfallback>
-                    </span>
-                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">
-                        <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>
-                        <i class="material-icons animated bounceIn" v-show="!volume" style="font-size: 34px;">volume_off</i>
-                    </span>
-                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"
-                          :disabled="loader">
-                        <i class="material-icons" style="font-size: 34px;">refresh</i>
-                    </span>
-                    <div class="chip">
-                        <img :src="profile.url" alt="Contact Person" v-imgfallback>
-                        {{(profile.fullname !== '') ? profile.fullname : profile.fallback.name | truncate}}
-                    </div>
-                </div>                
-                <spinner class="animated fadeIn" :colorClass="'default'" v-show="loader"></spinner>
-            </div>
-            <div id="svg" style="background-color:white; width:100%; height:80%;">
-                <div class="btn list-me animated shake" v-bind:class="{'hide': prog !== 100}">
-                        Completed!!  
-                        <span v-show="test.start_time !== null">
-                            <i class="fa fa-clock-o"></i> 
-                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>
-                        </span>
-                </div>
-            </div>
-            
-            <canvas id="canvas"></canvas>
-        
-        </div>
-    `,
+var game = Vue.component('game', {
+    template: '\n        <div class="background center-align">\n            <modal v-bind:modalData="modalData" v-bind:test="test" v-on:replay="retry" v-on:submitGame="submitGame" v-bind:modalPage="modalPage"\n                   v-bind:urlChallenge="challengeUrl" v-bind:challenger="challenge"></modal>\n            <div style="background-color:white; width:100%;" >\n                <div class="progress animated fadeInDown" style="margin-top:0px;background-color:#dadcda;margin-bottom: 0px;">\n                    <div class="determinate" v-prog="prog" style="background:var(--main);"></div>\n                    <div style="position: absolute;left: 50%;top: 5%;" :class="{\'white-text\': prog >= 54}">{{prog | number}}%</div>\n                    <img :src="challenge.profile_url" class="animated circle flash img-green responsive-img" style="width: 25px;height: 25px;position: absolute;top: 0;"\n                         v-if="challenge !== null" :style="{left: challengeTimer + \'%\'}" :class="{\'hide\':challengeInterval === null}"\n                         v-imgfallback>\n                </div>\n                <div class="valign-wrapper" style="position:absolute;bottom:2%;right: 0;">\n                    <span class="" style="margin-right: 10px;" v-if="challenge !== null">\n                        <img :src="challenge.profile_url" class="circle responsive-img animated infinite" style="width: 40px;height: 40px;"\n                             :class="{\'img-lead\':challengeTimer === 0,\'img-green bounceIn\':challengeTimer > 0 && challengeTimer < 80,\'img-orange flip\':challengeTimer >= 80 && challengeTimer < 100,\n                             \'img-red flash\': challengeTimer >= 100}" v-imgfallback>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="volumeToggle">\n                        <i class="material-icons animated bounceIn" v-show="volume" style="font-size: 34px;">volume_up</i>\n                        <i class="material-icons animated bounceIn" v-show="!volume" style="font-size: 34px;">volume_off</i>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="goHome">\n                        <i class="material-icons animated bounceIn" style="font-size: 34px;">home</i>\n                    </span>\n                    <span class="btn btn-floating waves-effect waves-light" style="margin-right:10px;background:var(--main);" @click="retry"\n                          :disabled="loader">\n                        <i class="material-icons" style="font-size: 34px;">refresh</i>\n                    </span>\n                    <div class="chip" style="font-size:0.7em;">\n                        <img :src="profile.url" alt="Contact Person" v-imgfallback>\n                        {{(profile.fullname !== \'\') ? profile.fullname : profile.fallback.name | truncate}}\n                    </div>\n                </div>                \n                <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="loader"></spinner>\n            </div>\n            <div id="svg" style="background-color:white; width:100%; height:80%;">\n                <div class="btn list-me animated shake" v-bind:class="{\'hide\': prog !== 100}">\n                        Completed!!  \n                        <span v-show="test.start_time !== null">\n                            <i class="fa fa-clock-o"></i> \n                            {{test.time_result[0]}}<span>m</span>:{{test.time_result[1]}}<span>s</span>\n                        </span>\n                </div>\n            </div>\n            \n            <canvas id="canvas"></canvas>\n        \n        </div>\n    ',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             waste: [],
             correct: [],
@@ -452,38 +436,38 @@ const game = Vue.component('game', {
         };
     },
     computed: {
-        challenge() {
+        challenge: function challenge() {
             return this.$store.state.challenge;
         },
-        totalChallengeSeconds() {
+        totalChallengeSeconds: function totalChallengeSeconds() {
             if (this.safe(this.challenge)) {
-                let time = this.challenge.realtime.split(':');
-                let seconds = Number(time[0]) * 60 + Number(time[1]);
+                var time = this.challenge.realtime.split(':');
+                var seconds = Number(time[0]) * 60 + Number(time[1]);
                 return seconds;
             }
             return null;
         },
-        challengeTimer() {
+        challengeTimer: function challengeTimer() {
             if (this.safe(this.challenge)) {
                 return this.challengeSeconds / this.totalChallengeSeconds * 100;
             }
             return null;
         },
-        challengeUrl() {
+        challengeUrl: function challengeUrl() {
             // let category = this.$route.params.category
-            let imgShortcode = 'imageShortcode' in this.profile ? this.profile.imageShortcode : this.$route.params.category;
-            let splitTime = this.test.time_result !== null ? `${this.test.time_result[0]} minutes ${this.test.time_result[1]} seconds` : '0';
-            let playtime = this.test.timePlayed;
-            let instahandle = 'instahandle' in localStorage ? localStorage.instahandle : '0';
-            let message = `I challenge you to beat my time of ${splitTime} today on celebrity puzzle`;
-            let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${imgShortcode}`;
-            let url = {};
-            url.encoded = encodeURIComponent(`${message} ${link}`);
-            url.raw = `${message} ${link}`;
+            var imgShortcode = 'imageShortcode' in this.profile ? this.profile.imageShortcode : this.$route.params.category;
+            var splitTime = this.test.time_result !== null ? this.test.time_result[0] + ' minutes ' + this.test.time_result[1] + ' seconds' : '0';
+            var playtime = this.test.timePlayed;
+            var instahandle = 'instahandle' in localStorage ? localStorage.instahandle : '0';
+            var message = 'I challenge you to beat my time of ' + splitTime + ' today on celebrity puzzle';
+            var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + imgShortcode;
+            var url = {};
+            url.encoded = encodeURIComponent(message + ' ' + link);
+            url.raw = message + ' ' + link;
             return url;
         }
     },
-    mounted: function () {
+    mounted: function mounted() {
         if (this.isWindowBig === true) return router.push('/');
 
         if (this.$store.state.celebList !== null) {
@@ -492,31 +476,33 @@ const game = Vue.component('game', {
         }
     },
     methods: {
-        isStarted: function () {
+        isStarted: function isStarted() {
             if (this.test.start_time === null) {
                 this.test.start_time = moment();
                 this.startChallenge();
             }
         },
-        startChallenge: function () {
-            let store = this.challenge;
+        startChallenge: function startChallenge() {
+            var _this8 = this;
+
+            var store = this.challenge;
             if (this.safe(store)) {
-                this.challengeInterval = setInterval(() => {
-                    this.challengeSeconds += 1;
-                    if (this.challengeSeconds === this.totalChallengeSeconds) {
-                        this.clearInterval(this.challengeInterval);
+                this.challengeInterval = setInterval(function () {
+                    _this8.challengeSeconds += 1;
+                    if (_this8.challengeSeconds === _this8.totalChallengeSeconds) {
+                        _this8.clearInterval(_this8.challengeInterval);
                         console.log('time interval is cancelled');
                     }
                 }, 1000);
             }
         },
-        progressFunc: function () {
+        progressFunc: function progressFunc() {
             this.prog = this.correct.length / this.picBoxes * 100;
         },
-        updateBestTime: function () {
-            let currentTime = this.test.timePlayed;
+        updateBestTime: function updateBestTime() {
+            var currentTime = this.test.timePlayed;
             if ('bestTime' in localStorage) {
-                let bestTime = localStorage.bestTime;
+                var bestTime = localStorage.bestTime;
                 if (currentTime < bestTime) {
                     this.test.bestTime = currentTime;
                     localStorage.bestTime = currentTime;
@@ -528,7 +514,7 @@ const game = Vue.component('game', {
                 localStorage.bestTime = currentTime;
             }
         },
-        volumeToggle() {
+        volumeToggle: function volumeToggle() {
             switch (this.volume) {
                 case true:
                     this.volume = false;
@@ -538,19 +524,24 @@ const game = Vue.component('game', {
                     break;
             }
         },
-        getRanking() {
+        getRanking: function getRanking() {
+            var _this9 = this;
+
             this.test.rankLoader = true;
-            let today = this.currentGameWeek;
-            axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`).then(res => {
+            var today = this.currentGameWeek;
+            axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 //console.log(res)
-                let leaderboard = res.data;
-                let rank = leaderboard.filter(item => item.realtime < this.test.timePlayed).length + 1;
+                var leaderboard = res.data;
+                var rank = leaderboard.filter(function (item) {
+                    return item.realtime < _this9.test.timePlayed;
+                }).length + 1;
                 //console.log(rank,this.test.timePlayed)
-                this.test.rank = rank < 100 ? rank : '100+';
-                this.test.rankLoader = false;
+                _this9.test.rank = rank < 100 ? rank : '100+';
+                _this9.test.rankLoader = false;
             });
         },
-        levelUp: function () {
+
+        levelUp: function levelUp() {
             if (this.puzzLevel < 2) {
                 this.draw.clear();
                 this.waste = [];
@@ -574,7 +565,7 @@ const game = Vue.component('game', {
                 this.submitGame('regular');
             }
         },
-        retry: function () {
+        retry: function retry() {
             // this lets them replay the same category
             this.draw.clear();
             this.waste = [];
@@ -592,15 +583,17 @@ const game = Vue.component('game', {
             this.challengeInterval = null;
             this.setUp(this.svgSpace.clientWidth, this.svgSpace.clientHeight);
         },
-        submitGame: function (inputProfile) {
-            let timestamp = moment().toISOString();
-            let playtime = this.test.timePlayed;
-            let name = null;
-            let picurl = null;
-            let leaderboard = 0;
-            let deviceId = this.deviceId;
-            let category = this.$route.params.category;
-            let imgShortCode = this.profile.imageShortcode;
+        submitGame: function submitGame(inputProfile) {
+            var _this10 = this;
+
+            var timestamp = moment().toISOString();
+            var playtime = this.test.timePlayed;
+            var name = null;
+            var picurl = null;
+            var leaderboard = 0;
+            var deviceId = this.deviceId;
+            var category = this.$route.params.category;
+            var imgShortCode = this.profile.imageShortcode;
             if (inputProfile === 'regular') {
                 //this is for metric tracking the completion of a game without submitting to the leaderboard
                 name = this.safe(localStorage.instahandle) ? localStorage.instahandle : 'noname';
@@ -613,19 +606,20 @@ const game = Vue.component('game', {
                 leaderboard = 1;
                 localStorage.instahandle = name;
             }
-            let postData = { timestamp, playtime, name, picurl, leaderboard, deviceId
+            var postData = { timestamp: timestamp, playtime: playtime, name: name, picurl: picurl, leaderboard: leaderboard, deviceId: deviceId
                 //console.log(postData)
-            };axios.post(`https://styleminions.co/api/puzzlesubmit?timestamp=${timestamp}&playtime=${playtime}&name=${name}&picurl=${picurl}
-            &leaderboard=${leaderboard}&deviceid=${deviceId}&category=${category}&shortcode=${imgShortCode}`).then(response => {
+            };axios.post('https://styleminions.co/api/puzzlesubmit?timestamp=' + timestamp + '&playtime=' + playtime + '&name=' + name + '&picurl=' + picurl + '\n            &leaderboard=' + leaderboard + '&deviceid=' + deviceId + '&category=' + category + '&shortcode=' + imgShortCode).then(function (response) {
                 if (inputProfile !== 'regular') {
-                    this.modalInstance.close();
+                    _this10.modalInstance.close();
                     router.push('/leaderboard');
                 }
-            }).catch(error => {
+            }).catch(function (error) {
                 console.error(new Error(error));
             });
         },
-        isLevelCompleted: function () {
+        isLevelCompleted: function isLevelCompleted() {
+            var _this11 = this;
+
             if (this.correct.length === this.picBoxes) {
                 if (this.test.start_time === null) {
                     //sometimes the randomness solves the puzzle on the first round which negatively impacts the gaming experience
@@ -637,13 +631,13 @@ const game = Vue.component('game', {
                 this.test.time_result = this.gameTimePlayed(this).split(':');
                 this.tones('f', 5, 500);
                 this.vibrate(2000);
-                setTimeout(() => {
-                    this.levelUp();
+                setTimeout(function () {
+                    _this11.levelUp();
                 }, 2000);
                 //console.log('THE END FAM')
             }
         },
-        checker: function (d, e) {
+        checker: function checker(d, e) {
             if (e.x === d.truth.x && e.y === d.truth.y) {
                 //Player is right
                 if (!this.correct.includes(d.truth.x + ':' + d.truth.y)) {
@@ -653,7 +647,7 @@ const game = Vue.component('game', {
             } else {
                 //player is wrong
                 if (this.correct.includes(d.truth.x + ':' + d.truth.y)) {
-                    let pos = this.correct.indexOf(d.truth.x + ':' + d.truth.y);
+                    var pos = this.correct.indexOf(d.truth.x + ':' + d.truth.y);
                     this.correct.splice(pos, 1);
                 }
                 //console.log('wrong boy')
@@ -661,47 +655,55 @@ const game = Vue.component('game', {
 
             this.isLevelCompleted();
         },
-        getImage: function () {
+        getImage: function getImage() {
+            var _this12 = this;
+
             if (this.currentUrl !== '') {
-                return new Promise((resolve, reject) => {
-                    resolve(this.currentUrl);
+                return new Promise(function (resolve, reject) {
+                    resolve(_this12.currentUrl);
                 });
             }
-            let category = this.$route.params.category;
-            let categoryList = [];
-            let randomIndex = null;
-            let handle = '';
-            if (this.category.findIndex(item => item.name === category) === -1) this.fixedChallenge = true;
+            var category = this.$route.params.category;
+            var categoryList = [];
+            var randomIndex = null;
+            var handle = '';
+            if (this.category.findIndex(function (item) {
+                return item.name === category;
+            }) === -1) this.fixedChallenge = true;
             if (!this.fixedChallenge) {
                 // normal gameplay to run a random game
-                categoryList = this.$store.state.celebList.filter(item => item.category === category);
+                categoryList = this.$store.state.celebList.filter(function (item) {
+                    return item.category === category;
+                });
                 randomIndex = Math.floor(Math.random() * categoryList.length);
                 handle = categoryList[randomIndex].handle;
             } else {
                 //this is a challenge and should get specific image played by the challenger
-                handle = `p/${category}`;
+                handle = 'p/' + category;
             }
 
-            return new Promise((resolve, reject) => {
-                fetch(this.instaLink(handle)).then(res => {
+            return new Promise(function (resolve, reject) {
+                fetch(_this12.instaLink(handle)).then(function (res) {
                     if (res.status === 200) {
                         return res.text();
                     } else {
                         //this.getImage();
                         reject('there was an error retreiving data from instagram');
                     }
-                }).then(data => {
-                    if (this.safe(data) && !this.fixedChallenge) {
-                        let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
-                        let user = sift.entry_data.ProfilePage["0"].graphql.user;
-                        let instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
+                }).then(function (data) {
+                    if (_this12.safe(data) && !_this12.fixedChallenge) {
+                        var sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
+                        var user = sift.entry_data.ProfilePage["0"].graphql.user;
+                        var instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges;
                         //filter for only images with 3:4 and 1:1 dimensions
-                        let imageList = instaList.filter(item => item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height);
+                        var imageList = instaList.filter(function (item) {
+                            return item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height;
+                        });
                         if (imageList.length < 1) {
-                            this.retry();
+                            _this12.retry();
                         } else {
-                            let index = Math.floor(Math.random() * imageList.length);
-                            this.profile = {
+                            var index = Math.floor(Math.random() * imageList.length);
+                            _this12.profile = {
                                 fullname: user.full_name,
                                 url: user.profile_pic_url,
                                 fallback: categoryList[randomIndex],
@@ -711,28 +713,28 @@ const game = Vue.component('game', {
                             resolve(imageList[index].node.display_url);
                         }
                     }
-                    if (this.safe(data) && this.fixedChallenge) {
-                        let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
-                        let user = sift.entry_data.PostPage["0"].graphql.shortcode_media;
-                        this.profile = {
-                            fullname: user.owner.full_name,
-                            url: user.owner.profile_pic_url,
-                            imageShortcode: user.shortcode
+                    if (_this12.safe(data) && _this12.fixedChallenge) {
+                        var _sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
+                        var _user = _sift.entry_data.PostPage["0"].graphql.shortcode_media;
+                        _this12.profile = {
+                            fullname: _user.owner.full_name,
+                            url: _user.owner.profile_pic_url,
+                            imageShortcode: _user.shortcode
                         };
-                        resolve(user.display_url);
+                        resolve(_user.display_url);
                     }
                 });
             });
         },
-        drawCanvas: function (fWidth, fHeight, imgUrl) {
-            let self = this;
+        drawCanvas: function drawCanvas(fWidth, fHeight, imgUrl) {
+            var self = this;
             return new Promise(function (resolve, reject) {
-                let canvas = document.getElementById('canvas');
+                var canvas = document.getElementById('canvas');
 
-                let ctx = canvas.getContext('2d');
+                var ctx = canvas.getContext('2d');
                 //console.log(ctx)
 
-                let im = new Image();
+                var im = new Image();
                 im.crossOrigin = 'Anonymous';
                 //perfect on mobile for any image dimensions (square, 3:4 ratio and 4:3 ratio)
                 //good on desktop for only square and 4:3 ratio image dimensions
@@ -740,13 +742,13 @@ const game = Vue.component('game', {
                 im.src = imgUrl;
                 //im.src = 'https://scontent-yyz1-1.cdninstagram.com/vp/192110115a0379f7200f2aabeac9a7e5/5B094E85/t51.2885-15/e35/11849357_536498379834099_188237789_n.jpg';
                 //sw and sh are the withis.dh and height of the image piece to be cut from the raw image
-                im.onload = () => {
+                im.onload = function () {
 
                     if (im.height > im.width && window.innerWidth > 768) {
                         //this turns the image into a square (1:1) dimension only on desktop
                         //to then be used as an image for the puzzle
-                        let width = im.width;
-                        let height = im.height;
+                        var width = im.width;
+                        var height = im.height;
                         canvas.setAttribute('width', width);
                         canvas.setAttribute('height', width);
                         ctx.imageSmoothingQuality = "high";
@@ -770,11 +772,11 @@ const game = Vue.component('game', {
 
                         //ctx.self.drawImage(im,0,0,sw,sh,0,0,self.dw,self.dh)
                         //by default i want 30 pieces of any image i.e 5 columns and 6 rows for mobile devices.
-                        for (let i = 0; i < self.picColumn; i++) {
-                            for (let j = 0; j < self.picRow; j++) {
+                        for (var i = 0; i < self.picColumn; i++) {
+                            for (var j = 0; j < self.picRow; j++) {
                                 //ctx.self.drawImage(im,i*(sw + 1),j*(sh + 1),sw,sh,i*(self.dw + 5),j*(self.dh + 5),self.dw,self.dh);
                                 ctx.drawImage(im, i * (sw + 1), j * (sh + 1), sw, sh, 0, 0, sw, sh);
-                                let drawdata = {};
+                                var drawdata = {};
                                 drawdata.img = canvas.toDataURL('image/png', 1);
                                 drawdata.x = i * (self.dw + space);
                                 drawdata.y = j * (Math.round(self.sh * self.dw / self.sw) + space);
@@ -784,7 +786,7 @@ const game = Vue.component('game', {
                         }
 
                         //console.log(self.basket);
-                        self.shuffle = self.basket.map(item => {
+                        self.shuffle = self.basket.map(function (item) {
                             return { x: item.x, y: item.y };
                         });
                         self.shuffle = self.randomize(self.shuffle);
@@ -793,32 +795,34 @@ const game = Vue.component('game', {
                 };
             });
         },
-        setUp: function (w, h) {
+        setUp: function setUp(w, h) {
+            var _this13 = this;
+
             this.loader = true;
             this.picBoxes = this.picColumn * this.picRow;
             this.footnote_hide = false;
             this.footnote = true;
             this.footnote_msg = this.puzzLevel < 2 ? 'Round ' + this.puzzLevel : 'Final Round';
-            this.getImage().then(data => {
-                this.currentUrl = data;
-                return this.drawCanvas(w, h, data);
-            }).catch(error => {
+            this.getImage().then(function (data) {
+                _this13.currentUrl = data;
+                return _this13.drawCanvas(w, h, data);
+            }).catch(function (error) {
                 console.error(new Error(error));
-                this.setUp(w, h); //retry once there is a 404
-            }).then(data => {
+                _this13.setUp(w, h); //retry once there is a 404
+            }).then(function (data) {
                 //console.log('yeaaaaaaaaaah', this.basket);
-                if (!this.safe(this.draw)) {
-                    this.svg = document.getElementById('svg');
-                    this.draw = SVG(this.svg).size(w, h);
+                if (!_this13.safe(_this13.draw)) {
+                    _this13.svg = document.getElementById('svg');
+                    _this13.draw = SVG(_this13.svg).size(w, h);
                 }
 
                 //console.log(this.basket);
-                let z = 0;
-                this.basket.forEach(item => {
+                var z = 0;
+                _this13.basket.forEach(function (item) {
                     //let elem = this.draw.image(item.img,this.dw,this.dh);
-                    let elem = this.draw.image(item.img, this.dw, Math.round(this.sh * this.dw / this.sw));
-                    elem.x(this.shuffle[z].x);
-                    elem.y(this.shuffle[z].y);
+                    var elem = _this13.draw.image(item.img, _this13.dw, Math.round(_this13.sh * _this13.dw / _this13.sw));
+                    elem.x(_this13.shuffle[z].x);
+                    elem.y(_this13.shuffle[z].y);
                     elem.truth = { x: item.x, y: item.y };
                     elem.attr('v-buzz', '');
                     function onTrigger() {
@@ -836,11 +840,11 @@ const game = Vue.component('game', {
                             this.waste.push(elem);
                         }
                         if (this.waste.length === 2 && this.waste[0].node.id !== this.waste[1].node.id) {
-                            let a = { x: this.waste[0].node.x.baseVal.value,
+                            var a = { x: this.waste[0].node.x.baseVal.value,
                                 y: this.waste[0].node.y.baseVal.value,
                                 truth: this.waste[0].truth
                             };
-                            let b = { x: this.waste[1].node.x.baseVal.value,
+                            var b = { x: this.waste[1].node.x.baseVal.value,
                                 y: this.waste[1].node.y.baseVal.value,
                                 truth: this.waste[1].truth
                             };
@@ -858,42 +862,42 @@ const game = Vue.component('game', {
                             this.waste = [];
                         }
                     }
-                    elem.touchstart(() => {
-                        onTrigger.call(this);
+                    elem.touchstart(function () {
+                        onTrigger.call(_this13);
                     });
-                    if (this.isWindowBig === true) {
-                        elem.click(() => {
-                            onTrigger.call(this);
+                    if (_this13.isWindowBig === true) {
+                        elem.click(function () {
+                            onTrigger.call(_this13);
                         });
                     }
 
-                    elem.loaded(() => {
+                    elem.loaded(function () {
                         //on initialization check if element is in the right position
-                        let pos = { x: elem.node.x.baseVal.value,
+                        var pos = { x: elem.node.x.baseVal.value,
                             y: elem.node.y.baseVal.value
                         };
                         if (pos.x === elem.truth.x && pos.y === elem.truth.y) {
-                            this.correct.push(elem.truth.x + ':' + elem.truth.y);
+                            _this13.correct.push(elem.truth.x + ':' + elem.truth.y);
                         }
-                        this.progressFunc();
-                        this.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
+                        _this13.progressFunc();
+                        _this13.isLevelCompleted(); //sometimes the randomized data can be exactly solved on the first round
                     });
 
                     z++;
                     //elem.mouseout(()=>{elem.animate(100).width(50);});
                 });
-                this.loader = false;
-                this.toastInstance = M.toast({ html: `<div class="center-align full-width">${this.footnote_msg}</div>`, displayLength: 2000 });
+                _this13.loader = false;
+                _this13.toastInstance = M.toast({ html: '<div class="center-align full-width">' + _this13.footnote_msg + '</div>', displayLength: 2000 });
                 //$compile(this.draw.node)(this); //this is important for the new elements added to the DOM to be compiled by angular
             });
         }
     }
 });
 
-const leaderboard = Vue.component('leaderboard', {
+var leaderboard = Vue.component('leaderboard', {
     template: '#leaderboard',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             movingHearts: [],
             leaderboardList: [],
@@ -902,33 +906,39 @@ const leaderboard = Vue.component('leaderboard', {
         };
     },
     methods: {
-        makeHeart() {
-            let b = Math.floor(Math.random() * 100 + 1);
-            let d = ["flowOne", "flowTwo", "flowThree"];
-            let a = ["colOne", "colTwo", "colThree", "colFour", "colFive", "colSix"];
-            let c = (Math.random() * (1.6 - 1.2) + 1.2).toFixed(1);
-            let bucket = {};
+        makeHeart: function makeHeart() {
+            var _this14 = this;
+
+            var b = Math.floor(Math.random() * 100 + 1);
+            var d = ["flowOne", "flowTwo", "flowThree"];
+            var a = ["colOne", "colTwo", "colThree", "colFour", "colFive", "colSix"];
+            var c = (Math.random() * (1.6 - 1.2) + 1.2).toFixed(1);
+            var bucket = {};
             bucket.id = b;
             bucket.color = a[Math.floor(Math.random() * 6)];
             bucket.font = Math.floor(Math.random() * (50 - 22) + 22);
             bucket.flow = d[Math.floor(Math.random() * 3)];
             bucket.seconds = c;
             this.movingHearts.push(bucket);
-            setTimeout(() => {
-                let index = this.movingHearts.findIndex(i => i.id === b);
-                this.movingHearts.splice(index, 1);
+            setTimeout(function () {
+                var index = _this14.movingHearts.findIndex(function (i) {
+                    return i.id === b;
+                });
+                _this14.movingHearts.splice(index, 1);
             }, c * 1200);
         },
-        getLeaderboard() {
+        getLeaderboard: function getLeaderboard() {
+            var _this15 = this;
+
             this.loader = true;
-            let today = this.todayChip === true ? this.currentGameWeek : this.allTimeGame;
-            axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`).then(res => {
+            var today = this.todayChip === true ? this.currentGameWeek : this.allTimeGame;
+            axios.get('https://styleminions.co/api/puzzlechamps?today=' + today).then(function (res) {
                 //console.log(res)
-                this.leaderboardList = res.data;
-                this.loader = false;
+                _this15.leaderboardList = res.data;
+                _this15.loader = false;
             });
         },
-        selectedTime(time) {
+        selectedTime: function selectedTime(time) {
             if (time === 'allTime' && this.todayChip === true) {
                 this.todayChip = false;
                 this.getLeaderboard();
@@ -938,32 +948,32 @@ const leaderboard = Vue.component('leaderboard', {
                 this.getLeaderboard();
             }
         },
-        scrollToMe() {
-            let elem = document.querySelector('.myprofile');
+        scrollToMe: function scrollToMe() {
+            var elem = document.querySelector('.myprofile');
             if (this.safe(elem)) {
                 //console.log('wooooooooow')
                 elem.scrollIntoView(false); //false aligns the bottom of the element to the bottom of available space and vice versa
             }
         },
-        challengePlayer(playerdetails) {
+        challengePlayer: function challengePlayer(playerdetails) {
             this.$store.commit('challenge', playerdetails);
-            let category = playerdetails.short_code !== 'empty' ? playerdetails.short_code : 'movie';
-            router.push(`/game/${category}`);
+            var category = playerdetails.short_code !== 'empty' ? playerdetails.short_code : 'movie';
+            router.push('/game/' + category);
         },
-        challengeUrl(profileObject, clipboard) {
+        challengeUrl: function challengeUrl(profileObject, clipboard) {
             //custom for the leaderboard
-            let category = profileObject.short_code;
-            let splitTime = profileObject.realtime.split(':');
-            let splitTimeText = `${splitTime[0]} minutes ${splitTime[1]} seconds`;
-            let playtime = profileObject.realtime;
-            let instahandle = profileObject.name;
-            let message = `I challenge you to beat my time of ${splitTimeText} today on celebrity puzzle`;
-            let link = `http://celebritypuzzle.com/#/challenge/${instahandle}/${playtime}/${category}`;
-            if (clipboard === true) return `${message} ${link}`;
-            return encodeURIComponent(`${message} ${link}`);
+            var category = profileObject.short_code;
+            var splitTime = profileObject.realtime.split(':');
+            var splitTimeText = splitTime[0] + ' minutes ' + splitTime[1] + ' seconds';
+            var playtime = profileObject.realtime;
+            var instahandle = profileObject.name;
+            var message = 'I challenge you to beat my time of ' + splitTimeText + ' today on celebrity puzzle';
+            var link = 'http://celebritypuzzle.com/#/challenge/' + instahandle + '/' + playtime + '/' + category;
+            if (clipboard === true) return message + ' ' + link;
+            return encodeURIComponent(message + ' ' + link);
         },
-        toggleChallengeView(name) {
-            let obj = this.viewChallengeList;
+        toggleChallengeView: function toggleChallengeView(name) {
+            var obj = this.viewChallengeList;
             if (!obj.hasOwnProperty(name)) {
                 //set default 
                 obj[name] = null;
@@ -984,11 +994,11 @@ const leaderboard = Vue.component('leaderboard', {
             this.$forceUpdate(); //vue force update render since this object isn't reactive from initialization
         }
     },
-    created: function () {
+    created: function created() {
         if (this.isWindowBig === true) return router.push('/');
         this.getLeaderboard();
     },
-    mounted: function () {
+    mounted: function mounted() {
         // setInterval(()=>{
         //     this.makeHeart();
         // },900)
@@ -999,7 +1009,7 @@ Vue.component('modal', {
     props: ['modalData', 'test', 'url', 'modalPage', 'urlChallenge', 'challenger'],
     template: '#comp-modal',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             whyme: 'heloo'
         };
@@ -1008,70 +1018,39 @@ Vue.component('modal', {
 
 Vue.component('champion', {
     props: ['index', 'url'],
-    template: `
-        <div style="position: relative;">
-            <img :src="url" alt="" class="circle responsive-img img-lead" v-imgfallback>
-            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>
-            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>
-            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
-            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>
-        </div>
-    `
+    template: '\n        <div style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead" v-imgfallback>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>\n            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>\n        </div>\n    '
 });
 Vue.component('spinner', {
     props: ['colorClass'],
-    template: `
-        <div class="preloader-wrapper small active">
-            <div class="spinner-layer" :class="{'spinner-white-only': colorClass === 'white', 'spinner-celeb': colorClass === 'default'}">
-            <div class="circle-clipper left">
-                <div class="circle"></div>
-            </div><div class="gap-patch">
-                <div class="circle"></div>
-            </div><div class="circle-clipper right">
-                <div class="circle"></div>
-            </div>
-            </div>
-        </div>
-    `
+    template: '\n        <div class="preloader-wrapper small active">\n            <div class="spinner-layer" :class="{\'spinner-white-only\': colorClass === \'white\', \'spinner-celeb\': colorClass === \'default\'}">\n            <div class="circle-clipper left">\n                <div class="circle"></div>\n            </div><div class="gap-patch">\n                <div class="circle"></div>\n            </div><div class="circle-clipper right">\n                <div class="circle"></div>\n            </div>\n            </div>\n        </div>\n    '
 });
 Vue.component('adsense', {
-    template: `
-    <div style="margin-top:30px">
-        <!-- footer ad  data-adtest="on"-->
-        <ins class="adsbygoogle center-block"
-            style="display:block"
-            data-ad-client="ca-pub-8868040855394757"
-            data-ad-slot="3445703421"
-            data-ad-format="horizontal"></ins>
-    </div>
-    `,
+    template: '\n    <div style="margin-top:30px">\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="3445703421"\n            data-ad-format="horizontal"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
-    mounted() {
+    mounted: function mounted() {
         if (this.$route.path.includes('leaderboard')) {
             this.modalAdsense();
         }
     }
 });
 Vue.directive('prog', {
-    update: function (el, binding) {
+    update: function update(el, binding) {
         el.style.width = binding.value + '%';
     }
 });
 Vue.directive('imgfallback', {
-    bind: function (el, binding, vnode) {
-        let fallback = 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png';
-        //let fallback = vnode.context.$parent.noProfileUrl
+    bind: function bind(el, binding, vnode) {
+        var fallback = serviceProvider.data().noProfileUrl;
         el.onerror = function () {
             if (el.src !== fallback && fallback !== undefined) {
                 el.src = fallback;
-                //console.log(vnode)
             }
         };
     }
 });
 Vue.directive('disappear', {
-    inserted: function (el, binding, vnode) {
-        let self = this;
+    inserted: function inserted(el, binding, vnode) {
+        var self = this;
         // setTimeout(function(){
         //     //vnode.context.$vnode.componentInstance.leadList.splice(binding.value,1)
         //     let index = self.app.$children[0].leadList.findIndex((i)=> i === binding.value)
@@ -1094,13 +1073,13 @@ Vue.filter('endsIn', function (value) {
     if (value !== '') {
         // expecting string date format DD-MM
         value += '-' + moment().year();
-        let endDate = moment(value, 'DD-MM-YYYY').fromNow();
+        var endDate = moment(value, 'DD-MM-YYYY').fromNow();
         return endDate.slice(3, endDate.length);
     }
     return value;
 });
 
-const store = new Vuex.Store({
+var store = new Vuex.Store({
     //state management in VUE
     state: {
         instaName: '',
@@ -1112,33 +1091,33 @@ const store = new Vuex.Store({
         accessToken: null
     },
     mutations: {
-        insertName(state, data) {
+        insertName: function insertName(state, data) {
             state.instaName = data;
         },
-        celebList(state, data) {
+        celebList: function celebList(state, data) {
             state.celebList = data;
         },
-        url(state, data) {
+        url: function url(state, data) {
             state.url = data;
         },
-        previousChamps(state, data) {
+        previousChamps: function previousChamps(state, data) {
             state.previousChamps = data;
         },
-        challenge(state, data) {
+        challenge: function challenge(state, data) {
             state.challenge = data;
         },
-        socialChallenge(state, data) {
+        socialChallenge: function socialChallenge(state, data) {
             state.socialChallenge = data;
         },
-        accessToken(state, data) {
+        accessToken: function accessToken(state, data) {
             state.accessToken = data;
         }
     }
 });
 
-const routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '/contest/:insta/:time/:category/:prize/:endDate', component: landing }, { path: '*', redirect: '/' }];
-const router = new VueRouter({
-    routes // short for `routes: routes`
+var routes = [{ path: '/leaderboard', component: leaderboard }, { path: '/dash', component: dash }, { path: '/game/:category', component: game }, { path: '/', component: landing }, { path: '/challenge/:insta/:time/:category', component: landing }, { path: '/contest/:insta/:time/:category/:prize/:endDate', component: landing }, { path: '*', redirect: '/' }];
+var router = new VueRouter({
+    routes: routes // short for `routes: routes`
 });
 
 var app = new Vue({
