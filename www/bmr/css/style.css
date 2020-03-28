@@ -112,6 +112,9 @@ input.select-dropdown{
     background-color: var(--gold-border);
     color: #FFFFFF;
 }
+.not-vip {
+    background: #ee4343;
+}
 .img-online.img-vip{
     border: solid 3px var(--gold-border);
 }
@@ -120,6 +123,11 @@ input.select-dropdown{
 }
 img{
     user-select: none; 
+}
+.img-result {
+    height: 70px;
+    object-fit: cover;
+    width: 70px;
 }
 .dj-chip {
     position: absolute;
@@ -159,4 +167,7 @@ img{
 }
 .dj-insta .dj-name {
     flex-basis: 50%;
+}
+.song-details {
+    text-transform: capitalize;
 }

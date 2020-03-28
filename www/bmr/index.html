@@ -118,19 +118,19 @@
                         </div>
                     </div>
                 </div>
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in searchResult" :class="{'firstresult': index === 0}">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}">
                     <div class="row">
                         <div class="col s4">
                             <div style="position: relative;">
-                                <img :src="x.image" width="70px">
+                                <img :src="x.image" class="img-result">
                                 <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="alreadyRequested(x.id) === true">
                                     <i class="material-icons">check</i>
                                 </span>
                             </div>
                         </div>
-                        <div class="col s5">
-                            {{x.song}}
-                            <p class="grey-text p-space">{{x.artist}}</p>
+                        <div class="col s5 song-details">
+                            <span v-html="x.song"></span>
+                            <p class="grey-text p-space" v-html="x.artist"></p>
                             
                         </div>
                         <div class="col s3">
@@ -165,6 +165,7 @@
                         <div class="col s3"><span><i class="material-icons">people</i>{{population.length}}</span></div>
                         <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div>
                     </div>
+                    <div id="jukebox" style="display:none"></div>
                     
                 </div>
             </div>
@@ -172,15 +173,15 @@
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
             <div class="row " v-show="!loader">
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in requestList" v-if="x.hide === false">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" v-if="x.hide === false">
                     <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
                             <div style="position: relative;">
-                                <img :src="x.image" width="70px">
+                                <img class="img-result" :src="x.image">
                                 <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.requestCount}}</span>
                             </div>   
                         </div>                     
-                        <div class="col s5">
+                        <div class="col s5 song-details">
                             <div class="switch" style="margin-bottom: 10px;" v-show="x.showVip">
                                 <label>
                                     No
@@ -191,8 +192,8 @@
                             </div>
                             {{x.song}} 
                             <p class="grey-text p-space">{{x.artist}}</p>
-                            <p class="p-space"><b>[ {{x.bpm}} ]</b></p>
-                            <p class="p-space" v-if="x.explicit"><b>---- Explicit ----</b></p>
+                            <p class="p-space" v-if="!jukeboxMode"><b>[ {{x.bpm}} ]</b></p>
+                            <p class="p-space" v-if="!jukeboxMode && x.explicit"><b>---- Explicit ----</b></p>
                         </div>
                         <div class="col s3">
                             <span class="btn btn-floating" @click="hideRequest(x)" v-show="x.vipList.size <= 0 || x.showVip">
@@ -201,6 +202,7 @@
                             <span class="btn btn-floating" @click="x.showVip = true" v-show="x.vipList.size > 0 && !x.showVip">
                                 <i class="material-icons">attach_money</i>
                             </span>
+                            <p class="grey-text animated bounce" style="font-size:12px" v-show="jukeboxMode && index < 1">Now playing</p>
                         </div>
                     </div>
                 </div>
@@ -264,7 +266,7 @@
                     <div class="col s4" v-show="!modalPage.fail" style="position: relative;">
                         <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!modalPage.loader">
                         <span v-show="modalPage.verified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">check</i></span>
-                        <span v-show="modalPage.unverified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">close</i></span>
+                        <span v-show="modalPage.unverified" class="btn btn-small btn-floating lead-fab z-depth-3 not-vip"><i class="material-icons">close</i></span>
                         <spinner class="animated fadeIn" :colorClass="'default'" v-show="modalPage.loader"></spinner>
                     </div>
                     <div class="col s4" v-show="modalPage.fail">
@@ -280,7 +282,7 @@
         </div>
     </div>
 </script>
-<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <script src="bmr/scripts/main.es5.js"></script>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 </body>
 </html>
