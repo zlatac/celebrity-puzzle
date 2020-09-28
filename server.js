@@ -48,8 +48,11 @@ app.get('/engine', function(req,res){
 
 app.use(express.static(path.resolve(__dirname, 'www')));
 
-var dataStore = {acquiringToken:false,pendingRequests:[],djData:[]};
+var dataStore = {acquiringToken:false,pendingRequests:[],djData:[],partyRooms:{}};
 var authorize = Buffer.from('69b05d3b1a0a4bb9a404d8748c5f5a54:84a00b36aff4410a8fdaee869f7fec02').toString('base64')
+var alphaMap = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'];
+var milk = ''
+
 function spotifyToken(client){
     if(dataStore.acquiringToken === false){
         dataStore.acquiringToken = true
@@ -99,6 +102,20 @@ function clearDataLater(){
         
     }();
     //console.log('wowowowowowo')
+}
+
+function generatePartyCode(){
+    let hash = '';
+    for(let i=0; i < 4; i++){
+        hash += alphaMap[Math.floor(Math.random()*alphaMap.length)]
+    }
+    
+    // if code is already in use create a new code
+    if (hash in dataStore.partyRooms) {
+        return generatePartyCode()
+    }
+
+    return hash
 }
 
 
@@ -212,6 +229,37 @@ app.get('/profile', function(req,res){
     }else{
         res.status(400)
         res.send(insta)
+    }
+});
+
+app.post('/startParty', function(req,res){
+    const partyName = req.query.name.trim();
+    if(partyName !== undefined && partyName !== '' && partyName.length <= 26){
+        const partyCode = generatePartyCode()
+        dataStore.partyRooms[partyCode] = {name: partyName}
+        res.status(200)
+        res.send({
+            code: partyCode.toUpperCase(),
+            name: partyName
+        })
+    }else{
+        res.status(400)
+        res.send('Need a name for the party (26 characters max)')
+    }
+});
+
+app.get('/startParty', function(req,res){
+    const partyCode = req.query.code.trim().toLowerCase();
+    if(partyCode !== undefined && partyCode !== '' && partyCode.length <= 5 && partyCode in dataStore.partyRooms){
+        const partyName = dataStore.partyRooms[partyCode].name
+        res.status(200)
+        res.send({
+            code: partyCode.toUpperCase(),
+            name: partyName
+        })
+    }else{
+        res.status(400)
+        res.send(`Party "${partyCode}" does not exist`)
     }
 });
 

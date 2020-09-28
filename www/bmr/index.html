@@ -59,6 +59,31 @@
         </div>
     </div>
 </script>
+<script type="text/x-template" id="home-two">
+    <div>
+        <div class="card dark-card animated party-card" v-for="(x, index) in partyCards" 
+            :key="index" :class="x.classes" @click="openModal(x.name)">
+            <div class="top">
+                <button>{{x.name}}</button>
+                <img class="animated fadeInUpBig" v-show="x.name === 'host party' && showHostMobile" style="margin: 0 5px;"
+                    :src="mobileOffImage" width="35px"/>
+            </div>
+            <div class="footer animated fadeInRight">
+                <img style="margin: 0 5px;" v-for="(item, imgIndex) in x.icons" :key="imgIndex" :src="item.img" :width="item.width"/>
+            </div>
+        </div>
+        <slide-modal :show="showModal" @close="closeModal">
+            <div class="party-modal" style="padding: 10%;display: grid;">
+                <input type="text" class="animated" :maxlength="partyModal.maxLength" :placeholder="partyModal.placeholder" v-model="modalInput"
+                    :style="partyModal.inputStyle" :class="{'error shake': partyModalError}" @keyup="inputTyping" @keyup.enter="submitModalInput"/>
+                <div class="btn btn-background animated fadeInUp" style="margin-top: 20px;width: 50%;place-self: center;"
+                    v-show="modalInput !== '' && !partyModalLoader" @click="submitModalInput">{{partyModal.name}}</div>
+                <spinner class="animated fadeIn" :colorClass="'default'" v-show="partyModalLoader" style="justify-self: center"></spinner>
+            </div>
+        </slide-modal>
+
+    </div>
+</script>
 <script type="text/x-template" id="spotify">
     <div class="zontainer center-align animated fadeIn">
         <modal :modalPage="modalPage" @close="closeModal">
@@ -83,10 +108,13 @@
                              v-imgfallback 
                              alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
                              :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected, 'img-vip': isVip}">
-                        <p class="zero-margin">{{club.name}} <span class="grey-text animated fadeIn" v-show="!isConnected">- Reconnecting...</span></p>
+                        <p class="zero-margin" style="text-transform:capitalize;">
+                            {{club.name}}<span class="grey-text animated fadeIn" v-show="!isConnected"> - Reconnecting...</span>
+                        </p>
                         <p class="zero-margin-bottom">
                             <!-- <span><i class="material-icons">people</i>56</span> -->
-                            <span class="chip" v-show="!isVip" @click="enterVip">Enter VIP</span>
+                            <span class="chip" @click="SharePartyRoom">Share Party: {{club.id}}</span>
+                            <!-- <span class="chip" v-show="!isVip" @click="enterVip">Enter VIP</span> -->
                             <span class="chip vip-chip" v-show="isVip">VIP Room - {{vipMode.limit}} requests left</span>
                         </p>
                     </div>
@@ -162,8 +190,11 @@
                                  alt="" class="circle animated infinite" width="90px" height="90px" v-imgfallback
                                  :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
-                        <div class="col s3"><span><i class="material-icons">people</i>{{population.length}}</span></div>
-                        <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div>
+                        <div class="col s4"><span><i class="material-icons">people</i>{{population.length}}</span></div>
+                        <div class="col s4" style="font-weight:bold;letter-spacing:1px;">
+                            <span class="btn btn-floating"><i class="material-icons">vpn_key</i></span> {{club.id}}
+                        </div>
+                        <!-- <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div> -->
                     </div>
                     <div id="jukebox" style="display:none"></div>
                     

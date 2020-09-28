@@ -1,5 +1,6 @@
 :root {
     --main:linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%);
+    --main-opaque: linear-gradient(120deg, #92fe9dab 0%, #00c9ffd9 107%);
     --dark-theme:#252525;
     --vip-main:linear-gradient(120deg, #daa520 0%, #ffffff 84%);
     --default-main:linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%);
@@ -77,6 +78,7 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
 }
 .img-offline{
     border: solid 3px #e00000;
+    filter: contrast(0.7)
 }
 .p-space{
     margin-top: 4px;
@@ -170,4 +172,50 @@ img{
 }
 .song-details {
     text-transform: capitalize;
+}
+.party-card{
+    height: 40vh;
+    margin: 0 auto;
+    width: 46%;
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-top: 20px;
+    overflow: hidden;
+    cursor: pointer;
+}
+.party-card button {
+    color: white;
+    border: 2px white solid;
+    background: transparent;
+    font-size: 2.3em;
+    border-radius: 5px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+}
+.party-card .top {
+    align-self: flex-start;
+    display: inline-flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+.party-card .footer {
+    align-self: flex-end;
+}
+.host-card {
+    background-image: var(--main-opaque),url(https://images.pexels.com/photos/860707/pexels-photo-860707.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500);
+    filter: hue-rotate(106deg);
+}
+.join-card {
+    background-image: var(--main-opaque),url(https://images.pexels.com/photos/1154189/pexels-photo-1154189.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500);
+}
+.error{
+    background-color: #eaacac !important;
+}
+@media only screen and (max-width: 1297px){
+    .party-card{
+        width: 90%;
+    }
 }
