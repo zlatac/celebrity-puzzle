@@ -199,10 +199,14 @@ img{
     display: inline-flex;
     justify-content: space-between;
     width: 100%;
-    align-items: center;
+    align-items: flex-start;
 }
 .party-card .footer {
     align-self: flex-end;
+    width: 100%;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: flex-end;
 }
 .host-card {
     background-image: var(--main-opaque),url(https://images.pexels.com/photos/860707/pexels-photo-860707.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500);
@@ -210,6 +214,9 @@ img{
 }
 .join-card {
     background-image: var(--main-opaque),url(https://images.pexels.com/photos/1154189/pexels-photo-1154189.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500);
+}
+.host-card .footer {
+    justify-content: space-evenly;
 }
 .error{
     background-color: #eaacac !important;
@@ -220,7 +227,13 @@ img{
 .host-hue{
     filter: hue-rotate(106deg);
 }
-
+.footer img {
+    transition: transform .7s;
+    transition-delay: 1s;
+}
+.shake .footer img {
+    transform: translate3d(0,-250%, 0) scale(1.7);
+}
 @media only screen and (max-width: 1297px){
     .party-card{
         width: 90%;

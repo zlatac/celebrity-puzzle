@@ -66,7 +66,7 @@
             <div class="top">
                 <button>{{x.name}}</button>
                 <img class="animated fadeInUpBig" v-show="x.name === 'host party' && showHostMobile" style="margin: 0 5px;"
-                    :src="mobileOffImage" width="35px"/>
+                    :src="mobileOffImage" width="10%"/>
             </div>
             <div class="footer animated fadeInRight">
                 <img style="margin: 0 5px;" v-for="(item, imgIndex) in x.icons" :key="imgIndex" :src="item.img" :width="item.width"/>
