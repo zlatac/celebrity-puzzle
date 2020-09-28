@@ -501,7 +501,7 @@ var homeTwo = Vue.component('homeTwo', {
                     width: '35px'
                 }],
                 classes: { 'host-card': true, 'shake': this.hostPartyIsMobile, 'fadeInUp': !this.hostPartyIsMobile && !this.hostChecked },
-                placeholder: 'Party name',
+                placeholder: 'Enter Party Name',
                 inputStyle: 'text-transform: capitalize',
                 maxLength: 26
 
@@ -532,6 +532,12 @@ var homeTwo = Vue.component('homeTwo', {
         },
         modalInputTrimmed: function modalInputTrimmed() {
             return this.modalInput.trim();
+        },
+        isJoinParty: function isJoinParty() {
+            return this.modalType.includes('join');
+        },
+        isHostParty: function isHostParty() {
+            return this.modalType.includes('host');
         }
     },
     mounted: function mounted() {

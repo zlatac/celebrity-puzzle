@@ -556,7 +556,7 @@ const homeTwo = Vue.component('homeTwo', {
                         },
                     ],
                     classes: {'host-card': true, 'shake': this.hostPartyIsMobile, 'fadeInUp': !this.hostPartyIsMobile && !this.hostChecked},
-                    placeholder: 'Party name',
+                    placeholder: 'Enter Party Name',
                     inputStyle: 'text-transform: capitalize',
                     maxLength: 26
 
@@ -591,6 +591,12 @@ const homeTwo = Vue.component('homeTwo', {
         },
         modalInputTrimmed(){
             return this.modalInput.trim()
+        },
+        isJoinParty(){
+            return this.modalType.includes('join')
+        },
+        isHostParty(){
+            return this.modalType.includes('host')
         }
     },
     mounted: function(){

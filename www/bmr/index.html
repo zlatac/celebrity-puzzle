@@ -72,7 +72,7 @@
                 <img style="margin: 0 5px;" v-for="(item, imgIndex) in x.icons" :key="imgIndex" :src="item.img" :width="item.width"/>
             </div>
         </div>
-        <slide-modal :show="showModal" @close="closeModal">
+        <slide-modal :show="showModal" @close="closeModal" class="small-modal" style="background: var(--main-opaque)" :class="{'host-hue': isHostParty}">
             <div class="party-modal" style="padding: 10%;display: grid;">
                 <input type="text" class="animated" :maxlength="partyModal.maxLength" :placeholder="partyModal.placeholder" v-model="modalInput"
                     :style="partyModal.inputStyle" :class="{'error shake': partyModalError}" @keyup="inputTyping" @keyup.enter="submitModalInput"/>
