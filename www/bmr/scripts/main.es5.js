@@ -502,6 +502,7 @@ const homeTwo = Vue.component('homeTwo', {
             hostChecked: false,
             partyModalLoader: false,
             partyModalError: false,
+            toastInstance: undefined,
             mobileOffImage: 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZpZXdCb3g9IjAgMCAxNzIgMTcyIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtbGluZWNhcD0iYnV0dCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIiBzdHJva2UtZGFzaGFycmF5PSIiIHN0cm9rZS1kYXNob2Zmc2V0PSIwIiBmb250LWZhbWlseT0ibm9uZSIgZm9udC13ZWlnaHQ9Im5vbmUiIGZvbnQtc2l6ZT0ibm9uZSIgdGV4dC1hbmNob3I9Im5vbmUiIHN0eWxlPSJtaXgtYmxlbmQtbW9kZTogbm9ybWFsIj48cGF0aCBkPSJNMCwxNzJ2LTE3MmgxNzJ2MTcyeiIgZmlsbD0ibm9uZSI+PC9wYXRoPjxnIGZpbGw9IiNmZmZmZmYiPjxwYXRoIGQ9Ik01Mi45MjMwOCwwYy0xMS4yNDA5OSwwIC0xOS44NDYxNSw4LjYwNTE3IC0xOS44NDYxNSwxOS44NDYxNXY2LjQwODY1bC0xOC4zOTkwNCwtMTguMzk5MDRjLTEuMjQwMzgsLTEuMzE3OTEgLTIuOTQ1OTEsLTIuMDQxNDcgLTQuNzU0ODEsLTIuMDY3MzFjLTIuNzEzMzQsLTAuMDUxNjggLTUuMjE5OTUsMS41NTA0OCAtNi4yNTM2LDQuMDU3MDljLTEuMDU5NSwyLjUwNjYyIC0wLjQ2NTE1LDUuNDI2NjkgMS40OTg3OSw3LjMxMzFsMTQ4LjIyNTk2LDE0Ny42MDU3N2MxLjYwMjE3LDEuOTYzOTQgNC4xNjA0NiwyLjg2ODM5IDYuNjQxMjIsMi4yOTk4OGMyLjQ1NDkzLC0wLjU2ODUxIDQuMzkzMDMsLTIuNTA2NjEgNC45NjE1NCwtNC45NjE1NGMwLjU2ODUxLC0yLjQ4MDc3IC0wLjMzNTk0LC01LjAzOTA2IC0yLjI5OTg4LC02LjY0MTIybC0xNy4xNTg2NSwtMTcuMTU4NjV2LTExOC40NTY3M2MwLC0xMS4yNDA5OSAtOC42MDUxNywtMTkuODQ2MTUgLTE5Ljg0NjE1LC0xOS44NDYxNXpNODIuNjkyMzEsNi42MTUzOGgxMy4yMzA3N2MxLjk4OTc4LDAgMy4zMDc2OSwxLjMxNzkxIDMuMzA3NjksMy4zMDc2OWMwLDEuOTg5NzggLTEuMzE3OTEsMy4zMDc2OSAtMy4zMDc2OSwzLjMwNzY5aC0xMy4yMzA3N2MtMS45ODk3OCwwIC0zLjMwNzY5LC0xLjMxNzkxIC0zLjMwNzY5LC0zLjMwNzY5YzAsLTEuOTg5NzggMS4zMTc5MSwtMy4zMDc2OSAzLjMwNzY5LC0zLjMwNzY5ek00OS42MTUzOCwxOS44NDYxNWg3OS4zODQ2MmMxLjk4OTc4LDAgMy4zMDc2OSwxLjMxNzkxIDMuMzA3NjksMy4zMDc2OXYxMDEuOTE4MjdsLTg2LC04NS41ODY1NHYtMTYuMzMxNzNjMCwtMS45ODk3OCAxLjMxNzkxLC0zLjMwNzY5IDMuMzA3NjksLTMuMzA3Njl6TTMzLjA3NjkyLDYzLjQ2NjM1djg4LjY4NzVjMCwxMS4yNDA5OSA4LjYwNTE3LDE5Ljg0NjE1IDE5Ljg0NjE1LDE5Ljg0NjE1aDcyLjc2OTIzYzQuNjI1NiwwIDguNjgyNjksLTEuMjkyMDYgMTEuOTkwMzgsLTMuOTI3ODhsLTI5LjE0OTA0LC0yOS4xNDkwNGgtNTguOTE4MjdjLTEuOTg5NzgsMCAtMy4zMDc2OSwtMS4zMTc5MSAtMy4zMDc2OSwtMy4zMDc2OXYtNTguOTE4Mjd6TTg5LjMwNzY5LDE0Ni43Nzg4NWM0LjYyNTYsMCA4LjY4MjY5LDQuMDU3MDkgOC42ODI2OSw4LjY4MjY5YzAsNC42MjU2IC00LjA1NzA5LDguNjgyNjkgLTguNjgyNjksOC42ODI2OWMtNC42MjU2LDAgLTguNjgyNjksLTQuMDU3MDkgLTguNjgyNjksLTguNjgyNjljMCwtNC42MjU2IDQuMDU3MDksLTguNjgyNjkgOC42ODI2OSwtOC42ODI2OXoiPjwvcGF0aD48L2c+PC9nPjwvc3ZnPg=='
         };
     },
@@ -651,10 +652,15 @@ const homeTwo = Vue.component('homeTwo', {
                         this.showHostMobile = false;
                         this.hostChecked = true;
                         this.hostPartyIsMobile = true;
-                        M.toast({
-                            html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
-                            displayLength: 8000
-                        });
+                        if (this.toastInstance === undefined) {
+                            this.toastInstance = M.toast({
+                                html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
+                                displayLength: 8000,
+                                completeCallback: () => {
+                                    this.toastInstance = undefined;
+                                }
+                            });
+                        }
                         setTimeout(() => {
                             this.hostPartyIsMobile = false;
                             this.showHostMobile = true;
