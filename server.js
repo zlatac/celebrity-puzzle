@@ -260,6 +260,7 @@ app.get('/startParty', function(req,res){
     }else{
         res.status(400)
         res.send(`Party "${partyCode}" does not exist`)
+        io.sockets.emit('sessionOver', partyCode);
     }
 });
 

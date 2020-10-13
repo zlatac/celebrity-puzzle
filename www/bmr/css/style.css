@@ -63,9 +63,9 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     color: white;
 }
 .lead-fab{
-    bottom:-3px;
+    bottom:-7px;
     position:absolute;
-    right:-6px;
+    right:-14px;
 }
 .btn-opaque{
     opacity:0.1;
@@ -233,6 +233,23 @@ img{
 }
 .shake .footer img {
     transform: translate3d(0,-250%, 0) scale(1.7);
+}
+.image-container {
+    position: relative;
+    width: min-content;
+    margin: 0 auto;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+.image-container i {
+    font-size: 60px;
+    position: absolute;
+    opacity: 0.8 !important;
+    cursor: pointer;
+}
+.first-image img {
+    filter: brightness(70%);
 }
 @media only screen and (max-width: 1297px){
     .party-card{

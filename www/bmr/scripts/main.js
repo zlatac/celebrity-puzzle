@@ -683,12 +683,17 @@ const homeTwo = Vue.component('homeTwo', {
             this.partyModalError = false
             this.modalInput = ''
             this.modalType = type
+            M.Toast.dismissAll()
             switch(this.modalType){
                 case 'host party':
                     if (this.isMobileOrTablet()) {
                         this.showHostMobile = false
                         this.hostChecked = true
                         this.hostPartyIsMobile = true
+                        M.toast({
+                            html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
+                            displayLength: 8000
+                        })
                         setTimeout(() => {
                             this.hostPartyIsMobile = false
                             this.showHostMobile = true
@@ -1027,9 +1032,12 @@ const djSpotify = Vue.component('djSpotify', {
             jukeBoxList: [],
             isConnected: false,
             jukeBoxInstance: undefined,
+            fadeOutIntervalInstance: undefined,
             musicNotes:['C','C♯/D♭','D','D♯/E♭','E','F','F♯/G♭','G','G♯/A♭','A','A♯/B♭','B'],
             playerStates: ['ended', 'playing', 'paused', 'buffering', 'video cued'],
             endAtSeconds: 240,
+            playing: false,
+            widgetStarted: false,
             modalPage: {
                 page: 'djspotify',
                 insta: false,
@@ -1184,24 +1192,24 @@ const djSpotify = Vue.component('djSpotify', {
         jukeBoxStateChanged(event){
             switch (this.playerStates[event.data]) {
                 case 'ended':
+                    this.widgetStarted = false
                     // Sometimes the event fires in the order -1 0 -1 3 1 at the start of a new track
                     setTimeout(() => {
                         if (this.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
+                            clearInterval(this.fadeOutIntervalInstance)
                             this.playNextSong()
                         }
                     }, 3000)
                     break;
                 case 'playing':
-                    const overMaxTime = this.jukeBoxInstance.getDuration() > this.endAtSeconds
-                    const currentDuration = !overMaxTime
-                        ? this.jukeBoxInstance.getDuration() - this.jukeBoxInstance.getCurrentTime()
-                        : this.endAtSeconds
-                    const lastTenPercentOfDuration = 0.2 * currentDuration 
-                    const firstNinetyPercentOfDuration = 0.8 * currentDuration * 1000
-                    const volumeRate = Math.floor((lastTenPercentOfDuration * 1000) / 8)
-                    // setTimeout(() => {
-                    //     this.fadeOutVolume(volumeRate)
-                    // }, firstNinetyPercentOfDuration)
+                    this.playing = true
+                    this.widgetStarted = true
+                    clearInterval(this.fadeOutIntervalInstance)
+                    this.fadeOutVolume()
+                    break;
+                case 'paused':
+                    this.playing = false
+                    clearInterval(this.fadeOutIntervalInstance)
                     break;
                 default:
                     break;
@@ -1236,6 +1244,7 @@ const djSpotify = Vue.component('djSpotify', {
             }
         },
         playNextSong(){
+            this.widgetStarted =  false
             this.jukeBoxList.shift()
             if (this.jukeBoxList.length > 0) {
                 this.jukeBoxInstance.setVolume(100)
@@ -1261,17 +1270,39 @@ const djSpotify = Vue.component('djSpotify', {
                 }
             }
         },
-        fadeOutVolume(milliseconds){
-            const currentVolume = this.jukeBoxInstance.getVolume()
-            const nextVolume = Math.floor(currentVolume / 2)
-            const playerState = this.jukeBoxInstance.getPlayerState()
-            console.log('yeah bitch i reduced the volume')
-            if (playerState === YT.PlayerState.PLAYING && currentVolume > 1) {
-                setTimeout(() => {
-                    this.jukeBoxInstance.setVolume(nextVolume)
-                    this.fadeOutVolume(milliseconds)
-                }, milliseconds)
+        fadeOutVolume(milliseconds, volume){
+            const volumeMap = this.getVolumeTime()
+            // console.log(volumeMap)
+            this.fadeOutIntervalInstance = setInterval(() => {
+                const currentTime = Math.floor(this.jukeBoxInstance.getCurrentTime())
+                const volume = volumeMap.get(currentTime)
+                if (volume !== undefined && volume > 1) {
+                    this.jukeBoxInstance.setVolume(volume)
+                }
+            }, 1000)
+        },
+        getVolumeTime(){
+            const fullSongDuration = Math.floor(this.jukeBoxInstance.getDuration())
+            const duration = fullSongDuration < this.endAtSeconds ? fullSongDuration : this.endAtSeconds
+            const ninetyPercentDuration = 0.9 * duration
+            const frequency = 8
+            const durationDiff = duration - ninetyPercentDuration
+            const changeIncrement = Math.round(durationDiff/frequency)
+            const volumeMap = new Map()
+            let volume = 112 // so starting volume decreas is 80
+            for(let i = 0; i < frequency; i++) {
+                const mediaTime = Math.floor(ninetyPercentDuration) + (i * changeIncrement)
+                volume /= 1.4
+                volumeMap.set(mediaTime, Math.floor(volume))
             }
+
+            return volumeMap
+        },
+        mediaPlay(){
+            this.jukeBoxInstance.playVideo()
+        },
+        mediaPause(){
+            this.jukeBoxInstance.pauseVideo()
         }
     },
     created:function(){
@@ -1371,6 +1402,15 @@ const djSpotify = Vue.component('djSpotify', {
                 this.$store.commit('badgeImage', payload)
             })
         });
+        this.controlSocket.on('sessionOver', (data)=>{
+            if (this.appName.toLowerCase() === data) {
+                this.$router.replace('/home')
+                M.toast({
+                    html: 'Something went wrong. Please host a new party room',
+                    displayLength: 60000
+                })
+            }
+        });
         
     },
     mounted: function() {
@@ -1379,6 +1419,7 @@ const djSpotify = Vue.component('djSpotify', {
     destroyed: function(){
         //console.log('damn son am out')
         this.controlSocket.close()
+        clearInterval(this.fadeOutIntervalInstance)
     }
 })
 

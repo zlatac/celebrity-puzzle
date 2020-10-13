@@ -146,10 +146,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}" :key="x.id">
                     <div class="row">
                         <div class="col s4">
-                            <div style="position: relative;">
+                            <div style="position: relative;width: min-content;margin: 0 auto;">
                                 <img :src="x.image" class="img-result">
                                 <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="alreadyRequested(x.id) === true">
                                     <i class="material-icons">check</i>
@@ -204,12 +204,16 @@
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
             <div class="row " v-show="!loader">
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" v-if="x.hide === false">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" v-if="x.hide === false" :key="x.id">
                     <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
-                            <div style="position: relative;">
+                            <div class="image-container" :class="{'first-image': index === 0}">
                                 <img class="img-result" :src="x.image">
                                 <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.requestCount}}</span>
+                                <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && !playing"
+                                @click="mediaPlay">play_arrow</i>
+                                <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && playing"
+                                @click="mediaPause">pause</i>
                             </div>   
                         </div>                     
                         <div class="col s5 song-details">
