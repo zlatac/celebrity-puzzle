@@ -676,7 +676,7 @@ const homeTwo = Vue.component('homeTwo', {
             }
         },
         isMobileOrTablet() {
-            const maxTabletWidth = 1297;
+            const maxTabletWidth = 1024;
             return window.innerWidth <= maxTabletWidth;
         },
         inputTyping() {
