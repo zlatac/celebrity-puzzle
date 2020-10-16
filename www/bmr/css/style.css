@@ -251,6 +251,9 @@ img{
 .first-image img {
     filter: brightness(70%);
 }
+.toast.toast-lower{
+    top: 35px !important;
+}
 @media only screen and (max-width: 1297px){
     .party-card{
         width: 90%;

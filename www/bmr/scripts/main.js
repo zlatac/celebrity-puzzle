@@ -715,7 +715,7 @@ const homeTwo = Vue.component('homeTwo', {
             }
         },
         isMobileOrTablet(){
-            const maxTabletWidth = 1024
+            const maxTabletWidth = 768
             return window.innerWidth <= maxTabletWidth
         },
         inputTyping(){
@@ -1264,7 +1264,7 @@ const djSpotify = Vue.component('djSpotify', {
         doNotPlaySong(payload) {
             const playerState = this.playerStates[this.jukeBoxInstance.getPlayerState()]
             const currentSongId = this.jukeBoxInstance.getVideoData().video_id
-            if (playerState === 'playing' && currentSongId === payload.id) {
+            if (currentSongId === payload.id) {
                 this.playNextSong()
                 if (this.jukeBoxList.length === 0) {
                     this.jukeBoxInstance.pauseVideo()
@@ -1421,11 +1421,13 @@ const djSpotify = Vue.component('djSpotify', {
     },
     mounted: function() {
         this.getJukeboxApi()
+        M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
     },
     destroyed: function(){
         //console.log('damn son am out')
         this.controlSocket.close()
         clearInterval(this.fadeOutIntervalInstance)
+        M.Toast.dismissAll()
     }
 })
 
