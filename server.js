@@ -5,6 +5,10 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var axios = require('axios');
 var querystring = require('querystring');
+var fs = require('fs').promises;
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config()
+}
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
 
@@ -79,6 +83,61 @@ function spotifyToken(client){
     }
     
 }
+
+function youtubePlaylist(playListId){
+    return axios.request({
+        method:'get',
+        url:'https://www.googleapis.com/youtube/v3/playlistItems',
+        headers:{
+            Accept: 'application/json',
+            origin: 'https://blessmyrequest.com',
+            referer: 'https://blessmyrequest.com'
+        },
+        params: {
+            part: 'snippet',
+            playlistId: playListId,
+            key: process.env.YOUTUBE_KEY,
+            maxResults: 50
+        }
+    })
+}
+
+async function getPlaylists(){
+    try {
+        const playList = [{playListId:'PLjgnc8PuQP-_UlRFdHEJJk4OytNvLsVfN', genre: 'top 40'}]
+        const listMapping = {}
+        playList.forEach((item) => {listMapping[item.playListId] = item.genre})
+        const playlistMap = playList.map((item) => youtubePlaylist(item.playListId))
+        const responses = await axios.all(playlistMap)
+        if (responses.every((item) => item.status === 200)) {
+            //console.log(responses)
+            const bucket = responses.map((item) => {
+                const songs = item.data.items.map((i)=>{
+                    let obj = {}
+                    obj.image = i.snippet.thumbnails.default.url
+                    obj.song = i.snippet.title.split(' - ')[1] || ''
+                    obj.artist = i.snippet.title.split(' - ')[0] || ''
+                    obj.id = i.snippet.resourceId.videoId
+                    return obj
+                })
+                return {
+                    genre: listMapping[item.config.params.playlistId],
+                    songs
+                }
+            })
+            //console.log(bucket, bucket[0].songs[0])
+            await fs.writeFile('playlist.json', JSON.stringify(bucket))
+
+        }else {
+            throw new Error('oh oh')
+        }
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//console.log(process.env.YOUTUBE_KEY)
+getPlaylists()
 
 function clearDataLater(){
     dataStore.timeout = function(){
@@ -261,6 +320,17 @@ app.get('/startParty', function(req,res){
         res.status(400)
         res.send(`Party "${partyCode}" does not exist`)
         io.sockets.emit('sessionOver', partyCode);
+    }
+});
+
+app.get('/allPlaylist', async function(req,res){
+    try {
+        const data = await fs.readFile('playlist.json')
+        res.status(200)
+        res.send(JSON.parse(data))
+    } catch (error) {
+        res.status(404)
+        res.send('ooops something went wrong')
     }
 });
 
