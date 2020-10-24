@@ -1036,6 +1036,10 @@ const djSpotify = Vue.component('djSpotify', {
             population: [],
             pendingTrackDetails:[],
             jukeBoxList: [],
+            autoPlayList: [],
+            allPlayList: [],
+            allPlayListMap: new Map(),
+            genreOptions: [],
             isConnected: false,
             jukeBoxInstance: undefined,
             fadeOutIntervalInstance: undefined,
@@ -1278,12 +1282,15 @@ const djSpotify = Vue.component('djSpotify', {
         },
         fadeOutVolume(milliseconds, volume){
             const volumeMap = this.getVolumeTime()
-            // console.log(volumeMap)
+            //console.log(volumeMap)
             this.fadeOutIntervalInstance = setInterval(() => {
                 const currentTime = Math.floor(this.jukeBoxInstance.getCurrentTime())
                 const volume = volumeMap.get(currentTime)
                 if (volume !== undefined && volume > 1) {
                     this.jukeBoxInstance.setVolume(volume)
+                }
+                if (volume === 20) {
+                    this.addNextAutoRequest()
                 }
             }, 1000)
         },
@@ -1309,6 +1316,77 @@ const djSpotify = Vue.component('djSpotify', {
         },
         mediaPause(){
             this.jukeBoxInstance.pauseVideo()
+        },
+        getAutoPlaylist(){
+            fetch('/allPlaylist')
+            .then((res) => {
+                if (res.status === 200) {
+                    return res.json()
+                }
+                throw new Error('request failed')
+            })
+            .then((res) => {
+                this.allPlayList = res
+                res.forEach((item) => {
+                    this.allPlayListMap.set(item.genre, item.songs)
+                    this.genreOptions.push({
+                        genre: item.genre,
+                        selected: item.genre.includes('top 40') ? true : false
+                    })
+                })
+                this.setupAutoPlay()
+
+            })
+        },
+        setupAutoPlay(){
+            this.autoPlayList = []
+            this.genreOptions.forEach((item) => {
+                if (item.selected) {
+                    const songs = this.allPlayListMap.get(item.genre)
+                    this.autoPlayList.push(...songs)
+                }
+            })
+            //this.randomize(this.autoPlayList)
+            setTimeout(() => {
+                if (this.jukeBoxList.length < 1) {
+                    this.addNextAutoRequest()
+                }
+            }, 60000)
+        },
+        addNextAutoRequest(){
+            if (this.autoPlayList.length > 0) {
+                const song = this.autoPlayList[0]
+                this.autoPlayList.splice(0,1)
+                this.addRequest({song}, true)
+            }
+        },
+        toggleGenre(genreData){
+            genreData.selected = !genreData.selected
+        },
+        addRequest(data, isAuto){
+            console.log('request added bruh', data)
+            let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
+            if(checkIdExist === -1){
+                data.song.vipList = new Map()
+                data.song.requestCount = 1
+                data.song.hide = false
+                data.song.bpm = ''
+                data.song.isAuto = isAuto || false
+                if ('vip' in data && data.vip.limit > 0) data.song.vipList.set(data.vip.insta, data.vip)
+                data.song.showVip = false
+                this.requestBasket.push(data.song)
+                this.getTrackBpm(data.song)
+                if (this.jukeboxMode) {
+                    this.addToPlaylist(data.song)
+                }
+            }else{
+                let requestedSong = this.requestBasket[checkIdExist]
+                requestedSong.requestCount += 1
+                if ('vip' in data && data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip)
+                if (isAuto) {
+                    this.addNextAutoRequest()
+                }
+            }
         }
     },
     created:function(){
@@ -1331,25 +1409,26 @@ const djSpotify = Vue.component('djSpotify', {
                     this.population.push(data)
                 }
                 if('task' in data && data.task === 'request'){
-                    console.log('request added bruh', data)
-                    let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
-                    if(checkIdExist === -1){
-                        data.song.vipList = new Map()
-                        data.song.requestCount = 1
-                        data.song.hide = false
-                        data.song.bpm = ''
-                        if (data.vip.limit > 0) data.song.vipList.set(data.vip.insta, data.vip)
-                        data.song.showVip = false
-                        this.requestBasket.push(data.song)
-                        this.getTrackBpm(data.song)
-                        if (this.jukeboxMode) {
-                            this.addToPlaylist(data.song)
-                        }
-                    }else{
-                        let requestedSong = this.requestBasket[checkIdExist]
-                        requestedSong.requestCount += 1
-                        if (data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip)
-                    }
+                    // console.log('request added bruh', data)
+                    // let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
+                    // if(checkIdExist === -1){
+                    //     data.song.vipList = new Map()
+                    //     data.song.requestCount = 1
+                    //     data.song.hide = false
+                    //     data.song.bpm = ''
+                    //     if (data.vip.limit > 0) data.song.vipList.set(data.vip.insta, data.vip)
+                    //     data.song.showVip = false
+                    //     this.requestBasket.push(data.song)
+                    //     this.getTrackBpm(data.song)
+                    //     if (this.jukeboxMode) {
+                    //         this.addToPlaylist(data.song)
+                    //     }
+                    // }else{
+                    //     let requestedSong = this.requestBasket[checkIdExist]
+                    //     requestedSong.requestCount += 1
+                    //     if (data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip)
+                    // }
+                    this.addRequest(data)
                     this.controlSocket.emit('analytics',{appName:this.appName,requestNumber:this.requestList.length,task:'request'});
                     
                 }
@@ -1422,6 +1501,7 @@ const djSpotify = Vue.component('djSpotify', {
     mounted: function() {
         this.getJukeboxApi()
         M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
+        this.getAutoPlaylist()
     },
     destroyed: function(){
         //console.log('damn son am out')
@@ -1619,7 +1699,7 @@ Vue.component('badge', {
         <img :src="imageUrl" alt="Host">
         Host
         </div>
-        <slide-modal :show="show" @close="show = false">
+        <slide-modal :show="show" @close="hideSlideModal">
             <slot></slot>
         </slide-modal>
     </div>
@@ -1638,6 +1718,12 @@ Vue.component('badge', {
             }
             
             return this.noProfileUrl
+        }
+    },
+    methods: {
+        hideSlideModal(){
+            this.show = false
+            this.$emit('close-badge')
         }
     }
 

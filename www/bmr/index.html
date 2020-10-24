@@ -177,7 +177,10 @@
 </script>
 <script type="text/x-template" id="djspotify">
     <div class="zontainer center-align animated fadeIn">
-        <badge>
+        <badge @close-badge="setupAutoPlay">
+            <div class="col s12 genre">
+                <span class="chip" :class="{'genre-selected': x.selected}" v-for="(x, index) in genreOptions" :key="index" @click="toggleGenre(x)">{{x.genre}}</span>
+            </div>
             <get-insta :comp="modalPage" @get-profile="getProfile" style="margin-top: 23px;padding: 0 10%;"></get-insta>
             <div class="btn btn-background" v-if="modalPage.imageacquired" @click="setDj">Take The Spotlight</div>
         </badge>
@@ -207,9 +210,9 @@
                 <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" v-if="x.hide === false" :key="x.id">
                     <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
-                            <div class="image-container" :class="{'first-image': index === 0}">
+                            <div class="image-container" :class="{'first-image': index === 0, 'dj-gold': x.isAuto}">
                                 <img class="img-result" :src="x.image">
-                                <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.requestCount}}</span>
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.isAuto ? 'DJ' : x.requestCount}}</span>
                                 <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && !playing"
                                 @click="mediaPlay">play_arrow</i>
                                 <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && playing"

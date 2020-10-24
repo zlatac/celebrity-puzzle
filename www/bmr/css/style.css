@@ -254,6 +254,20 @@ img{
 .toast.toast-lower{
     top: 35px !important;
 }
+.image-container.dj-gold {
+    border: 1px solid var(--gold-border)
+}
+.image-container.dj-gold .lead-fab {
+    background: var(--real-gold);
+}
+.genre .chip {
+    cursor: pointer;
+    text-transform: capitalize;
+}
+.chip.genre-selected {
+    background: var(--default-main);
+    color: white;
+}
 @media only screen and (max-width: 1297px){
     .party-card{
         width: 90%;
