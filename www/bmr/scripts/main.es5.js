@@ -576,8 +576,8 @@ const homeTwo = Vue.component('homeTwo', {
         startParty() {
             this.partyModalError = false;
             this.partyModalLoader = true;
-            this.$noSleep = new NoSleep();
-            this.$noSleep.enable();
+            // this.$noSleep = new NoSleep()
+            // this.$noSleep.enable()
             const fetchParams = `?name=${this.modalInputTrimmed}`;
             fetch(`/startParty${fetchParams}`, {
                 method: 'POST',
