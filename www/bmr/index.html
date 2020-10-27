@@ -36,11 +36,10 @@
 
     <!-- Compiled and minified JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.min.js"></script> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
-    <!-- <script src="scripts/tones.js"></script> -->
     <script src="/bmr/lib/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script>
 </head>
 <body>
     <div id="myapp">
@@ -207,7 +206,7 @@
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
             <div class="row " v-show="!loader">
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" v-if="x.hide === false" :key="x.id">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id">
                     <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
                             <div class="image-container" :class="{'first-image': index === 0, 'dj-gold': x.isAuto}">
@@ -228,8 +227,8 @@
                                     Yes
                                 </label>
                             </div>
-                            {{x.song}} 
-                            <p class="grey-text p-space">{{x.artist}}</p>
+                            {{x.song | songName}} 
+                            <p class="grey-text p-space">{{x.artist | songName}}</p>
                             <p class="p-space" v-if="!jukeboxMode"><b>[ {{x.bpm}} ]</b></p>
                             <p class="p-space" v-if="!jukeboxMode && x.explicit"><b>---- Explicit ----</b></p>
                         </div>

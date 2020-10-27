@@ -106,8 +106,8 @@ async function getPlaylists(){
     try {
         const playList = [
             //{playListId:'PLjgnc8PuQP-_UlRFdHEJJk4OytNvLsVfN', genre: 'top 40'},
-            {playListId:'PLz12V8TsgQRm7Hh9pzUW-UKXvz53W6INz', genre: 'sis grad 1'},
-            {playListId:'PLz12V8TsgQRmnBNv0adsD2H7wzgzPyxYF', genre: 'sis grad 2'},
+            {playListId:'PLz12V8TsgQRm7Hh9pzUW-UKXvz53W6INz', genre: 'top 40'},
+            {playListId:'PLz12V8TsgQRmnBNv0adsD2H7wzgzPyxYF', genre: 'afrobeats'},
 
         ]
         const listMapping = {}

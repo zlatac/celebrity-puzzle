@@ -576,6 +576,8 @@ const homeTwo = Vue.component('homeTwo', {
         startParty() {
             this.partyModalError = false;
             this.partyModalLoader = true;
+            this.$noSleep = new NoSleep();
+            this.$noSleep.enable();
             const fetchParams = `?name=${this.modalInputTrimmed}`;
             fetch(`/startParty${fetchParams}`, {
                 method: 'POST',
@@ -968,6 +970,16 @@ const spotify = Vue.component('spotify', {
         this.socket.on('noDj', data => {
             this.$store.commit('noDj');
         });
+        this.socket.on('sessionOver', data => {
+            if (this.appName.toLowerCase() === data) {
+                const appName = this.appName;
+                this.$router.replace('/home');
+                M.toast({
+                    html: `Something went wrong. Party room with code [${appName}] no longer exists. Please join a new party room.`,
+                    displayLength: 60000
+                });
+            }
+        });
     },
     destroyed: function () {
         //console.log('damn son am out')
@@ -1211,6 +1223,7 @@ const djSpotify = Vue.component('djSpotify', {
                 this.playNextSong();
                 if (this.jukeBoxList.length === 0) {
                     this.jukeBoxInstance.pauseVideo();
+                    this.addNextAutoRequest();
                 }
             } else {
                 let checkIdExist = this.jukeBoxList.findIndex(item => item.id === payload.id);
@@ -1282,7 +1295,7 @@ const djSpotify = Vue.component('djSpotify', {
                     this.autoPlayList.push(...songs);
                 }
             });
-            //this.randomize(this.autoPlayList)
+            this.randomize(this.autoPlayList);
             setTimeout(() => {
                 if (this.jukeBoxList.length < 1) {
                     this.addNextAutoRequest();
@@ -1290,7 +1303,7 @@ const djSpotify = Vue.component('djSpotify', {
             }, 60000);
         },
         addNextAutoRequest() {
-            if (this.autoPlayList.length > 0) {
+            if (this.autoPlayList.length > 0 && this.jukeBoxList.length <= 1) {
                 const song = this.autoPlayList[0];
                 this.autoPlayList.splice(0, 1);
                 this.addRequest({ song }, true);
@@ -1345,25 +1358,6 @@ const djSpotify = Vue.component('djSpotify', {
                     this.population.push(data);
                 }
                 if ('task' in data && data.task === 'request') {
-                    // console.log('request added bruh', data)
-                    // let checkIdExist = this.requestBasket.findIndex((item) => item.id === data.song.id)
-                    // if(checkIdExist === -1){
-                    //     data.song.vipList = new Map()
-                    //     data.song.requestCount = 1
-                    //     data.song.hide = false
-                    //     data.song.bpm = ''
-                    //     if (data.vip.limit > 0) data.song.vipList.set(data.vip.insta, data.vip)
-                    //     data.song.showVip = false
-                    //     this.requestBasket.push(data.song)
-                    //     this.getTrackBpm(data.song)
-                    //     if (this.jukeboxMode) {
-                    //         this.addToPlaylist(data.song)
-                    //     }
-                    // }else{
-                    //     let requestedSong = this.requestBasket[checkIdExist]
-                    //     requestedSong.requestCount += 1
-                    //     if (data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip)
-                    // }
                     this.addRequest(data);
                     this.controlSocket.emit('analytics', { appName: this.appName, requestNumber: this.requestList.length, task: 'request' });
                 }
@@ -1724,7 +1718,7 @@ Vue.filter('truncate', function (value) {
 const store = new Vuex.Store({
     //state management in VUE
     state: {
-        url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+        url: serviceProvider.data().noProfileUrl,
         accessToken: null,
         clubs: [],
         vipMode: {
@@ -1734,7 +1728,7 @@ const store = new Vuex.Store({
             club: ''
         },
         badge: {
-            image: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
+            image: serviceProvider.data().noProfileUrl,
             appName: ''
         },
         partyCodeFromLink: ''
@@ -1777,6 +1771,8 @@ const routes = [{ path: '/request/:id', component: spotify }, { path: '/dj/:id',
 const router = new VueRouter({
     routes // short for `routes: routes`
 });
+
+Vue.prototype.$noSleep = () => {};
 
 var app = new Vue({
     router: router,
