@@ -104,12 +104,13 @@ function youtubePlaylist(playListId){
 
 async function getPlaylists(){
     try {
-        const playList = [
-            //{playListId:'PLjgnc8PuQP-_UlRFdHEJJk4OytNvLsVfN', genre: 'top 40'},
-            {playListId:'PLz12V8TsgQRm7Hh9pzUW-UKXvz53W6INz', genre: 'top 40'},
-            {playListId:'PLz12V8TsgQRmnBNv0adsD2H7wzgzPyxYF', genre: 'afrobeats'},
+        // const playList = [
+        //     {playListId:'PLz12V8TsgQRnZxHemWzJDIqiZl5lfLqJ_', genre: 'top 40'},
+        //     {playListId:'PLz12V8TsgQRk6bcrtWiIf7KZ2it0upRIG', genre: 'afrobeats'},
+        //     {playListId:'PLz12V8TsgQRkCigOqDmMvxM5WatnJTOcP', genre: 'hip hop'},
 
-        ]
+        // ]
+        const playList = JSON.parse(process.env.PLAY_LIST)
         const listMapping = {}
         playList.forEach((item) => {listMapping[item.playListId] = item.genre})
         const playlistMap = playList.map((item) => youtubePlaylist(item.playListId))
