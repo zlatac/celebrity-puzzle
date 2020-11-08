@@ -273,6 +273,13 @@ const serviceProvider = {
             let payload = JSON.stringify(dataObject)
             axios.post(`https://styleminions.co/api/blessmyrequest?payload=${payload}`)
         },
+        isMobileOrTablet(){
+            const maxTabletWidth = 768
+            return window.innerWidth <= maxTabletWidth
+        },
+        isIOS(){
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        },
         locationPerimeter(latitude,longitude,distance){
             //average human walks 5km/hr => therefore walking 2km in 24 minutes
             //this function returns the pointA and pointD of the perimeter around the users location
@@ -715,10 +722,6 @@ const homeTwo = Vue.component('homeTwo', {
                     break
                 default:
             }
-        },
-        isMobileOrTablet(){
-            const maxTabletWidth = 768
-            return window.innerWidth <= maxTabletWidth
         },
         inputTyping(){
             if (this.partyModalError) {
@@ -1204,6 +1207,15 @@ const djSpotify = Vue.component('djSpotify', {
                         'onStateChange': (event) => {
                             this.jukeBoxStateChanged(event)
                         }
+                    },
+                    playerVars: {
+                        autoplay: 1,
+                        enablejsapi: 1,
+                        fs: 0,
+                        origin: 'https://www.youtube.com',
+                        playsinline : 1,
+                        //controls: 0,
+                        modestbranding: 1
                     }
                 })
             }
@@ -1228,6 +1240,10 @@ const djSpotify = Vue.component('djSpotify', {
                     this.widgetStarted = true
                     clearInterval(this.fadeOutIntervalInstance)
                     this.fadeOutVolume()
+                    const iframeDisplayState = document.querySelector('iframe').style.display
+                    if (iframeDisplayState !== 'none') {
+                        document.querySelector('iframe').style.display = 'none'
+                    }
                     break;
                 case 'paused':
                     this.playing = false
@@ -1493,6 +1509,9 @@ const djSpotify = Vue.component('djSpotify', {
         
     },
     mounted: function() {
+        if (this.isIOS() && this.isMobileOrTablet()) {
+            document.querySelector('#jukebox').style.display = 'inline-block'
+        }
         this.getJukeboxApi()
         M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
         this.getAutoPlaylist()
