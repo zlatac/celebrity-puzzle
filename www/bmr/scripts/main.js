@@ -319,6 +319,22 @@ const serviceProvider = {
         }
     }
 }
+const jukeboxMixin = {
+    methods: {
+        SharePartyRoom(){
+            if ('share' in navigator) {
+                navigator.share({
+                    title: 'BlessMyRequest',
+                    text: 'Request a song now & enjoy the party',
+                    url: `${window.location.origin}/#/join/${this.club.id}`
+                })
+                .catch((error) => {
+                    console.error(new Error(error))
+                })
+            }
+        }
+    }
+}
 const landing = Vue.component('landing', {
     // dark theme: #101010
     // dark blue: #070b19
@@ -742,7 +758,7 @@ const homeTwo = Vue.component('homeTwo', {
 
 const spotify = Vue.component('spotify',{
     template:'#spotify',
-    mixins: [serviceProvider],
+    mixins: [serviceProvider, jukeboxMixin],
     data: function(){
         return{
             searchInput: '',
@@ -953,18 +969,6 @@ const spotify = Vue.component('spotify',{
                 this.scrollToResultTop()
                 console.log(res, 'am done')
             })
-        },
-        SharePartyRoom(){
-            if ('share' in navigator) {
-                navigator.share({
-                    title: 'BlessMyRequest',
-                    text: 'Request a song now & enjoy the party',
-                    url: `${window.location.origin}/#/join/${this.club.id}`
-                })
-                .catch((error) => {
-                    console.error(new Error(error))
-                })
-            }
         }
     },
     watch: {
@@ -1044,7 +1048,7 @@ const spotify = Vue.component('spotify',{
 
 const djSpotify = Vue.component('djSpotify', {
     template:'#djspotify',
-    mixins: [serviceProvider],
+    mixins: [serviceProvider, jukeboxMixin],
     data: function(){
         return{
             requestBasket:[],
@@ -1193,16 +1197,24 @@ const djSpotify = Vue.component('djSpotify', {
         },
         getJukeboxApi(){
             const tag = document.createElement('script');
+            // IOS mobile should have a video loaded by default to prevent error and not keep showing the power button
+            const videoId = this.isIOS() && this.isMobileOrTablet() ? 'q1Yz0Vfp2jY': undefined
             // When api is ready to be used this will be called
             window.onYouTubeIframeAPIReady = () => {
                 this.jukeBoxInstance = new YT.Player('jukebox', {
                     height: '200',
                     width: '200',
+                    videoId,
                     events: {
                         'onError': (event) => {
                             console.error(new Error(event.data))
                             console.warn('Due to faliure i had to play the next song')
                             this.playNextSong()
+                        },
+                        'onReady': () => {
+                            if (this.isIOS() && this.isMobileOrTablet()) {
+                                document.querySelector('.jukebox-container').style.display = 'inline-block'
+                            }
                         },
                         'onStateChange': (event) => {
                             this.jukeBoxStateChanged(event)
@@ -1214,7 +1226,7 @@ const djSpotify = Vue.component('djSpotify', {
                         fs: 0,
                         origin: 'https://www.youtube.com',
                         playsinline : 1,
-                        //controls: 0,
+                        controls: 1,
                         modestbranding: 1
                     }
                 })
@@ -1240,9 +1252,9 @@ const djSpotify = Vue.component('djSpotify', {
                     this.widgetStarted = true
                     clearInterval(this.fadeOutIntervalInstance)
                     this.fadeOutVolume()
-                    const iframeDisplayState = document.querySelector('iframe').style.display
+                    const iframeDisplayState = document.querySelector('.jukebox-container').style.display
                     if (iframeDisplayState !== 'none') {
-                        document.querySelector('iframe').style.display = 'none'
+                        document.querySelector('.jukebox-container').style.display = 'none'
                     }
                     break;
                 case 'paused':
@@ -1509,9 +1521,6 @@ const djSpotify = Vue.component('djSpotify', {
         
     },
     mounted: function() {
-        if (this.isIOS() && this.isMobileOrTablet()) {
-            document.querySelector('#jukebox').style.display = 'inline-block'
-        }
         this.getJukeboxApi()
         M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
         this.getAutoPlaylist()

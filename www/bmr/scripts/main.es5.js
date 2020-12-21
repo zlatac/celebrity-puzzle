@@ -1,5 +1,9 @@
-const serviceProvider = {
-    data: function () {
+'use strict';
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+var serviceProvider = {
+    data: function data() {
         return {
             modalInstance: null,
             modalData: {},
@@ -21,39 +25,38 @@ const serviceProvider = {
         };
     },
     computed: {
-        url() {
+        url: function url() {
             return this.$store.state.url;
         },
-        isWindowBig() {
+        isWindowBig: function isWindowBig() {
             return this.checkWindow();
         },
-        deviceId() {
+        deviceId: function deviceId() {
             if ('deviceId' in localStorage) {
                 return localStorage.deviceId;
             } else {
                 return 'empty';
             }
         },
-        isLocalhost() {
+        isLocalhost: function isLocalhost() {
             return location.href.includes(':8000') || location.href.includes('localhost');
         },
-        jukeboxMode() {
+        jukeboxMode: function jukeboxMode() {
             return this.getClubData().client_type.includes('jukebox');
         }
-
     },
-    mounted: function () {
-        let modal = document.querySelector('.modal');
-        let tooltip = document.querySelector('.tooltipped');
-        let modalOptions = {};
+    mounted: function mounted() {
+        var modal = document.querySelector('.modal');
+        var tooltip = document.querySelector('.tooltipped');
+        var modalOptions = {};
         //if (this.$route.path.includes('game')) modalOptions.dismissible = false
         if (modal) this.modalInstance = M.Modal.init(modal, modalOptions);
         if (tooltip) M.Tooltip.init(tooltip);
     },
-    destroy: function () {
+    destroy: function destroy() {
         this.modalInstance.destroy();
     },
-    created: function () {
+    created: function created() {
         this.validateClubListState();
     },
     methods: {
@@ -63,14 +66,14 @@ const serviceProvider = {
             }
             return true;
         },
-        checkWindow: function () {
+        checkWindow: function checkWindow() {
             if (window.innerWidth > 600 && window.innerWidth > 768) {
                 //768px is for tablet (ipad)
                 return true;
             }
             return false;
         },
-        randomize: function (array) {
+        randomize: function randomize(array) {
             //Algorithm to shuffle an array
             var input = array;
 
@@ -84,53 +87,66 @@ const serviceProvider = {
             }
             return input;
         },
-        cleanInstaHandle(handle) {
+        cleanInstaHandle: function cleanInstaHandle(handle) {
             return handle.replace('@', '').toLowerCase();
         },
-        toggleModal: function (modalData) {
+
+        toggleModal: function toggleModal(modalData) {
             this.modalData = modalData;
             this.modalInstance.open();
         },
-        generateDeviceId: function (skipredirect) {
+        generateDeviceId: function generateDeviceId(skipredirect) {
+            var _this = this;
+
             //if skipredirect is not true redirect to dash page
-            axios('/myipaddress').then(res => {
-                let ip = res.data;
-                let unixtime = moment().unix();
-                let hash = generateHash(ip, unixtime);
+            axios('/myipaddress').then(function (res) {
+                var ip = res.data;
+                var unixtime = moment().unix();
+                var hash = generateHash(ip, unixtime);
                 localStorage.deviceId = hash;
-            }).catch(error => {
+            }).catch(function (error) {
                 console.warn(new Error(error));
-            }).finally(() => {
+            }).finally(function () {
                 if (skipredirect !== true) {
-                    this.sendToCategory();
+                    _this.sendToCategory();
                     console.log('wow');
                 }
             });
             function generateHash(ip, time) {
                 //hash structure is [ip address + time + (ip-random)(time-random)(ip-random)]
-                let address = ip.replace('.', '');
-                let stringtime = String(time);
-                let hash = '';
-                for (let i = 0; i < 3; i++) {
+                var address = ip.replace('.', '');
+                var stringtime = String(time);
+                var hash = '';
+                for (var i = 0; i < 3; i++) {
                     if (i !== 1) {
                         hash += address[Math.floor(Math.random() * address.length)];
                     } else {
                         hash += stringtime[Math.floor(Math.random() * stringtime.length)];
                     }
                 }
-                return `${ip}-${time}-${hash}`;
+                return ip + '-' + time + '-' + hash;
             }
         },
-        clearInterval: function (intervalInstance) {
+        clearInterval: function (_clearInterval) {
+            function clearInterval(_x) {
+                return _clearInterval.apply(this, arguments);
+            }
+
+            clearInterval.toString = function () {
+                return _clearInterval.toString();
+            };
+
+            return clearInterval;
+        }(function (intervalInstance) {
             if (this.safe(intervalInstance)) {
                 clearInterval(intervalInstance);
             }
-        },
-        modalAdsense: function () {
+        }),
+        modalAdsense: function modalAdsense() {
             if (this.adsenseServed === false) {
                 //No need to call for the same ad unit 
                 this.adsenseServed = true;
-                setTimeout(() => {
+                setTimeout(function () {
                     try {
                         (adsbygoogle = window.adsbygoogle || []).push({});
                     } catch (error) {
@@ -141,14 +157,17 @@ const serviceProvider = {
                 console.log('Ad served already');
             }
         },
-        closeModal() {
+        closeModal: function closeModal() {
             this.modalInstance.close();
         },
-        instaLink(handle) {
+        instaLink: function instaLink(handle) {
             //return `https://www.instagram.com/${handle}/`
-            return `/profile?insta=${handle}`;
+            return '/profile?insta=' + handle;
         },
-        getProfile: function (input) {
+
+        getProfile: function getProfile(input) {
+            var _this2 = this;
+
             if (typeof input === 'string' && this.safe(input)) this.inputProfile = input; //$event gets passed by vue
             this.modalPage.imageacquired = false; // remove submit button while typing
             this.modalPage.verified = this.modalPage.unverified = false;
@@ -156,83 +175,91 @@ const serviceProvider = {
             if (this.profileTimeout !== null) {
                 clearTimeout(this.profileTimeout);
             }
-            this.profileTimeout = setTimeout(() => {
+            this.profileTimeout = setTimeout(function () {
                 //console.log(this.inputProfile)
-                let profile = this.cleanInstaHandle(this.inputProfile);
-                this.fetchInstaProfile(profile);
+                var profile = _this2.cleanInstaHandle(_this2.inputProfile);
+                _this2.fetchInstaProfile(profile);
             }, 1200);
         },
-        fetchInstaProfile: function (profile) {
+        fetchInstaProfile: function fetchInstaProfile(profile) {
+            var _this3 = this;
+
             if (this.$route.path.includes('request')) {
                 return this.getVipStatus(profile);
             }
             this.modalPage.loader = true;
             if (profile === '') return this.modalPage.fail = true;
-            axios.get(this.instaLink(profile)).then(res => {
+            axios.get(this.instaLink(profile)).then(function (res) {
                 if (res.status === 200) {
                     console.log(res);
-                    let user = res.data.graphql.user;
-                    this.instaName = user.full_name;
-                    this.$store.commit('url', user.profile_pic_url);
-                    this.modalPage.fail = false;
-                    this.modalPage.loader = false;
-                    this.modalPage.imageacquired = true;
+                    var user = res.data.graphql.user;
+                    _this3.instaName = user.full_name;
+                    _this3.$store.commit('url', user.profile_pic_url);
+                    _this3.modalPage.fail = false;
+                    _this3.modalPage.loader = false;
+                    _this3.modalPage.imageacquired = true;
                 }
-            }).catch(error => {
-                this.modalPage.fail = true;
+            }).catch(function (error) {
+                _this3.modalPage.fail = true;
             });
         },
-        getInstaImage(handle) {
-            return axios.get(this.instaLink(handle)).then(res => {
+        getInstaImage: function getInstaImage(handle) {
+            return axios.get(this.instaLink(handle)).then(function (res) {
                 if (res.status === 200) {
-                    let user = res.data.graphql.user;
-                    let image = user.profile_pic_url;
+                    var user = res.data.graphql.user;
+                    var image = user.profile_pic_url;
                     return image;
                 }
             });
         },
-        getVipStatus(profile) {
-            const instaProfile = this.cleanInstaHandle(profile);
-            const club_id = this.modalPage.brand.id || this.$store.state.vipMode.club;
-            const date = moment().toISOString();
+        getVipStatus: function getVipStatus(profile) {
+            var _this4 = this;
+
+            var instaProfile = this.cleanInstaHandle(profile);
+            var club_id = this.modalPage.brand.id || this.$store.state.vipMode.club;
+            var date = moment().toISOString();
             this.modalPage.showButton = false;
             this.modalPage.loader = true;
             if (instaProfile === '') return this.modalPage.fail = true;
-            let promises = [];
+            var promises = [];
             promises.push(axios.get(this.instaLink(instaProfile)));
-            promises.push(axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${instaProfile}/${date}`));
-            return Promise.all(promises).then(res => {
-                const instagram = res[0];
-                const verifyApi = res[1];
+            promises.push(axios.get(this.baseUrl + '/bmr-vip/' + club_id + '/' + instaProfile + '/' + date));
+            return Promise.all(promises).then(function (res) {
+                var instagram = res[0];
+                var verifyApi = res[1];
                 if (instagram.status === 200) {
-                    let sift = instagram.data.graphql.user.profile_pic_url;
-                    this.$store.commit('url', sift);
-                    this.modalPage.fail = false;
-                    this.modalPage.imageacquired = true;
+                    var sift = instagram.data.graphql.user.profile_pic_url;
+                    _this4.$store.commit('url', sift);
+                    _this4.modalPage.fail = false;
+                    _this4.modalPage.imageacquired = true;
                 } else {
-                    this.modalPage.fail = true;
+                    _this4.modalPage.fail = true;
                 }
                 if (verifyApi.status === 200) {
                     verifyApi.data[0].insta = instaProfile;
                     verifyApi.data[0].club = club_id;
-                    this.$store.commit('vipMode', verifyApi.data[0]);
-                    this.modalPage.verified = true;
+                    _this4.$store.commit('vipMode', verifyApi.data[0]);
+                    _this4.modalPage.verified = true;
                 } else {
-                    this.modalPage.unverified = true;
-                    this.$store.commit('resetVipMode');
+                    _this4.modalPage.unverified = true;
+                    _this4.$store.commit('resetVipMode');
                 }
-            }).finally(() => {
-                this.modalPage.loader = false;
+            }).finally(function () {
+                _this4.modalPage.loader = false;
             });
         },
-        validateId() {
-            let club = this.$store.state.clubs.findIndex(item => String(item.id) === this.appName);
+        validateId: function validateId() {
+            var _this5 = this;
+
+            var club = this.$store.state.clubs.findIndex(function (item) {
+                return String(item.id) === _this5.appName;
+            });
             if (club === -1) {
                 this.$router.push('/home');
             }
         },
-        validateClubListState() {
-            let landingRoute = this.$route.path === '/';
+        validateClubListState: function validateClubListState() {
+            var landingRoute = this.$route.path === '/';
             if (this.$route.path.includes('join') && this.$route.params.code !== '') {
                 this.$store.commit('joinParty', this.$route.params.code);
             }
@@ -240,43 +267,47 @@ const serviceProvider = {
                 this.$router.push('/');
             }
         },
-        getClubData() {
-            return this.$store.state.clubs.find(item => String(item.id) === this.appName);
+        getClubData: function getClubData() {
+            var _this6 = this;
+
+            return this.$store.state.clubs.find(function (item) {
+                return String(item.id) === _this6.appName;
+            });
         },
-        inputHighlight() {
-            let input = document.querySelector('#search');
+        inputHighlight: function inputHighlight() {
+            var input = document.querySelector('#search');
             input.focus();
             input.setSelectionRange(0, 9999);
         },
-        webSocket() {
+        webSocket: function webSocket() {
             if ('io' in window) {
                 //var socket = io('https://mochanow.com');
                 var socket = io();
                 return socket;
             }
         },
-        trackAction(dataObject) {
+        trackAction: function trackAction(dataObject) {
             dataObject.clubId = this.appName;
-            let payload = JSON.stringify(dataObject);
-            axios.post(`https://styleminions.co/api/blessmyrequest?payload=${payload}`);
+            var payload = JSON.stringify(dataObject);
+            axios.post('https://styleminions.co/api/blessmyrequest?payload=' + payload);
         },
-        isMobileOrTablet() {
-            const maxTabletWidth = 768;
+        isMobileOrTablet: function isMobileOrTablet() {
+            var maxTabletWidth = 768;
             return window.innerWidth <= maxTabletWidth;
         },
-        isIOS() {
+        isIOS: function isIOS() {
             return (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
             );
         },
-        locationPerimeter(latitude, longitude, distance) {
+        locationPerimeter: function locationPerimeter(latitude, longitude, distance) {
             //average human walks 5km/hr => therefore walking 2km in 24 minutes
             //this function returns the pointA and pointD of the perimeter around the users location
             if (distance === undefined) distance = 0.05; //default distance in km tested with google map(50 metres)
-            let latitudeInMinutes = latitude * 60; // 1 degree = 60 minutes
-            let longitudeInMinutes = longitude * 60;
-            let distanceInMinutes = distance * 60 / 60; //using 60km/hr
-            let pointA = {};
-            let pointD = {};
+            var latitudeInMinutes = latitude * 60; // 1 degree = 60 minutes
+            var longitudeInMinutes = longitude * 60;
+            var distanceInMinutes = distance * 60 / 60; //using 60km/hr
+            var pointA = {};
+            var pointD = {};
             function minutesToDegrees(minutes) {
                 return minutes / 60;
             }
@@ -285,14 +316,14 @@ const serviceProvider = {
             pointD.latitude = minutesToDegrees(latitudeInMinutes - distanceInMinutes);
             pointD.longitude = minutesToDegrees(longitudeInMinutes + distanceInMinutes);
 
-            return { pointA, pointD };
+            return { pointA: pointA, pointD: pointD };
 
             function filterClubs() {
-                clubsArray.filter(item => {
+                clubsArray.filter(function (item) {
                     return item.long < mylocation.pointD.longitude && item.long > mylocation.pointA.longitude && item.lat < mylocation.pointA.latitude && item.lat > mylocation.pointD.latitude;
-                }).map(item => {
+                }).map(function (item) {
                     item.distance = distanceFromDj();return item;
-                }).sort((a, b) => {
+                }).sort(function (a, b) {
                     if (a.distance < b.distance) return -1;if (a.distance > b.distance) return 1;
                 });
                 //below is to sort by closest location to the user
@@ -308,101 +339,53 @@ const serviceProvider = {
         }
     }
 };
-const landing = Vue.component('landing', {
+var jukeboxMixin = {
+    methods: {
+        SharePartyRoom: function SharePartyRoom() {
+            if ('share' in navigator) {
+                navigator.share({
+                    title: 'BlessMyRequest',
+                    text: 'Request a song now & enjoy the party',
+                    url: window.location.origin + '/#/join/' + this.club.id
+                }).catch(function (error) {
+                    console.error(new Error(error));
+                });
+            }
+        }
+    }
+};
+var landing = Vue.component('landing', {
     // dark theme: #101010
     // dark blue: #070b19
     // dark experiment:#252525
     template: '#landing',
     mixins: [serviceProvider],
-    created: function () {
-        fetch(`https://styleminions.co/api/bmrclients`).then(res => {
+    created: function created() {
+        var _this7 = this;
+
+        fetch('https://styleminions.co/api/bmrclients').then(function (res) {
             if (res.status === 200) {
                 return res.json();
             } else {
                 return 'fail';
             }
-        }).catch(err => {
+        }).catch(function (err) {
             console.log(new Error(err));
-        }).then(res => {
+        }).then(function (res) {
             if (res !== 'fail') {
-                this.$store.commit('clubs', res);
-                setTimeout(() => {
-                    this.$router.push('/home');
+                _this7.$store.commit('clubs', res);
+                setTimeout(function () {
+                    _this7.$router.push('/home');
                 }, 2000);
             } else if (res === 'fail') {}
         });
     }
 });
 
-const home = Vue.component('home', {
-    template: `
-        <div style="margin-bottom: 65px;">
-            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">
-                Select Your Club
-            </h4>
-            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"
-                 @click="toggleSearch" v-show="!isSearchFocused">
-                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>
-                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>
-            </div>
-            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;
-                    margin-top:20px;" v-show="showSearch">
-                <form  novalidate @submit.stop.prevent="searchClub">
-                    <div class="col s12">
-                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" 
-                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">
-                    </div>
-                </form>
-            </div>
-            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">
-                <div class="row">
-                    <div class="col s12 center">
-                        <p><b>Sorry!! Can't find "{{inputSearch}}".</b></p>
-                    </div>
-                </div>
-            </div>
-            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">
-                <div class="row">
-                    <div class="col s4">
-                        <div style="position: relative;" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"
-                             @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">
-                            <img class="circle" v-imgfallback :src="x.image" width="70px" style="z-index: -1;">
-                            <div style="position:absolute; width:100%; height:100%; top:0"></div>
-                        </div>
-                    </div>
-                    <div class="col s5" style="text-transform:capitalize;">
-                        {{x.name}}
-                        <p class="grey-text p-space">{{x.city}}</p>
-                        
-                    </div>
-                    <div class="col s3">
-                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">
-                            <i class="material-icons">send</i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <modal :modalPage="modalPage" :modalData="modalData" @submit="addVip" @close="closeModal">
-                <h5 style="text-align: center;margin-bottom: 30px">
-                    {{modalPage.brand.name}}
-                </h5>
-                <div class="row">
-                    <div class="col s8">
-                        <input 
-                            type="password"
-                            placeholder="Bar code"
-                            v-model="modalPage.barCode"
-                            inputmode="numeric"
-                            minlength="4"
-                            maxlength="4"
-                            size="4"/>
-                    </div>
-                </div>
-            </modal>
-        </div>
-    `,
+var home = Vue.component('home', {
+    template: '\n        <div style="margin-bottom: 65px;">\n            <h4 class="center-align white-text" style="margin-bottom:40px;" v-show="!showSearch">\n                Select Your Club\n            </h4>\n            <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4"\n                 @click="toggleSearch" v-show="!isSearchFocused">\n                <i class="fa fa-search" style="font-size:32px;color:white;margin-top:2px;" v-show="!showSearch"></i>\n                <i class="far fa-times-circle" style="font-size:40px;color:white;margin-top:2px;" v-show="showSearch"></i>\n            </div>\n            <div class="row animated fadeIn" style="margin-bottom:30px;background-color:white;border-radius:22px;width: 90%;\n                    margin-top:20px;" v-show="showSearch">\n                <form  novalidate @submit.stop.prevent="searchClub">\n                    <div class="col s12">\n                        <input type="text" name="q" placeholder="Search club, lounge, radio..." @keypress="inputSearch = $event.target.value" \n                               @input="inputSearch = $event.target.value" v-inputHighlight="showSearch" autocomplete="off">\n                    </div>\n                </form>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-show="clubs.length === 0">\n                <div class="row">\n                    <div class="col s12 center">\n                        <p><b>Sorry!! Can\'t find "{{inputSearch}}".</b></p>\n                    </div>\n                </div>\n            </div>\n            <div class="card dark-card animated fadeInUp" v-for="(x, index) in clubs">\n                <div class="row">\n                    <div class="col s4">\n                        <div style="position: relative;" @touchstart="goToAdmin(x,$event)" @touchend="holdEvent = false"\n                             @mousedown="goToAdmin(x,$event)" @mouseup="holdEvent = false">\n                            <img class="circle" v-imgfallback :src="x.image" width="70px" style="z-index: -1;">\n                            <div style="position:absolute; width:100%; height:100%; top:0"></div>\n                        </div>\n                    </div>\n                    <div class="col s5" style="text-transform:capitalize;">\n                        {{x.name}}\n                        <p class="grey-text p-space">{{x.city}}</p>\n                        \n                    </div>\n                    <div class="col s3">\n                        <span class="btn btn-floating waves-effect waves-light" @click="joinRoom(x)">\n                            <i class="material-icons">send</i>\n                        </span>\n                    </div>\n                </div>\n            </div>\n            <modal :modalPage="modalPage" :modalData="modalData" @submit="addVip" @close="closeModal">\n                <h5 style="text-align: center;margin-bottom: 30px">\n                    {{modalPage.brand.name}}\n                </h5>\n                <div class="row">\n                    <div class="col s8">\n                        <input \n                            type="password"\n                            placeholder="Bar code"\n                            v-model="modalPage.barCode"\n                            inputmode="numeric"\n                            minlength="4"\n                            maxlength="4"\n                            size="4"/>\n                    </div>\n                </div>\n            </modal>\n        </div>\n    ',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             showSearch: false,
             isSearchFocused: false,
@@ -422,14 +405,16 @@ const home = Vue.component('home', {
         };
     },
     computed: {
-        clubs() {
+        clubs: function clubs() {
+            var _this8 = this;
+
             if (this.safe(this.inputSearch)) {
                 if (this.inputSearch.toLowerCase() === 'bmr report') {
                     this.$router.push('/report');
                     return;
                 }
-                return this.$store.state.clubs.filter(item => {
-                    let search = this.inputSearch.toLowerCase();
+                return this.$store.state.clubs.filter(function (item) {
+                    var search = _this8.inputSearch.toLowerCase();
                     return item.name.toLowerCase().includes(search) || item.city.toLowerCase().includes(search);
                 });
             }
@@ -437,13 +422,13 @@ const home = Vue.component('home', {
         }
     },
     methods: {
-        joinRoom(id) {
-            this.$router.push(`/request/${id.id}`);
+        joinRoom: function joinRoom(id) {
+            this.$router.push('/request/' + id.id);
         },
-        resetInput() {
+        resetInput: function resetInput() {
             this.inputSearch = '';
         },
-        toggleSearch() {
+        toggleSearch: function toggleSearch() {
             switch (this.showSearch) {
                 case true:
                     this.showSearch = false;
@@ -457,50 +442,54 @@ const home = Vue.component('home', {
                     break;
             }
         },
-        goToAdmin(brand, event) {
+        goToAdmin: function goToAdmin(brand, event) {
+            var _this9 = this;
+
             event.preventDefault();
             this.holdEvent = true;
-            setTimeout(() => {
-                if (this.holdEvent) {
-                    this.holdEvent = false;
-                    this.modalPage.insta = true;
-                    this.modalPage.spotify = true;
-                    this.modalPage.brand = brand;
-                    this.modalInstance.open();
+            setTimeout(function () {
+                if (_this9.holdEvent) {
+                    _this9.holdEvent = false;
+                    _this9.modalPage.insta = true;
+                    _this9.modalPage.spotify = true;
+                    _this9.modalPage.brand = brand;
+                    _this9.modalInstance.open();
                 }
             }, 2000);
         },
-        addVip(instaProfile) {
-            const insta = this.cleanInstaHandle(instaProfile);
+        addVip: function addVip(instaProfile) {
+            var _this10 = this;
+
+            var insta = this.cleanInstaHandle(instaProfile);
             this.modalPage.loader = true;
-            const club_id = this.modalPage.brand.id;
-            const date = moment().toISOString();
-            const expiry_date = moment().add(10, 'h').toISOString();
-            const limit = 3;
-            axios.get(`${this.baseUrl}/bmr-vip/${club_id}/${insta}/${date}`).then(res => {
+            var club_id = this.modalPage.brand.id;
+            var date = moment().toISOString();
+            var expiry_date = moment().add(10, 'h').toISOString();
+            var limit = 3;
+            axios.get(this.baseUrl + '/bmr-vip/' + club_id + '/' + insta + '/' + date).then(function (res) {
                 if (res.status === 204) {
-                    return axios.post(`${this.baseUrl}/bmr-vip/${club_id}/${insta}/${expiry_date}/${limit}`);
+                    return axios.post(_this10.baseUrl + '/bmr-vip/' + club_id + '/' + insta + '/' + expiry_date + '/' + limit);
                 } else {
-                    this.modalPage.unverified = true;
-                    this.modalPage.showButton = false;
+                    _this10.modalPage.unverified = true;
+                    _this10.modalPage.showButton = false;
                     return { status: 0 };
                 }
-            }).then(res => {
+            }).then(function (res) {
                 if (res.status === 201) {
-                    this.modalPage.verified = true;
-                    this.modalPage.showButton = false;
+                    _this10.modalPage.verified = true;
+                    _this10.modalPage.showButton = false;
                 }
-            }).finally(() => {
-                this.modalPage.loader = false;
+            }).finally(function () {
+                _this10.modalPage.loader = false;
             });
         }
     }
 });
 
-const homeTwo = Vue.component('homeTwo', {
+var homeTwo = Vue.component('homeTwo', {
     template: '#home-two',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             showModal: false,
             modalInput: '',
@@ -515,7 +504,7 @@ const homeTwo = Vue.component('homeTwo', {
         };
     },
     computed: {
-        partyCards() {
+        partyCards: function partyCards() {
             return [{
                 name: 'host party',
                 icons: [{
@@ -555,7 +544,7 @@ const homeTwo = Vue.component('homeTwo', {
                 maxLength: 5
             }];
         },
-        partyModal() {
+        partyModal: function partyModal() {
             switch (this.modalType) {
                 case 'host party':
                     return this.partyCards[0];
@@ -567,77 +556,81 @@ const homeTwo = Vue.component('homeTwo', {
                     return {};
             }
         },
-        modalInputTrimmed() {
+        modalInputTrimmed: function modalInputTrimmed() {
             return this.modalInput.trim();
         },
-        isJoinParty() {
+        isJoinParty: function isJoinParty() {
             return this.modalType.includes('join');
         },
-        isHostParty() {
+        isHostParty: function isHostParty() {
             return this.modalType.includes('host');
         }
     },
-    mounted: function () {
+    mounted: function mounted() {
         this.autoJoinParty();
     },
     methods: {
-        startParty() {
+        startParty: function startParty() {
+            var _this11 = this;
+
             this.partyModalError = false;
             this.partyModalLoader = true;
             // this.$noSleep = new NoSleep()
             // this.$noSleep.enable()
-            const fetchParams = `?name=${this.modalInputTrimmed}`;
-            fetch(`/startParty${fetchParams}`, {
+            var fetchParams = '?name=' + this.modalInputTrimmed;
+            fetch('/startParty' + fetchParams, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 }
-            }).then(res => {
+            }).then(function (res) {
                 return res.json();
-            }).then(res => {
-                const party = {
+            }).then(function (res) {
+                var party = {
                     name: res.name,
                     id: res.code,
                     client_type: 'jukebox',
-                    image: this.appLogoImage
+                    image: _this11.appLogoImage
                 };
-                this.$store.commit('clubs', [party]);
-                this.$router.push(`/dj/${party.id}`);
-                this.partyModalLoader = false;
-            }).catch(error => {
+                _this11.$store.commit('clubs', [party]);
+                _this11.$router.push('/dj/' + party.id);
+                _this11.partyModalLoader = false;
+            }).catch(function (error) {
                 console.log(new Error(error));
-                this.partyModalError = true;
-                this.partyModalLoader = false;
+                _this11.partyModalError = true;
+                _this11.partyModalLoader = false;
             });
         },
-        joinParty() {
+        joinParty: function joinParty() {
+            var _this12 = this;
+
             this.partyModalError = false;
             this.partyModalLoader = true;
-            const fetchParams = `?code=${this.modalInputTrimmed}`;
-            fetch(`/startParty${fetchParams}`, {
+            var fetchParams = '?code=' + this.modalInputTrimmed;
+            fetch('/startParty' + fetchParams, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
-            }).then(res => {
+            }).then(function (res) {
                 return res.json();
-            }).then(res => {
-                const party = {
+            }).then(function (res) {
+                var party = {
                     name: res.name,
                     id: res.code,
                     client_type: 'jukebox',
-                    image: this.appLogoImage
+                    image: _this12.appLogoImage
                 };
-                this.$store.commit('clubs', [party]);
-                this.$router.push(`/request/${party.id}`);
-                this.partyModalLoader = false;
-            }).catch(error => {
+                _this12.$store.commit('clubs', [party]);
+                _this12.$router.push('/request/' + party.id);
+                _this12.partyModalLoader = false;
+            }).catch(function (error) {
                 console.log(new Error(error));
-                this.partyModalError = true;
-                this.partyModalLoader = false;
+                _this12.partyModalError = true;
+                _this12.partyModalLoader = false;
             });
         },
-        submitModalInput() {
+        submitModalInput: function submitModalInput() {
             switch (this.modalType) {
                 case 'host party':
                     this.startParty();
@@ -648,10 +641,12 @@ const homeTwo = Vue.component('homeTwo', {
                 default:
             }
         },
-        closeModal() {
+        closeModal: function closeModal() {
             this.showModal = false;
         },
-        openModal(type) {
+        openModal: function openModal(type) {
+            var _this13 = this;
+
             this.partyModalError = false;
             this.modalInput = '';
             this.modalType = type;
@@ -666,14 +661,14 @@ const homeTwo = Vue.component('homeTwo', {
                             this.toastInstance = M.toast({
                                 html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
                                 displayLength: 8000,
-                                completeCallback: () => {
-                                    this.toastInstance = undefined;
+                                completeCallback: function completeCallback() {
+                                    _this13.toastInstance = undefined;
                                 }
                             });
                         }
-                        setTimeout(() => {
-                            this.hostPartyIsMobile = false;
-                            this.showHostMobile = true;
+                        setTimeout(function () {
+                            _this13.hostPartyIsMobile = false;
+                            _this13.showHostMobile = true;
                         }, 1500);
                         return;
                     }
@@ -685,13 +680,13 @@ const homeTwo = Vue.component('homeTwo', {
                 default:
             }
         },
-        inputTyping() {
+        inputTyping: function inputTyping() {
             if (this.partyModalError) {
                 this.partyModalError = false;
             }
         },
-        autoJoinParty() {
-            const partyCode = this.$store.state.partyCodeFromLink;
+        autoJoinParty: function autoJoinParty() {
+            var partyCode = this.$store.state.partyCodeFromLink;
             if (partyCode !== '') {
                 this.modalType = 'join party';
                 this.modalInput = partyCode;
@@ -702,10 +697,10 @@ const homeTwo = Vue.component('homeTwo', {
     }
 });
 
-const spotify = Vue.component('spotify', {
+var spotify = Vue.component('spotify', {
     template: '#spotify',
-    mixins: [serviceProvider],
-    data: function () {
+    mixins: [serviceProvider, jukeboxMixin],
+    data: function data() {
         return {
             searchInput: '',
             searchResult: [],
@@ -734,39 +729,43 @@ const spotify = Vue.component('spotify', {
         };
     },
     computed: {
-        socket() {
+        socket: function socket() {
             return this.webSocket();
         },
-        appName() {
+        appName: function appName() {
             return String(this.$route.params.id);
         },
-        club() {
+        club: function club() {
             return this.getClubData();
         },
-        vipMode() {
+        vipMode: function vipMode() {
             return this.$store.state.vipMode;
         },
-        isVip() {
+        isVip: function isVip() {
             return this.vipMode.limit > 0 && this.vipMode.club === this.appName;
         },
-        isDjHere() {
-            const routeId = this.$route.params.id;
+        isDjHere: function isDjHere() {
+            var routeId = this.$route.params.id;
             if (routeId === this.$store.state.badge.appName && this.$route.path.includes('request')) {
                 return true;
             }
             return false;
         },
-        displaySearchResult() {
+        displaySearchResult: function displaySearchResult() {
+            var _this14 = this;
+
             //Used in conjuction with v-html for html entities
-            return this.searchResult.map(item => {
-                item.song = this.$root.$options.filters.songName(item.song);
-                item.artist = this.$root.$options.filters.songName(item.artist);
+            return this.searchResult.map(function (item) {
+                item.song = _this14.$root.$options.filters.songName(item.song);
+                item.artist = _this14.$root.$options.filters.songName(item.artist);
                 return item;
             });
         }
     },
     methods: {
-        searchTrack() {
+        searchTrack: function searchTrack() {
+            var _this15 = this;
+
             if (this.safe(this.searchInput)) {
                 if (this.club.client_type.includes('jukebox')) {
                     this.youtube(this.searchInput);
@@ -774,51 +773,53 @@ const spotify = Vue.component('spotify', {
                 }
                 this.loader = true;
                 // let token = 'BQCmVbA7pD8mZI9pCpUt5HcsO1Fb9nCRqlhcTAu52TpwCS4uxIi4BffjrENegBzfMjhMXHr_esCHR_R0O5M'
-                let token = this.$store.state.accessToken;
-                let query = encodeURIComponent(this.searchInput);
-                let type = 'track';
+                var token = this.$store.state.accessToken;
+                var query = encodeURIComponent(this.searchInput);
+                var type = 'track';
                 console.log(this.searchInput);
 
-                fetch(`https://api.spotify.com/v1/search?q=${query}&type=${type}&access_token=${token}`).then(res => {
+                fetch('https://api.spotify.com/v1/search?q=' + query + '&type=' + type + '&access_token=' + token).then(function (res) {
                     if (res.status === 200) {
                         return res.json();
                     } else {
                         return 'fail';
                     }
-                }).catch(err => {
+                }).catch(function (err) {
                     console.log(new Error(err));
-                }).then(res => {
+                }).then(function (res) {
                     if (res !== 'fail') {
-                        this.searchResult = res.tracks.items.map(item => {
-                            let obj = {};
+                        _this15.searchResult = res.tracks.items.map(function (item) {
+                            var obj = {};
                             obj.image = item.album.images[1].url;
                             obj.song = item.name;
-                            obj.artist = item.artists.map(item => item.name).join(', ');
+                            obj.artist = item.artists.map(function (item) {
+                                return item.name;
+                            }).join(', ');
                             obj.id = item.id;
                             return obj;
                         });
-                        this.noResult = this.searchResult.length === 0 ? true : false;
-                        this.pendingSearch = [];
-                        this.loader = false;
-                        this.scrollToResultTop();
+                        _this15.noResult = _this15.searchResult.length === 0 ? true : false;
+                        _this15.pendingSearch = [];
+                        _this15.loader = false;
+                        _this15.scrollToResultTop();
                         //this.searchInput = ''
                     } else if (res === 'fail') {
-                        this.pendingSearch.push(this.searchInput);
-                        this.socket.emit('newTokenPlease');
+                        _this15.pendingSearch.push(_this15.searchInput);
+                        _this15.socket.emit('newTokenPlease');
                     }
-                }).finally(res => {
-                    let payload = { trackTask: 'search', search: this.searchInput, timestamp: moment().toISOString(), domain: location.host };
-                    this.trackAction(payload);
+                }).finally(function (res) {
+                    var payload = { trackTask: 'search', search: _this15.searchInput, timestamp: moment().toISOString(), domain: location.host };
+                    _this15.trackAction(payload);
                 });
             }
         },
-        scrollToResultTop() {
-            let elem = document.querySelector('.firstresult');
+        scrollToResultTop: function scrollToResultTop() {
+            var elem = document.querySelector('.firstresult');
             if (this.safe(elem)) {
                 elem.scrollIntoView(false); //false aligns the bottom of the element to the bottom of available space and vice versa
             }
         },
-        sendRequest(payload) {
+        sendRequest: function sendRequest(payload) {
             if (this.safe(payload) && this.isConnected === true) {
                 payload.timestamp = moment().toISOString();
                 console.log(payload);
@@ -835,166 +836,163 @@ const spotify = Vue.component('spotify', {
                 this.trackAction(payload);
             }
         },
-        vipSendRequest(payload) {
+        vipSendRequest: function vipSendRequest(payload) {
+            var _this16 = this;
+
             if (!this.safe(payload.inProgress)) {
                 payload.inProgress = true;
-                this.getVipStatus(this.vipMode.insta).then(() => {
-                    if (this.isVip) {
-                        this.sendRequest(payload);
+                this.getVipStatus(this.vipMode.insta).then(function () {
+                    if (_this16.isVip) {
+                        _this16.sendRequest(payload);
                     } else {
                         console.log('you are no longer a vip');
                     }
-                }).then(() => {
+                }).then(function () {
                     payload.inProgress = false;
                 });
             }
         },
-        goToDjView() {
+        goToDjView: function goToDjView() {
             this.accessNumber++;
             if (this.accessNumber === 4) {
-                this.$router.push(`/dj/${this.appName}`);
+                this.$router.push('/dj/' + this.appName);
             }
         },
-        alreadyRequested(payload) {
-            if (this.requestedSongs.findIndex(item => item === payload) !== -1) {
+        alreadyRequested: function alreadyRequested(payload) {
+            if (this.requestedSongs.findIndex(function (item) {
+                return item === payload;
+            }) !== -1) {
                 return true;
             }
             return false;
         },
-        enterVip() {
+        enterVip: function enterVip() {
             this.modalPage.insta = true;
             this.modalPage.spotify = true;
             this.modalPage.brand = this.club;
             this.modalPage.appName = this.appName;
             this.modalInstance.open();
         },
-        appColorScheme(vip) {
-            const doc = document.documentElement;
-            const normal = 'linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%)';
-            const gold = 'radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8a6e2f 40%, transparent 80%), radial-gradient(ellipse farthest-corner at left top, #FFFFFF 0%, #ffffac 8%, #d1b464 25%, #5d4a1f 62.5%, #5d4a1f 100%)';
-            const change = vip ? gold : normal;
+        appColorScheme: function appColorScheme(vip) {
+            var doc = document.documentElement;
+            var normal = 'linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%)';
+            var gold = 'radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8a6e2f 40%, transparent 80%), radial-gradient(ellipse farthest-corner at left top, #FFFFFF 0%, #ffffac 8%, #d1b464 25%, #5d4a1f 62.5%, #5d4a1f 100%)';
+            var change = vip ? gold : normal;
             doc.style.setProperty('--main', change);
             console.log('fired', change);
         },
-        youtube(query) {
+        youtube: function youtube(query) {
+            var _this17 = this;
+
             this.loader = true;
-            const searchUrl = 'https://www.googleapis.com/youtube/v3/search';
-            const key = 'AIzaSyCZVImtMr37nqi5MPRuNtvr0D-kp0Eq0Bk';
-            const maxTime = 247; // 4 minutes - if longer than 4 minutes then set maxtime
-            const params = new URLSearchParams({
-                q: `${query} audio`,
+            var searchUrl = 'https://www.googleapis.com/youtube/v3/search';
+            var key = 'AIzaSyCZVImtMr37nqi5MPRuNtvr0D-kp0Eq0Bk';
+            var maxTime = 247; // 4 minutes - if longer than 4 minutes then set maxtime
+            var params = new URLSearchParams({
+                q: query + ' audio',
                 part: 'snippet',
                 maxResults: 5,
-                key
+                key: key
             });
-            fetch(`${searchUrl}?${params.toString()}`).then(response => {
+            fetch(searchUrl + '?' + params.toString()).then(function (response) {
                 if (response.status === 200) {
                     return response.json();
                 }
-            }).then(res => {
-                this.searchResult = res.items.map(item => {
-                    let obj = {};
+            }).then(function (res) {
+                _this17.searchResult = res.items.map(function (item) {
+                    var obj = {};
                     obj.image = item.snippet.thumbnails.default.url;
                     obj.song = item.snippet.title.split(' - ')[1];
                     obj.artist = item.snippet.title.split(' - ')[0];
                     obj.id = item.id.videoId;
                     return obj;
                 });
-                this.noResult = this.searchResult.length === 0 ? true : false;
-                this.pendingSearch = [];
-                this.loader = false;
-                this.scrollToResultTop();
+                _this17.noResult = _this17.searchResult.length === 0 ? true : false;
+                _this17.pendingSearch = [];
+                _this17.loader = false;
+                _this17.scrollToResultTop();
                 console.log(res, 'am done');
             });
-        },
-        SharePartyRoom() {
-            if ('share' in navigator) {
-                navigator.share({
-                    title: 'BlessMyRequest',
-                    text: 'Request a song now & enjoy the party',
-                    url: `${window.location.origin}/#/join/${this.club.id}`
-                }).catch(error => {
-                    console.error(new Error(error));
-                });
-            }
         }
     },
     watch: {
-        isVip: function (newValue, oldValue) {
+        isVip: function isVip(newValue, oldValue) {
             this.appColorScheme(newValue);
             console.log('fired first', newValue);
         }
     },
-    created: function () {
+    created: function created() {
+        var _this18 = this;
+
         this.validateId();
         if (this.isVip) this.getVipStatus(this.vipMode.insta);
-        this.socket.on('connect', data => {
-            this.isConnected = true;
-            this.socket.emit('audience', { appName: this.appName, id: this.socket.id, task: 'population' });
-            this.socket.emit('getDj', { appName: this.appName });
+        this.socket.on('connect', function (data) {
+            _this18.isConnected = true;
+            _this18.socket.emit('audience', { appName: _this18.appName, id: _this18.socket.id, task: 'population' });
+            _this18.socket.emit('getDj', { appName: _this18.appName });
             console.log(data, 'connected my nigga');
         });
-        this.socket.on('disconnect', data => {
+        this.socket.on('disconnect', function (data) {
             // console.log('i am disconnected bro');
             // alert('i am disconnected bro')
-            this.isConnected = false;
+            _this18.isConnected = false;
         });
-        this.socket.on('reconnect', data => {
+        this.socket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
-            this.isConnected = true;
-            const payload = { appName: this.appName };
-            this.socket.emit('getDj', payload);
+            _this18.isConnected = true;
+            var payload = { appName: _this18.appName };
+            _this18.socket.emit('getDj', payload);
         });
         //this.socket.emit('join','we in this bitch son');
-        this.socket.on('sendMetrics', data => {
+        this.socket.on('sendMetrics', function (data) {
             //console.log(data,'metric data');
-            if (data.appName === this.appName && 'task' in data && data.task === 'request') {
-                this.metrics = data;
+            if (data.appName === _this18.appName && 'task' in data && data.task === 'request') {
+                _this18.metrics = data;
                 //this.showMetrics = true;
             }
         });
-        this.socket.on('newToken', data => {
-            this.$store.commit('accessToken', data);
-            if (this.pendingSearch.length > 0) {
-                this.searchTrack();
+        this.socket.on('newToken', function (data) {
+            _this18.$store.commit('accessToken', data);
+            if (_this18.pendingSearch.length > 0) {
+                _this18.searchTrack();
             }
         });
-        this.socket.on('djData', data => {
-            this.djData.name = data.djData.name;
-            this.djData.handle = data.djData.handle;
-            this.getInstaImage(data.djData.handle).then(res => {
-                const payload = { appName: this.appName, image: res };
-                this.$store.commit('badgeImage', payload);
-                this.djData.image = res;
-            }).catch(error => {
+        this.socket.on('djData', function (data) {
+            _this18.djData.name = data.djData.name;
+            _this18.djData.handle = data.djData.handle;
+            _this18.getInstaImage(data.djData.handle).then(function (res) {
+                var payload = { appName: _this18.appName, image: res };
+                _this18.$store.commit('badgeImage', payload);
+                _this18.djData.image = res;
+            }).catch(function (error) {
                 console.warn(error);
             });
         });
-        this.socket.on('noDj', data => {
-            this.$store.commit('noDj');
+        this.socket.on('noDj', function (data) {
+            _this18.$store.commit('noDj');
         });
-        this.socket.on('sessionOver', data => {
-            if (this.appName.toLowerCase() === data) {
-                const appName = this.appName;
-                this.$router.replace('/home');
+        this.socket.on('sessionOver', function (data) {
+            if (_this18.appName.toLowerCase() === data) {
+                var appName = _this18.appName;
+                _this18.$router.replace('/home');
                 M.toast({
-                    html: `Something went wrong. Party room with code [${appName}] no longer exists. Please join a new party room.`,
+                    html: 'Something went wrong. Party room with code [' + appName + '] no longer exists. Please join a new party room.',
                     displayLength: 60000
                 });
             }
         });
     },
-    destroyed: function () {
+    destroyed: function destroyed() {
         //console.log('damn son am out')
         this.socket.close();
     }
 });
 
-const djSpotify = Vue.component('djSpotify', {
+var djSpotify = Vue.component('djSpotify', {
     template: '#djspotify',
-    mixins: [serviceProvider],
-    data: function () {
+    mixins: [serviceProvider, jukeboxMixin],
+    data: function data() {
         return {
             requestBasket: [],
             population: [],
@@ -1027,12 +1025,14 @@ const djSpotify = Vue.component('djSpotify', {
         };
     },
     computed: {
-        controlSocket() {
+        controlSocket: function controlSocket() {
             return this.webSocket();
         },
-        requestList() {
+        requestList: function requestList() {
             if (this.requestBasket.length > 0) {
-                return this.requestBasket.filter(item => item.hide !== true).sort((a, b) => {
+                return this.requestBasket.filter(function (item) {
+                    return item.hide !== true;
+                }).sort(function (a, b) {
                     //requestCount takes primary precident in sort followed by timestamp
                     //1 (makes b a lower index than a) -1(makes b a higher index than a)
                     if (b.requestCount > a.requestCount) {
@@ -1052,13 +1052,13 @@ const djSpotify = Vue.component('djSpotify', {
                 return this.requestBasket;
             }
         },
-        club() {
+        club: function club() {
             return this.getClubData();
         },
-        appName() {
+        appName: function appName() {
             return String(this.$route.params.id);
         },
-        displayRequests() {
+        displayRequests: function displayRequests() {
             if (this.jukeboxMode) {
                 return this.jukeBoxList;
             }
@@ -1066,63 +1066,98 @@ const djSpotify = Vue.component('djSpotify', {
         }
     },
     methods: {
-        hideRequest(payload) {
+        hideRequest: function hideRequest(payload) {
             if (this.safe(payload)) {
                 if (this.jukeboxMode) {
                     this.doNotPlaySong(payload);
                     return;
                 }
-                let checkIdExist = this.requestBasket.findIndex(item => item.id === payload.id);
+                var checkIdExist = this.requestBasket.findIndex(function (item) {
+                    return item.id === payload.id;
+                });
                 if (checkIdExist !== -1) {
-                    let requestedSong = this.requestBasket[checkIdExist];
+                    var requestedSong = this.requestBasket[checkIdExist];
                     requestedSong.hide = true;
                     this.reduceVipLimit(requestedSong);
                 }
             }
         },
-        reduceVipLimit(requestedSong) {
+        reduceVipLimit: function reduceVipLimit(requestedSong) {
             if (requestedSong.vipList.size > 0 && requestedSong.playedVip === true) {
-                let promises = [];
-                for (let vip of requestedSong.vipList.values()) {
-                    promises.push(axios.post(`${this.baseUrl}/bmr-vip-limit/${vip.club}/${vip.uuid}`));
+                var promises = [];
+                var _iteratorNormalCompletion = true;
+                var _didIteratorError = false;
+                var _iteratorError = undefined;
+
+                try {
+                    for (var _iterator = requestedSong.vipList.values()[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                        var vip = _step.value;
+
+                        promises.push(axios.post(this.baseUrl + '/bmr-vip-limit/' + vip.club + '/' + vip.uuid));
+                    }
+                } catch (err) {
+                    _didIteratorError = true;
+                    _iteratorError = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion && _iterator.return) {
+                            _iterator.return();
+                        }
+                    } finally {
+                        if (_didIteratorError) {
+                            throw _iteratorError;
+                        }
+                    }
                 }
+
                 Promise.all(promises);
             }
         },
-        getTrackBpm(trackObject) {
-            let id = trackObject.id;
-            let token = this.$store.state.accessToken;
+        getTrackBpm: function getTrackBpm(trackObject) {
+            var _this19 = this;
+
+            var id = trackObject.id;
+            var token = this.$store.state.accessToken;
             // Don't run for jukebox clients
             if (this.jukeboxMode) {
                 return;
             }
-            const calls = [fetch(`https://api.spotify.com/v1/audio-features/${id}?access_token=${token}`), fetch(`https://api.spotify.com/v1/tracks/${id}?access_token=${token}`)];
-            Promise.all(calls).then(res => {
-                if (res.every(i => i.status === 200)) {
-                    return Promise.all(res.map(i => i.json()));
+            var calls = [fetch('https://api.spotify.com/v1/audio-features/' + id + '?access_token=' + token), fetch('https://api.spotify.com/v1/tracks/' + id + '?access_token=' + token)];
+            Promise.all(calls).then(function (res) {
+                if (res.every(function (i) {
+                    return i.status === 200;
+                })) {
+                    return Promise.all(res.map(function (i) {
+                        return i.json();
+                    }));
                 } else {
                     return 'fail';
                 }
-            }).catch(err => {
+            }).catch(function (err) {
                 console.log(new Error(err));
-            }).then(res => {
+            }).then(function (res) {
                 if (res !== 'fail') {
-                    const [audioFeatures, trackDetails] = [...res];
-                    let musicKey = this.musicNotes[audioFeatures.key];
-                    let bpm = Math.floor(Number(audioFeatures.tempo));
-                    let output = `${musicKey} - ${bpm} bpm`;
-                    let indexInBasket = this.requestBasket.findIndex(item => item.id === id);
-                    this.requestBasket[indexInBasket].bpm = output;
-                    this.requestBasket[indexInBasket].explicit = trackDetails.explicit;
+                    var _ref = [].concat(_toConsumableArray(res)),
+                        audioFeatures = _ref[0],
+                        trackDetails = _ref[1];
+
+                    var musicKey = _this19.musicNotes[audioFeatures.key];
+                    var bpm = Math.floor(Number(audioFeatures.tempo));
+                    var output = musicKey + ' - ' + bpm + ' bpm';
+                    var indexInBasket = _this19.requestBasket.findIndex(function (item) {
+                        return item.id === id;
+                    });
+                    _this19.requestBasket[indexInBasket].bpm = output;
+                    _this19.requestBasket[indexInBasket].explicit = trackDetails.explicit;
                 } else if (res === 'fail') {
-                    this.pendingTrackDetails.push(trackObject);
-                    this.controlSocket.emit('newTokenPlease');
+                    _this19.pendingTrackDetails.push(trackObject);
+                    _this19.controlSocket.emit('newTokenPlease');
                 }
             });
         },
-        setDj() {
+        setDj: function setDj() {
             //save to database first
-            const payload = {};
+            var payload = {};
             payload.appName = this.appName;
             payload.handle = this.inputProfile;
             payload.name = this.instaName;
@@ -1131,21 +1166,31 @@ const djSpotify = Vue.component('djSpotify', {
             this.modalPage.imageacquired = false;
             this.$store.commit('badgeImage', { image: this.url, appName: this.appName });
         },
-        getJukeboxApi() {
-            const tag = document.createElement('script');
+        getJukeboxApi: function getJukeboxApi() {
+            var _this20 = this;
+
+            var tag = document.createElement('script');
+            // IOS mobile should have a video loaded by default to prevent error and not keep showing the power button
+            var videoId = this.isIOS() && this.isMobileOrTablet() ? 'q1Yz0Vfp2jY' : undefined;
             // When api is ready to be used this will be called
-            window.onYouTubeIframeAPIReady = () => {
-                this.jukeBoxInstance = new YT.Player('jukebox', {
+            window.onYouTubeIframeAPIReady = function () {
+                _this20.jukeBoxInstance = new YT.Player('jukebox', {
                     height: '200',
                     width: '200',
+                    videoId: videoId,
                     events: {
-                        'onError': event => {
+                        'onError': function onError(event) {
                             console.error(new Error(event.data));
                             console.warn('Due to faliure i had to play the next song');
-                            this.playNextSong();
+                            _this20.playNextSong();
                         },
-                        'onStateChange': event => {
-                            this.jukeBoxStateChanged(event);
+                        'onReady': function onReady() {
+                            if (_this20.isIOS() && _this20.isMobileOrTablet()) {
+                                document.querySelector('.jukebox-container').style.display = 'inline-block';
+                            }
+                        },
+                        'onStateChange': function onStateChange(event) {
+                            _this20.jukeBoxStateChanged(event);
                         }
                     },
                     playerVars: {
@@ -1154,24 +1199,26 @@ const djSpotify = Vue.component('djSpotify', {
                         fs: 0,
                         origin: 'https://www.youtube.com',
                         playsinline: 1,
-                        //controls: 0,
+                        controls: 1,
                         modestbranding: 1
                     }
                 });
             };
             tag.src = "https://www.youtube.com/iframe_api";
-            const firstScriptTag = document.getElementsByTagName('script')[0];
+            var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         },
-        jukeBoxStateChanged(event) {
+        jukeBoxStateChanged: function jukeBoxStateChanged(event) {
+            var _this21 = this;
+
             switch (this.playerStates[event.data]) {
                 case 'ended':
                     this.widgetStarted = false;
                     // Sometimes the event fires in the order -1 0 -1 3 1 at the start of a new track
-                    setTimeout(() => {
-                        if (this.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
-                            clearInterval(this.fadeOutIntervalInstance);
-                            this.playNextSong();
+                    setTimeout(function () {
+                        if (_this21.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
+                            clearInterval(_this21.fadeOutIntervalInstance);
+                            _this21.playNextSong();
                         }
                     }, 3000);
                     break;
@@ -1180,9 +1227,9 @@ const djSpotify = Vue.component('djSpotify', {
                     this.widgetStarted = true;
                     clearInterval(this.fadeOutIntervalInstance);
                     this.fadeOutVolume();
-                    const iframeDisplayState = document.querySelector('iframe').style.display;
+                    var iframeDisplayState = document.querySelector('.jukebox-container').style.display;
                     if (iframeDisplayState !== 'none') {
-                        document.querySelector('iframe').style.display = 'none';
+                        document.querySelector('.jukebox-container').style.display = 'none';
                     }
                     break;
                 case 'paused':
@@ -1193,7 +1240,9 @@ const djSpotify = Vue.component('djSpotify', {
                     break;
             }
         },
-        addToPlaylist(song) {
+        addToPlaylist: function addToPlaylist(song) {
+            var _this22 = this;
+
             try {
                 if (this.jukeBoxList.length < 1) {
                     this.jukeBoxList.push(song);
@@ -1210,18 +1259,18 @@ const djSpotify = Vue.component('djSpotify', {
                 if (this.jukeBoxInstance === undefined && 'YT' in window) {
                     window.onYouTubeIframeAPIReady();
                     // Needs some time after generating a new instance of the API
-                    setTimeout(() => {
-                        this.jukeBoxInstance.loadVideoById({
-                            videoId: this.jukeBoxList[0].id,
+                    setTimeout(function () {
+                        _this22.jukeBoxInstance.loadVideoById({
+                            videoId: _this22.jukeBoxList[0].id,
                             startSeconds: 0,
-                            endSeconds: this.isLocalhost ? 30 : this.endAtSeconds
+                            endSeconds: _this22.isLocalhost ? 30 : _this22.endAtSeconds
                         });
                         console.log('restarting.....');
                     }, 5000);
                 }
             }
         },
-        playNextSong() {
+        playNextSong: function playNextSong() {
             this.widgetStarted = false;
             this.jukeBoxList.shift();
             if (this.jukeBoxList.length > 0) {
@@ -1233,9 +1282,9 @@ const djSpotify = Vue.component('djSpotify', {
                 });
             }
         },
-        doNotPlaySong(payload) {
-            const playerState = this.playerStates[this.jukeBoxInstance.getPlayerState()];
-            const currentSongId = this.jukeBoxInstance.getVideoData().video_id;
+        doNotPlaySong: function doNotPlaySong(payload) {
+            var playerState = this.playerStates[this.jukeBoxInstance.getPlayerState()];
+            var currentSongId = this.jukeBoxInstance.getVideoData().video_id;
             if (currentSongId === payload.id) {
                 this.playNextSong();
                 if (this.jukeBoxList.length === 0) {
@@ -1243,95 +1292,107 @@ const djSpotify = Vue.component('djSpotify', {
                     this.addNextAutoRequest();
                 }
             } else {
-                let checkIdExist = this.jukeBoxList.findIndex(item => item.id === payload.id);
+                var checkIdExist = this.jukeBoxList.findIndex(function (item) {
+                    return item.id === payload.id;
+                });
                 if (checkIdExist !== -1) {
                     this.jukeBoxList.splice(checkIdExist, 1);
                 }
             }
         },
-        fadeOutVolume(milliseconds, volume) {
-            const volumeMap = this.getVolumeTime();
+        fadeOutVolume: function fadeOutVolume(milliseconds, volume) {
+            var _this23 = this;
+
+            var volumeMap = this.getVolumeTime();
             //console.log(volumeMap)
-            this.fadeOutIntervalInstance = setInterval(() => {
-                const currentTime = Math.floor(this.jukeBoxInstance.getCurrentTime());
-                const volume = volumeMap.get(currentTime);
+            this.fadeOutIntervalInstance = setInterval(function () {
+                var currentTime = Math.floor(_this23.jukeBoxInstance.getCurrentTime());
+                var volume = volumeMap.get(currentTime);
                 if (volume !== undefined && volume > 1) {
-                    this.jukeBoxInstance.setVolume(volume);
+                    _this23.jukeBoxInstance.setVolume(volume);
                 }
                 if (volume === 20) {
-                    this.addNextAutoRequest();
+                    _this23.addNextAutoRequest();
                 }
             }, 1000);
         },
-        getVolumeTime() {
-            const fullSongDuration = Math.floor(this.jukeBoxInstance.getDuration());
-            const duration = fullSongDuration < this.endAtSeconds ? fullSongDuration : this.endAtSeconds;
-            const ninetyPercentDuration = 0.9 * duration;
-            const frequency = 8;
-            const durationDiff = duration - ninetyPercentDuration;
-            const changeIncrement = Math.round(durationDiff / frequency);
-            const volumeMap = new Map();
-            let volume = 112; // so starting volume decreas is 80
-            for (let i = 0; i < frequency; i++) {
-                const mediaTime = Math.floor(ninetyPercentDuration) + i * changeIncrement;
+        getVolumeTime: function getVolumeTime() {
+            var fullSongDuration = Math.floor(this.jukeBoxInstance.getDuration());
+            var duration = fullSongDuration < this.endAtSeconds ? fullSongDuration : this.endAtSeconds;
+            var ninetyPercentDuration = 0.9 * duration;
+            var frequency = 8;
+            var durationDiff = duration - ninetyPercentDuration;
+            var changeIncrement = Math.round(durationDiff / frequency);
+            var volumeMap = new Map();
+            var volume = 112; // so starting volume decreas is 80
+            for (var i = 0; i < frequency; i++) {
+                var mediaTime = Math.floor(ninetyPercentDuration) + i * changeIncrement;
                 volume /= 1.4;
                 volumeMap.set(mediaTime, Math.floor(volume));
             }
 
             return volumeMap;
         },
-        mediaPlay() {
+        mediaPlay: function mediaPlay() {
             this.jukeBoxInstance.playVideo();
         },
-        mediaPause() {
+        mediaPause: function mediaPause() {
             this.jukeBoxInstance.pauseVideo();
         },
-        getAutoPlaylist() {
-            fetch('/allPlaylist').then(res => {
+        getAutoPlaylist: function getAutoPlaylist() {
+            var _this24 = this;
+
+            fetch('/allPlaylist').then(function (res) {
                 if (res.status === 200) {
                     return res.json();
                 }
                 throw new Error('request failed');
-            }).then(res => {
-                this.allPlayList = res;
-                res.forEach(item => {
-                    this.allPlayListMap.set(item.genre, item.songs);
-                    this.genreOptions.push({
+            }).then(function (res) {
+                _this24.allPlayList = res;
+                res.forEach(function (item) {
+                    _this24.allPlayListMap.set(item.genre, item.songs);
+                    _this24.genreOptions.push({
                         genre: item.genre,
                         selected: item.genre.includes('top 40') ? true : false
                     });
                 });
-                this.setupAutoPlay();
+                _this24.setupAutoPlay();
             });
         },
-        setupAutoPlay() {
+        setupAutoPlay: function setupAutoPlay() {
+            var _this25 = this;
+
             this.autoPlayList = [];
-            this.genreOptions.forEach(item => {
+            this.genreOptions.forEach(function (item) {
                 if (item.selected) {
-                    const songs = this.allPlayListMap.get(item.genre);
-                    this.autoPlayList.push(...songs);
+                    var _autoPlayList;
+
+                    var songs = _this25.allPlayListMap.get(item.genre);
+                    (_autoPlayList = _this25.autoPlayList).push.apply(_autoPlayList, _toConsumableArray(songs));
                 }
             });
             this.randomize(this.autoPlayList);
-            setTimeout(() => {
-                if (this.jukeBoxList.length < 1) {
-                    this.addNextAutoRequest();
+            setTimeout(function () {
+                if (_this25.jukeBoxList.length < 1) {
+                    _this25.addNextAutoRequest();
                 }
             }, 60000);
         },
-        addNextAutoRequest() {
+        addNextAutoRequest: function addNextAutoRequest() {
             if (this.autoPlayList.length > 0 && this.jukeBoxList.length <= 1) {
-                const song = this.autoPlayList[0];
+                var song = this.autoPlayList[0];
                 this.autoPlayList.splice(0, 1);
-                this.addRequest({ song }, true);
+                this.addRequest({ song: song }, true);
             }
         },
-        toggleGenre(genreData) {
+        toggleGenre: function toggleGenre(genreData) {
             genreData.selected = !genreData.selected;
         },
-        addRequest(data, isAuto) {
+        addRequest: function addRequest(data, isAuto) {
             console.log('request added bruh', data);
-            let checkIdExist = this.requestBasket.findIndex(item => item.id === data.song.id);
+            var checkIdExist = this.requestBasket.findIndex(function (item) {
+                return item.id === data.song.id;
+            });
             if (checkIdExist === -1) {
                 data.song.vipList = new Map();
                 data.song.requestCount = 1;
@@ -1346,7 +1407,7 @@ const djSpotify = Vue.component('djSpotify', {
                     this.addToPlaylist(data.song);
                 }
             } else {
-                let requestedSong = this.requestBasket[checkIdExist];
+                var requestedSong = this.requestBasket[checkIdExist];
                 requestedSong.requestCount += 1;
                 if ('vip' in data && data.vip.limit > 0) requestedSong.vipList.set(data.vip.insta, data.vip);
                 if (isAuto) {
@@ -1355,85 +1416,93 @@ const djSpotify = Vue.component('djSpotify', {
             }
         }
     },
-    created: function () {
+    created: function created() {
+        var _this26 = this;
+
         this.validateId();
-        this.controlSocket.on('connect', data => {
-            this.isConnected = true;
-            this.controlSocket.emit('getDj', { appName: this.appName });
+        this.controlSocket.on('connect', function (data) {
+            _this26.isConnected = true;
+            _this26.controlSocket.emit('getDj', { appName: _this26.appName });
             console.log('connected my nigga');
         });
-        this.controlSocket.on('disconnect', data => {
+        this.controlSocket.on('disconnect', function (data) {
             // console.log('i am disconnected bro');
             // alert('i am disconnected bro')
-            this.isConnected = false;
+            _this26.isConnected = false;
         });
-        this.controlSocket.on('answer', data => {
+        this.controlSocket.on('answer', function (data) {
             console.log(data);
-            if (data.appName === this.appName) {
+            if (data.appName === _this26.appName) {
                 if ('task' in data && data.task === 'population') {
                     console.log('population gwoth complete', data);
-                    this.population.push(data);
+                    _this26.population.push(data);
                 }
                 if ('task' in data && data.task === 'request') {
-                    this.addRequest(data);
-                    this.controlSocket.emit('analytics', { appName: this.appName, requestNumber: this.requestList.length, task: 'request' });
+                    _this26.addRequest(data);
+                    _this26.controlSocket.emit('analytics', { appName: _this26.appName, requestNumber: _this26.requestList.length, task: 'request' });
                 }
                 if ('task' in data && data.task === 'pendingRequests') {
                     //pending requests from server will include requests already received before disconnection
                     //take only the requests we dont have in the requestBasket to avoid double counting of requests
-                    const addUp = (accumulator, currentValue) => accumulator + currentValue;
-                    let totalRequestsReceived = 0; //default
-                    if (this.requestBasket.length > 0) {
-                        totalRequestsReceived = this.requestBasket.map(item => item.requestCount).reduce(addUp);
+                    var addUp = function addUp(accumulator, currentValue) {
+                        return accumulator + currentValue;
+                    };
+                    var totalRequestsReceived = 0; //default
+                    if (_this26.requestBasket.length > 0) {
+                        totalRequestsReceived = _this26.requestBasket.map(function (item) {
+                            return item.requestCount;
+                        }).reduce(addUp);
                     }
 
-                    let onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
-                    onlyNewPendingRequests.forEach(request => {
-                        let checkIdExist = this.requestBasket.findIndex(item => item.id === request.song.id);
+                    var onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
+                    onlyNewPendingRequests.forEach(function (request) {
+                        var checkIdExist = _this26.requestBasket.findIndex(function (item) {
+                            return item.id === request.song.id;
+                        });
                         console.log(checkIdExist);
                         if (checkIdExist === -1) {
                             request.song.vipList = new Map();
                             request.song.requestCount = 1;
                             request.song.hide = false;
                             request.song.bpm = '';
-                            this.requestBasket.push(request.song);
-                            this.getTrackBpm(request.song);
-                            if (this.jukeboxMode) {
-                                this.addToPlaylist(data.song);
+                            _this26.requestBasket.push(request.song);
+                            _this26.getTrackBpm(request.song);
+                            if (_this26.jukeboxMode) {
+                                _this26.addToPlaylist(data.song);
                             }
                         } else {
-                            this.requestBasket[checkIdExist].requestCount += 1;
+                            _this26.requestBasket[checkIdExist].requestCount += 1;
                         }
                     });
                 }
             }
         });
-        this.controlSocket.on('newToken', data => {
-            this.$store.commit('accessToken', data);
-            if (this.pendingTrackDetails.length > 0) {
-                let tracks = this.pendingTrackDetails;
-                this.pendingTrackDetails = [];
-                tracks.forEach(item => {
-                    this.getTrackBpm(item);
+        this.controlSocket.on('newToken', function (data) {
+            _this26.$store.commit('accessToken', data);
+            if (_this26.pendingTrackDetails.length > 0) {
+                var tracks = _this26.pendingTrackDetails;
+                _this26.pendingTrackDetails = [];
+                tracks.forEach(function (item) {
+                    _this26.getTrackBpm(item);
                 });
             }
         });
-        this.controlSocket.on('reconnect', data => {
+        this.controlSocket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
-            const payload = { appName: this.appName };
-            this.isConnected = true;
-            this.controlSocket.emit('updateRequests', payload);
+            var payload = { appName: _this26.appName };
+            _this26.isConnected = true;
+            _this26.controlSocket.emit('updateRequests', payload);
         });
-        this.controlSocket.on('djData', data => {
-            this.getInstaImage(data.djData.handle).then(res => {
-                const payload = { appName: this.appName, image: res };
-                this.$store.commit('badgeImage', payload);
+        this.controlSocket.on('djData', function (data) {
+            _this26.getInstaImage(data.djData.handle).then(function (res) {
+                var payload = { appName: _this26.appName, image: res };
+                _this26.$store.commit('badgeImage', payload);
             });
         });
-        this.controlSocket.on('sessionOver', data => {
-            if (this.appName.toLowerCase() === data) {
-                this.$router.replace('/home');
+        this.controlSocket.on('sessionOver', function (data) {
+            if (_this26.appName.toLowerCase() === data) {
+                _this26.$router.replace('/home');
                 M.toast({
                     html: 'Something went wrong. Please host a new party room',
                     displayLength: 60000
@@ -1441,15 +1510,12 @@ const djSpotify = Vue.component('djSpotify', {
             }
         });
     },
-    mounted: function () {
-        if (this.isIOS() && this.isMobileOrTablet()) {
-            document.querySelector('#jukebox').style.display = 'inline-block';
-        }
+    mounted: function mounted() {
         this.getJukeboxApi();
         M.toast({ html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower' });
         this.getAutoPlaylist();
     },
-    destroyed: function () {
+    destroyed: function destroyed() {
         //console.log('damn son am out')
         this.controlSocket.close();
         clearInterval(this.fadeOutIntervalInstance);
@@ -1457,10 +1523,10 @@ const djSpotify = Vue.component('djSpotify', {
     }
 });
 
-const report = Vue.component('report', {
+var report = Vue.component('report', {
     template: '#report',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             reportDate: '',
             clientId: '',
@@ -1469,29 +1535,33 @@ const report = Vue.component('report', {
         };
     },
     computed: {
-        clubs() {
+        clubs: function clubs() {
             return this.$store.state.clubs;
         }
     },
     methods: {
-        getReport() {
-            const params = { clubId: this.clientId, date: this.reportDate };
+        getReport: function getReport() {
+            var _this27 = this;
+
+            var params = { clubId: this.clientId, date: this.reportDate };
             if (this.safe(this.reportDate)) {
                 this.loader = true;
-                axios.get('https://styleminions.co/api/bmr-report', { params }).then(res => {
-                    this.reportResponse = res.data;
-                    this.buildReport();
+                axios.get('https://styleminions.co/api/bmr-report', { params: params }).then(function (res) {
+                    _this27.reportResponse = res.data;
+                    _this27.buildReport();
                 });
             }
         },
-        getSelectedDate(date) {
+        getSelectedDate: function getSelectedDate(date) {
             console.log(date);
             this.reportDate = moment(date).format('YYYY-MM-DD');
         },
-        buildReport() {
-            let clubs = this.clubs;
-            let clubMapping = new Map();
-            for (let index in clubs) {
+        buildReport: function buildReport() {
+            var _this28 = this;
+
+            var clubs = this.clubs;
+            var clubMapping = new Map();
+            for (var index in clubs) {
                 clubMapping.set(clubs[index].id, index);
                 clubs[index].search = [];
                 clubs[index].request = [];
@@ -1499,8 +1569,8 @@ const report = Vue.component('report', {
                 clubs[index].totalRequest = 0;
             }
 
-            this.reportResponse.forEach(item => {
-                const index = clubMapping.get(item.clubId);
+            this.reportResponse.forEach(function (item) {
+                var index = clubMapping.get(item.clubId);
                 switch (item.trackTask) {
                     case 'search':
                         clubs[index].search.push(item);
@@ -1513,17 +1583,21 @@ const report = Vue.component('report', {
                 }
             });
             console.log(clubMapping, clubs);
-            this.reportDisplay = !this.safe(this.clientId) ? clubs.sort((a, b) => b.totalRequest - a.totalRequest) : clubs.filter(item => item.id === this.clientId);
+            this.reportDisplay = !this.safe(this.clientId) ? clubs.sort(function (a, b) {
+                return b.totalRequest - a.totalRequest;
+            }) : clubs.filter(function (item) {
+                return item.id === _this28.clientId;
+            });
             this.$forceUpdate();
             this.loader = false;
         }
     },
-    mounted: function () {
+    mounted: function mounted() {
         //Setup for MaterializeCss select plugin on the browser
-        let elems = document.querySelectorAll('select');
-        let options = {};
-        const today = new Date();
-        const datePickerOptions = {
+        var elems = document.querySelectorAll('select');
+        var options = {};
+        var today = new Date();
+        var datePickerOptions = {
             format: 'yyyy-mm-dd',
             defaultDate: today,
             setDefaultDate: true,
@@ -1534,8 +1608,8 @@ const report = Vue.component('report', {
         };
         this.selectInstances = M.FormSelect.init(elems, options);
         //Setup datepicker
-        const datepicker = document.querySelectorAll('.datepicker');
-        const instances = M.Datepicker.init(datepicker, datePickerOptions);
+        var datepicker = document.querySelectorAll('.datepicker');
+        var instances = M.Datepicker.init(datepicker, datePickerOptions);
     }
 });
 
@@ -1544,11 +1618,11 @@ Vue.component('modal', {
     template: '#comp-modal',
     mixins: [serviceProvider],
     methods: {
-        submitModal() {
+        submitModal: function submitModal() {
             this.$emit('submit', this.inputProfile);
             this.inputProfile = '';
         },
-        closeModal() {
+        closeModal: function closeModal() {
             this.$emit('close');
             this.inputProfile = '';
         }
@@ -1557,34 +1631,14 @@ Vue.component('modal', {
 
 Vue.component('champion', {
     props: ['index', 'url'],
-    template: `
-        <div style="position: relative;">
-            <img :src="url" alt="" class="circle responsive-img img-lead" v-imgfallback>
-            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>
-            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>
-            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>
-            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>
-        </div>
-    `
+    template: '\n        <div style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead" v-imgfallback>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3 animated tada infinite" v-if="index === 0"><i class="fa fa-trophy gold"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 1"><i class="fa fa-trophy silver"></i></span>\n            <span class="btn btn-small btn-floating lead-champ-fab pulse z-depth-3" v-if="index === 2"><i class="fa fa-trophy bronze"></i></span>\n            <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="index > 2">{{index + 1}}</span>\n        </div>\n    '
 });
 Vue.component('spinner', {
     props: ['colorClass'],
-    template: `
-        <div class="preloader-wrapper small active">
-            <div class="spinner-layer" :class="{'spinner-white-only': colorClass === 'white', 'spinner-celeb': colorClass === 'default'}">
-            <div class="circle-clipper left">
-                <div class="circle"></div>
-            </div><div class="gap-patch">
-                <div class="circle"></div>
-            </div><div class="circle-clipper right">
-                <div class="circle"></div>
-            </div>
-            </div>
-        </div>
-    `
+    template: '\n        <div class="preloader-wrapper small active">\n            <div class="spinner-layer" :class="{\'spinner-white-only\': colorClass === \'white\', \'spinner-celeb\': colorClass === \'default\'}">\n            <div class="circle-clipper left">\n                <div class="circle"></div>\n            </div><div class="gap-patch">\n                <div class="circle"></div>\n            </div><div class="circle-clipper right">\n                <div class="circle"></div>\n            </div>\n            </div>\n        </div>\n    '
 });
 Vue.directive('inputHighlight', {
-    bind: function (el, binding, vnode) {
+    bind: function bind(el, binding, vnode) {
         el.onfocus = function () {
             vnode.context.isSearchFocused = true;
             if (el.value !== '') {
@@ -1605,7 +1659,7 @@ Vue.directive('inputHighlight', {
             //vnode.context.toggleSearch()
         };
     },
-    componentUpdated: function (el, binding, vnode, oldVnode) {
+    componentUpdated: function componentUpdated(el, binding, vnode, oldVnode) {
         //console.log('a change happened for the directive',vnode)
         if (binding.value !== binding.oldValue) {
             console.log('now i have a reason to do stuff');
@@ -1619,42 +1673,24 @@ Vue.directive('inputHighlight', {
     }
 });
 Vue.component('adsense', {
-    template: `
-    <div>
-        <!-- footer ad  data-adtest="on"-->
-        <ins class="adsbygoogle center-block"
-            style="display:block"
-            data-ad-client="ca-pub-8868040855394757"
-            data-ad-slot="1741308624"></ins>
-    </div>
-    `,
+    template: '\n    <div>\n        <!-- footer ad  data-adtest="on"-->\n        <ins class="adsbygoogle center-block"\n            style="display:block"\n            data-ad-client="ca-pub-8868040855394757"\n            data-ad-slot="1741308624"></ins>\n    </div>\n    ',
     mixins: [serviceProvider],
-    mounted() {
+    mounted: function mounted() {
         this.modalAdsense();
     }
 });
 
 Vue.component('badge', {
-    template: `
-    <div class="component">
-        <div class="dj-chip chip animated fadeInRight" @click="show = true">
-        <img :src="imageUrl" alt="Host">
-        Host
-        </div>
-        <slide-modal :show="show" @close="hideSlideModal">
-            <slot></slot>
-        </slide-modal>
-    </div>
-    `,
+    template: '\n    <div class="component">\n        <div class="dj-chip chip animated fadeInRight" @click="show = true">\n        <img :src="imageUrl" alt="Host">\n        Host\n        </div>\n        <slide-modal :show="show" @close="hideSlideModal">\n            <slot></slot>\n        </slide-modal>\n    </div>\n    ',
     mixins: [serviceProvider],
-    data: function () {
+    data: function data() {
         return {
             show: false
         };
     },
     computed: {
-        imageUrl() {
-            const routeId = this.$route.params.id;
+        imageUrl: function imageUrl() {
+            var routeId = this.$route.params.id;
             if (routeId === this.$store.state.badge.appName) {
                 return this.$store.state.badge.image;
             }
@@ -1663,7 +1699,7 @@ Vue.component('badge', {
         }
     },
     methods: {
-        hideSlideModal() {
+        hideSlideModal: function hideSlideModal() {
             this.show = false;
             this.$emit('close-badge');
         }
@@ -1671,42 +1707,18 @@ Vue.component('badge', {
 
 });
 Vue.component('slide-modal', {
-    template: `
-    <div class="dj-modal-container" v-if="show">
-        <div class="close-body" @click="$emit('close')"></div>
-        <div class="dj-modal-body animated slideInUp">
-            <slot></slot>
-        </div>
-    </div>
-    `,
+    template: '\n    <div class="dj-modal-container" v-if="show">\n        <div class="close-body" @click="$emit(\'close\')"></div>\n        <div class="dj-modal-body animated slideInUp">\n            <slot></slot>\n        </div>\n    </div>\n    ',
     props: ['show']
 
 });
 Vue.component('get-insta', {
-    template: `
-    <div class="row">
-        <div class="col s8">
-            <input type="text" placeholder="Instagram handle" :value="inputProfile" :class="{'invalid': comp.fail}"
-                @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" 
-                @keyup="$emit('get-profile', inputProfile)">
-        </div>
-        <div class="col s4" v-show="!comp.fail" style="position: relative;">
-            <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!comp.loader">
-            <span v-show="comp.verified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">check</i></span>
-            <span v-show="comp.unverified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">close</i></span>
-            <spinner class="animated fadeIn" :colorClass="'default'" v-show="comp.loader"></spinner>
-        </div>
-        <div class="col s4" v-show="comp.fail">
-            <i class="material-icons">mood_bad</i><br><span style="font-size:10px">Oops! Not an instagram profile</span>
-        </div>
-    </div>
-    `,
+    template: '\n    <div class="row">\n        <div class="col s8">\n            <input type="text" placeholder="Instagram handle" :value="inputProfile" :class="{\'invalid\': comp.fail}"\n                @keypress="inputProfile = $event.target.value" @input="inputProfile = $event.target.value" \n                @keyup="$emit(\'get-profile\', inputProfile)">\n        </div>\n        <div class="col s4" v-show="!comp.fail" style="position: relative;">\n            <img :src="url" alt="" class="circle responsive-img img-lead animated fadeInLeft" v-show="!comp.loader">\n            <span v-show="comp.verified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">check</i></span>\n            <span v-show="comp.unverified" class="btn btn-small btn-floating lead-fab z-depth-3"><i class="material-icons">close</i></span>\n            <spinner class="animated fadeIn" :colorClass="\'default\'" v-show="comp.loader"></spinner>\n        </div>\n        <div class="col s4" v-show="comp.fail">\n            <i class="material-icons">mood_bad</i><br><span style="font-size:10px">Oops! Not an instagram profile</span>\n        </div>\n    </div>\n    ',
     props: ['comp'],
     mixins: [serviceProvider]
 });
 Vue.directive('imgfallback', {
-    bind: function (el, binding, vnode) {
-        let fallback = serviceProvider.data().noProfileUrl;
+    bind: function bind(el, binding, vnode) {
+        var fallback = serviceProvider.data().noProfileUrl;
         //let fallback = vnode.context.$parent.noProfileUrl
         el.onerror = function () {
             if (el.src !== fallback) {
@@ -1735,7 +1747,7 @@ Vue.filter('truncate', function (value) {
     return value;
 });
 
-const store = new Vuex.Store({
+var store = new Vuex.Store({
     //state management in VUE
     state: {
         url: serviceProvider.data().noProfileUrl,
@@ -1754,45 +1766,45 @@ const store = new Vuex.Store({
         partyCodeFromLink: ''
     },
     mutations: {
-        url(state, data) {
+        url: function url(state, data) {
             state.url = data;
         },
-        accessToken(state, data) {
+        accessToken: function accessToken(state, data) {
             state.accessToken = data;
         },
-        clubs(state, data) {
+        clubs: function clubs(state, data) {
             state.clubs = data;
         },
-        vipMode(state, data) {
+        vipMode: function vipMode(state, data) {
             state.vipMode.limit = data.request_limit;
             state.vipMode.uuid = data.unique_id;
             state.vipMode.insta = data.insta;
             state.vipMode.club = data.club;
         },
-        reduceLimit(state) {
+        reduceLimit: function reduceLimit(state) {
             state.vipMode.limit--;
         },
-        resetVipMode(state) {
+        resetVipMode: function resetVipMode(state) {
             state.vipMode.limit = 0;
         },
-        badgeImage(state, data) {
+        badgeImage: function badgeImage(state, data) {
             state.badge = data;
         },
-        noDj(state) {
+        noDj: function noDj(state) {
             state.badge.appName = '';
         },
-        joinParty(state, data) {
+        joinParty: function joinParty(state, data) {
             state.partyCodeFromLink = data;
         }
     }
 });
 
-const routes = [{ path: '/request/:id', component: spotify }, { path: '/dj/:id', component: djSpotify }, { path: '/', component: landing }, { path: '/join/:code', component: landing }, { path: '/home', component: homeTwo }, { path: '/report', component: report }, { path: '*', redirect: '/' }];
-const router = new VueRouter({
-    routes // short for `routes: routes`
+var routes = [{ path: '/request/:id', component: spotify }, { path: '/dj/:id', component: djSpotify }, { path: '/', component: landing }, { path: '/join/:code', component: landing }, { path: '/home', component: homeTwo }, { path: '/report', component: report }, { path: '*', redirect: '/' }];
+var router = new VueRouter({
+    routes: routes // short for `routes: routes`
 });
 
-Vue.prototype.$noSleep = () => {};
+Vue.prototype.$noSleep = function () {};
 
 var app = new Vue({
     router: router,

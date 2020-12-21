@@ -193,12 +193,21 @@
                                  :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
                         <div class="col s4"><span><i class="material-icons">people</i>{{population.length}}</span></div>
-                        <div class="col s4" style="font-weight:bold;letter-spacing:1px;">
-                            <span class="btn btn-floating"><i class="material-icons">vpn_key</i></span> {{club.id}}
+                        <div class="col s4" style="font-weight:bold;letter-spacing:1px;" @click="SharePartyRoom">
+                            <span class="btn btn-floating">
+                                <i class="material-icons" v-if="!isMobileOrTablet()">vpn_key</i>
+                                <i class="material-icons" style="transform: rotateY(180deg)" v-if="isMobileOrTablet()">reply</i>
+                            </span> {{club.id}}
                         </div>
                         <!-- <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div> -->
                     </div>
-                    <div id="jukebox" style="display:none"></div>
+                    <div class="jukebox-container" style="display:none">
+                        <div class="jukebox-cover">
+                            <i class="material-icons" style="font-size: 8em">power_settings_new</i>
+                        </div>
+                        <div id="jukebox"></div>
+                    </div>
+                    
                     
                 </div>
             </div>

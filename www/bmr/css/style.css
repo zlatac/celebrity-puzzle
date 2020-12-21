@@ -270,6 +270,21 @@ img{
 }
 #jukebox {
     filter: grayscale(1);
+    opacity: 0.001
+}
+.jukebox-container {
+    position: relative;
+}
+.jukebox-cover {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: var(--default-main);
+    color: white;
+    top: 0;
+    display: grid;
+    align-items: center;
+    border-radius: 15%;
 }
 @media only screen and (max-width: 1297px){
     .party-card{
