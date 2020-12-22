@@ -523,6 +523,10 @@ var homeTwo = Vue.component('homeTwo', {
                     img: 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZpZXdCb3g9IjAgMCAxNzIgMTcyIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtbGluZWNhcD0iYnV0dCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIiBzdHJva2UtZGFzaGFycmF5PSIiIHN0cm9rZS1kYXNob2Zmc2V0PSIwIiBmb250LWZhbWlseT0ibm9uZSIgZm9udC13ZWlnaHQ9Im5vbmUiIGZvbnQtc2l6ZT0ibm9uZSIgdGV4dC1hbmNob3I9Im5vbmUiIHN0eWxlPSJtaXgtYmxlbmQtbW9kZTogbm9ybWFsIj48cGF0aCBkPSJNMCwxNzJ2LTE3MmgxNzJ2MTcyeiIgZmlsbD0ibm9uZSI+PC9wYXRoPjxnIGZpbGw9IiNmZmZmZmYiPjxwYXRoIGQ9Ik0yMC40NzIwMywxMy43ODAxNmMtMy42MTc1NCwwIC02LjY5MTg3LDIuOTYxODQgLTYuNjkxODcsNi42MjQ2OXY4Ni4yNzU0N2MwLDEuMjMxOTkgMC4zMjkwNCwyLjM1Mjc2IDAuODY2NzIsMy4zMzI1Yy0wLjIyNDYsMC4zODkxIC0wLjQyNzczLDAuODA2ODYgLTAuNTc3ODEsMS4yODMyOGMtMC4wMDIyNCwwLjAwMjI0IC0wLjAwNDQ4LDAuMDA0NDggLTAuMDA2NzIsMC4wMDY3MmwtOS43MDg1OSwzMC45NDY1NmMtMC41NDQ3NywwLjYxNTQyIC0wLjg0NTg0LDEuNDA4NzMgLTAuODQ2NTYsMi4yMzA2M3YxMC4zMmMwLDMuNjQ0NjYgMi45NDI4Nyw2LjgxMjgxIDYuNjY1LDYuODEyODFoMTUxLjY1NTYzYzMuNzIyMTIsMCA2LjY2NSwtMy4xNjgxNSA2LjY2NSwtNi44MTI4MXYtMTAuMzJjLTAuMDAwNzIsLTAuODIxOSAtMC4zMDE3OSwtMS42MTUyIC0wLjg0NjU2LC0yLjIzMDYzbC05LjcwODYsLTMwLjk0NjU2Yy0wLjE1MDkyLC0wLjQ4MzUxIC0wLjM1Njk3LC0wLjkwMzI0IC0wLjU4NDUzLC0xLjI5NjcyYzAuNTM1ODksLTAuOTc4NTYgMC44NjY3MiwtMi4wOTU5OCAwLjg2NjcyLC0zLjMyNTc4di04Ni4yNzU0N2MwLC0zLjY2Mjg0IC0zLjA3NDMzLC02LjYyNDY5IC02LjY5MTg4LC02LjYyNDY5ek0yMC42MTk4NCwyMC42MTk4NGgxMzAuNzYwMzF2ODYuMDYwNDdjMCwtMC4zMzUwNiAtMC4yNzAxNywtMC4wMjAxNiAtMC4wMjAxNSwtMC4wMjAxNmgtMTMwLjcyYzAuMjUwMTUsMCAtMC4wMjAxNiwtMC4zMTUwNCAtMC4wMjAxNiwwLjAyMDE2ek0zNy44NCwxMTMuNTJoOTYuMzJsMy40NCwxMC4zMmgtMTAzLjJ6TTcyLjI0LDEzMC43MmgyNy41MmwzLjQ0LDYuODhoLTM0LjR6TTEwLjI1MjgxLDE0Ny44NTI4MWgxNTEuNDk0Mzd2Ni45NDcxOWMwLDAuMDU0OCAwLjAwMzI2LDAuMDU4NzMgMC4wMDY3MiwwLjA2NzE5aC0xNTEuNTA3ODFjMC4wMDM0NiwtMC4wMDg0NiAwLjAwNjcyLC0wLjAxMjQgMC4wMDY3MiwtMC4wNjcxOXoiPjwvcGF0aD48L2c+PC9nPjwvc3ZnPg==',
                     name: 'laptop',
                     width: '10%'
+                }, {
+                    img: 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZpZXdCb3g9IjAgMCAxNzIgMTcyIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtbGluZWNhcD0iYnV0dCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIiBzdHJva2UtZGFzaGFycmF5PSIiIHN0cm9rZS1kYXNob2Zmc2V0PSIwIiBmb250LWZhbWlseT0ibm9uZSIgZm9udC13ZWlnaHQ9Im5vbmUiIGZvbnQtc2l6ZT0ibm9uZSIgdGV4dC1hbmNob3I9Im5vbmUiIHN0eWxlPSJtaXgtYmxlbmQtbW9kZTogbm9ybWFsIj48cGF0aCBkPSJNMCwxNzJ2LTE3MmgxNzJ2MTcyeiIgZmlsbD0ibm9uZSI+PC9wYXRoPjxnIGZpbGw9IiNmZmZmZmYiPjxwYXRoIGQ9Ik01OS4xMjUsMS4zNDM3NWMtOS42NzUsMCAtMTcuNDY4NzUsNy43OTM3NSAtMTcuNDY4NzUsMTcuNDY4NzV2MjAuMTU2MjVjMCwyLjI4NDM3IDEuNzQ2ODcsNC4wMzEyNSA0LjAzMTI1LDQuMDMxMjVjMi4yODQzOCwwIDQuMDMxMjUsLTEuNzQ2ODggNC4wMzEyNSwtNC4wMzEyNXYtMjAuMTU2MjVjMCwtNS4yNDA2MiA0LjE2NTYyLC05LjQwNjI1IDkuNDA2MjUsLTkuNDA2MjVoOTQuMDYyNWM1LjI0MDYyLDAgOS40MDYyNSw0LjE2NTYzIDkuNDA2MjUsOS40MDYyNXYxMzQuMzc1YzAsNS4yNDA2MiAtNC4xNjU2Myw5LjQwNjI1IC05LjQwNjI1LDkuNDA2MjVoLTI2Ljg3NWMtMi4yODQzNywwIC00LjAzMTI1LDEuNzQ2ODcgLTQuMDMxMjUsNC4wMzEyNWMwLDIuMjg0MzggMS43NDY4OCw0LjAzMTI1IDQuMDMxMjUsNC4wMzEyNWgyNi44NzVjOS42NzUsMCAxNy40Njg3NSwtNy43OTM3NSAxNy40Njg3NSwtMTcuNDY4NzV2LTEzNC4zNzVjMCwtOS42NzUgLTcuNzkzNzUsLTE3LjQ2ODc1IC0xNy40Njg3NSwtMTcuNDY4NzV6TTMyLjI1LDU1LjA5Mzc1Yy05LjY3NSwwIC0xNy40Njg3NSw3Ljc5Mzc1IC0xNy40Njg3NSwxNy40Njg3NXY4MC42MjVjMCw5LjY3NSA3Ljc5Mzc1LDE3LjQ2ODc1IDE3LjQ2ODc1LDE3LjQ2ODc1aDQwLjMxMjVjOS42NzUsMCAxNy40Njg3NSwtNy43OTM3NSAxNy40Njg3NSwtMTcuNDY4NzV2LTgwLjYyNWMwLC05LjY3NSAtNy43OTM3NSwtMTcuNDY4NzUgLTE3LjQ2ODc1LC0xNy40Njg3NXpNMzIuMjUsNjMuMTU2MjVoNDAuMzEyNWM1LjI0MDYyLDAgOS40MDYyNSw0LjE2NTYzIDkuNDA2MjUsOS40MDYyNXY4MC42MjVjMCw1LjI0MDYyIC00LjE2NTYzLDkuNDA2MjUgLTkuNDA2MjUsOS40MDYyNWgtNDAuMzEyNWMtNS4yNDA2MiwwIC05LjQwNjI1LC00LjE2NTYzIC05LjQwNjI1LC05LjQwNjI1di04MC42MjVjMCwtNS4yNDA2MiA0LjE2NTYzLC05LjQwNjI1IDkuNDA2MjUsLTkuNDA2MjV6TTEwNi4xNTYyNSwxNTQuNjMwOThjLTEuMDQxNDEsMCAtMi4wODIyOSwwLjM3MTEgLTIuODIxMzUsMS4xMTAxN2MtMC44MDYyNSwwLjgwNjI1IC0xLjIwOTksMS43NDYzNSAtMS4yMDk5LDIuODIxMzVjMCwxLjA3NSAwLjQwMzY1LDIuMTQ5NDggMS4yMDk5LDIuODIxMzVsMC41MzgwMiwwLjUzODAyYzAuMjY4NzUsMC4xMzQzOCAwLjUzNzUsMC4yNjk4IDAuNjcxODgsMC40MDQxN2MwLjI2ODc1LDAuMTM0MzggMC41MzY5OCwwLjEzMzMzIDAuODA1NzMsMC4yNjc3YzAuMjY4NzUsMCAwLjUzNjk3LDAuMTMzODUgMC44MDU3MiwwLjEzMzg1YzAuMjY4NzUsMCAwLjUzNjk3LDAuMDAwNTIgMC44MDU3MiwtMC4xMzM4NWMwLjI2ODc1LDAgMC41MzY5OCwtMC4xMzMzMyAwLjgwNTczLC0wLjI2NzdjMC4yNjg3NSwtMC4xMzQzOCAwLjUzNzUsLTAuMjY5OCAwLjY3MTg4LC0wLjQwNDE3YzAuMjY4NzUsLTAuMTM0MzggMC40MDM2NSwtMC4yNjkyNyAwLjUzODAyLC0wLjUzODAyYzAuODA2MjUsLTAuODA2MjUgMS4yMDk5LC0xLjc0NjM1IDEuMjA5OSwtMi44MjEzNWMwLC0xLjA3NSAtMC40MDM2NSwtMi4xNDk0OCAtMS4yMDk5LC0yLjgyMTM1Yy0wLjczOTA2LC0wLjczOTA2IC0xLjc3OTk0LC0xLjExMDE3IC0yLjgyMTM1LC0xLjExMDE3eiI+PC9wYXRoPjwvZz48L2c+PC9zdmc+',
+                    name: 'mobile-tablet',
+                    width: '10%'
                 }],
                 classes: { 'host-card': true, 'shake': this.hostPartyIsMobile, 'fadeInUp': !this.hostPartyIsMobile && !this.hostChecked },
                 placeholder: 'Enter Party Name',
@@ -645,33 +649,31 @@ var homeTwo = Vue.component('homeTwo', {
             this.showModal = false;
         },
         openModal: function openModal(type) {
-            var _this13 = this;
-
             this.partyModalError = false;
             this.modalInput = '';
             this.modalType = type;
             M.Toast.dismissAll();
             switch (this.modalType) {
                 case 'host party':
-                    if (this.isMobileOrTablet()) {
-                        this.showHostMobile = false;
-                        this.hostChecked = true;
-                        this.hostPartyIsMobile = true;
-                        if (this.toastInstance === undefined) {
-                            this.toastInstance = M.toast({
-                                html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
-                                displayLength: 8000,
-                                completeCallback: function completeCallback() {
-                                    _this13.toastInstance = undefined;
-                                }
-                            });
-                        }
-                        setTimeout(function () {
-                            _this13.hostPartyIsMobile = false;
-                            _this13.showHostMobile = true;
-                        }, 1500);
-                        return;
-                    }
+                    // if (this.isMobileOrTablet()) {
+                    //     this.showHostMobile = false
+                    //     this.hostChecked = true
+                    //     this.hostPartyIsMobile = true
+                    //     if (this.toastInstance === undefined){
+                    //         this.toastInstance = M.toast({
+                    //             html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
+                    //             displayLength: 8000,
+                    //             completeCallback: () => {
+                    //                 this.toastInstance = undefined
+                    //             }
+                    //         })
+                    //     }
+                    //     setTimeout(() => {
+                    //         this.hostPartyIsMobile = false
+                    //         this.showHostMobile = true
+                    //     }, 1500)
+                    //     return
+                    // }
                     this.showModal = true;
                     break;
                 case 'join party':
@@ -752,19 +754,19 @@ var spotify = Vue.component('spotify', {
             return false;
         },
         displaySearchResult: function displaySearchResult() {
-            var _this14 = this;
+            var _this13 = this;
 
             //Used in conjuction with v-html for html entities
             return this.searchResult.map(function (item) {
-                item.song = _this14.$root.$options.filters.songName(item.song);
-                item.artist = _this14.$root.$options.filters.songName(item.artist);
+                item.song = _this13.$root.$options.filters.songName(item.song);
+                item.artist = _this13.$root.$options.filters.songName(item.artist);
                 return item;
             });
         }
     },
     methods: {
         searchTrack: function searchTrack() {
-            var _this15 = this;
+            var _this14 = this;
 
             if (this.safe(this.searchInput)) {
                 if (this.club.client_type.includes('jukebox')) {
@@ -788,7 +790,7 @@ var spotify = Vue.component('spotify', {
                     console.log(new Error(err));
                 }).then(function (res) {
                     if (res !== 'fail') {
-                        _this15.searchResult = res.tracks.items.map(function (item) {
+                        _this14.searchResult = res.tracks.items.map(function (item) {
                             var obj = {};
                             obj.image = item.album.images[1].url;
                             obj.song = item.name;
@@ -798,18 +800,18 @@ var spotify = Vue.component('spotify', {
                             obj.id = item.id;
                             return obj;
                         });
-                        _this15.noResult = _this15.searchResult.length === 0 ? true : false;
-                        _this15.pendingSearch = [];
-                        _this15.loader = false;
-                        _this15.scrollToResultTop();
+                        _this14.noResult = _this14.searchResult.length === 0 ? true : false;
+                        _this14.pendingSearch = [];
+                        _this14.loader = false;
+                        _this14.scrollToResultTop();
                         //this.searchInput = ''
                     } else if (res === 'fail') {
-                        _this15.pendingSearch.push(_this15.searchInput);
-                        _this15.socket.emit('newTokenPlease');
+                        _this14.pendingSearch.push(_this14.searchInput);
+                        _this14.socket.emit('newTokenPlease');
                     }
                 }).finally(function (res) {
-                    var payload = { trackTask: 'search', search: _this15.searchInput, timestamp: moment().toISOString(), domain: location.host };
-                    _this15.trackAction(payload);
+                    var payload = { trackTask: 'search', search: _this14.searchInput, timestamp: moment().toISOString(), domain: location.host };
+                    _this14.trackAction(payload);
                 });
             }
         },
@@ -837,13 +839,13 @@ var spotify = Vue.component('spotify', {
             }
         },
         vipSendRequest: function vipSendRequest(payload) {
-            var _this16 = this;
+            var _this15 = this;
 
             if (!this.safe(payload.inProgress)) {
                 payload.inProgress = true;
                 this.getVipStatus(this.vipMode.insta).then(function () {
-                    if (_this16.isVip) {
-                        _this16.sendRequest(payload);
+                    if (_this15.isVip) {
+                        _this15.sendRequest(payload);
                     } else {
                         console.log('you are no longer a vip');
                     }
@@ -882,7 +884,7 @@ var spotify = Vue.component('spotify', {
             console.log('fired', change);
         },
         youtube: function youtube(query) {
-            var _this17 = this;
+            var _this16 = this;
 
             this.loader = true;
             var searchUrl = 'https://www.googleapis.com/youtube/v3/search';
@@ -899,7 +901,7 @@ var spotify = Vue.component('spotify', {
                     return response.json();
                 }
             }).then(function (res) {
-                _this17.searchResult = res.items.map(function (item) {
+                _this16.searchResult = res.items.map(function (item) {
                     var obj = {};
                     obj.image = item.snippet.thumbnails.default.url;
                     obj.song = item.snippet.title.split(' - ')[1];
@@ -907,10 +909,10 @@ var spotify = Vue.component('spotify', {
                     obj.id = item.id.videoId;
                     return obj;
                 });
-                _this17.noResult = _this17.searchResult.length === 0 ? true : false;
-                _this17.pendingSearch = [];
-                _this17.loader = false;
-                _this17.scrollToResultTop();
+                _this16.noResult = _this16.searchResult.length === 0 ? true : false;
+                _this16.pendingSearch = [];
+                _this16.loader = false;
+                _this16.scrollToResultTop();
                 console.log(res, 'am done');
             });
         }
@@ -922,60 +924,60 @@ var spotify = Vue.component('spotify', {
         }
     },
     created: function created() {
-        var _this18 = this;
+        var _this17 = this;
 
         this.validateId();
         if (this.isVip) this.getVipStatus(this.vipMode.insta);
         this.socket.on('connect', function (data) {
-            _this18.isConnected = true;
-            _this18.socket.emit('audience', { appName: _this18.appName, id: _this18.socket.id, task: 'population' });
-            _this18.socket.emit('getDj', { appName: _this18.appName });
+            _this17.isConnected = true;
+            _this17.socket.emit('audience', { appName: _this17.appName, id: _this17.socket.id, task: 'population' });
+            _this17.socket.emit('getDj', { appName: _this17.appName });
             console.log(data, 'connected my nigga');
         });
         this.socket.on('disconnect', function (data) {
             // console.log('i am disconnected bro');
             // alert('i am disconnected bro')
-            _this18.isConnected = false;
+            _this17.isConnected = false;
         });
         this.socket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
-            _this18.isConnected = true;
-            var payload = { appName: _this18.appName };
-            _this18.socket.emit('getDj', payload);
+            _this17.isConnected = true;
+            var payload = { appName: _this17.appName };
+            _this17.socket.emit('getDj', payload);
         });
         //this.socket.emit('join','we in this bitch son');
         this.socket.on('sendMetrics', function (data) {
             //console.log(data,'metric data');
-            if (data.appName === _this18.appName && 'task' in data && data.task === 'request') {
-                _this18.metrics = data;
+            if (data.appName === _this17.appName && 'task' in data && data.task === 'request') {
+                _this17.metrics = data;
                 //this.showMetrics = true;
             }
         });
         this.socket.on('newToken', function (data) {
-            _this18.$store.commit('accessToken', data);
-            if (_this18.pendingSearch.length > 0) {
-                _this18.searchTrack();
+            _this17.$store.commit('accessToken', data);
+            if (_this17.pendingSearch.length > 0) {
+                _this17.searchTrack();
             }
         });
         this.socket.on('djData', function (data) {
-            _this18.djData.name = data.djData.name;
-            _this18.djData.handle = data.djData.handle;
-            _this18.getInstaImage(data.djData.handle).then(function (res) {
-                var payload = { appName: _this18.appName, image: res };
-                _this18.$store.commit('badgeImage', payload);
-                _this18.djData.image = res;
+            _this17.djData.name = data.djData.name;
+            _this17.djData.handle = data.djData.handle;
+            _this17.getInstaImage(data.djData.handle).then(function (res) {
+                var payload = { appName: _this17.appName, image: res };
+                _this17.$store.commit('badgeImage', payload);
+                _this17.djData.image = res;
             }).catch(function (error) {
                 console.warn(error);
             });
         });
         this.socket.on('noDj', function (data) {
-            _this18.$store.commit('noDj');
+            _this17.$store.commit('noDj');
         });
         this.socket.on('sessionOver', function (data) {
-            if (_this18.appName.toLowerCase() === data) {
-                var appName = _this18.appName;
-                _this18.$router.replace('/home');
+            if (_this17.appName.toLowerCase() === data) {
+                var appName = _this17.appName;
+                _this17.$router.replace('/home');
                 M.toast({
                     html: 'Something went wrong. Party room with code [' + appName + '] no longer exists. Please join a new party room.',
                     displayLength: 60000
@@ -1114,7 +1116,7 @@ var djSpotify = Vue.component('djSpotify', {
             }
         },
         getTrackBpm: function getTrackBpm(trackObject) {
-            var _this19 = this;
+            var _this18 = this;
 
             var id = trackObject.id;
             var token = this.$store.state.accessToken;
@@ -1141,17 +1143,17 @@ var djSpotify = Vue.component('djSpotify', {
                         audioFeatures = _ref[0],
                         trackDetails = _ref[1];
 
-                    var musicKey = _this19.musicNotes[audioFeatures.key];
+                    var musicKey = _this18.musicNotes[audioFeatures.key];
                     var bpm = Math.floor(Number(audioFeatures.tempo));
                     var output = musicKey + ' - ' + bpm + ' bpm';
-                    var indexInBasket = _this19.requestBasket.findIndex(function (item) {
+                    var indexInBasket = _this18.requestBasket.findIndex(function (item) {
                         return item.id === id;
                     });
-                    _this19.requestBasket[indexInBasket].bpm = output;
-                    _this19.requestBasket[indexInBasket].explicit = trackDetails.explicit;
+                    _this18.requestBasket[indexInBasket].bpm = output;
+                    _this18.requestBasket[indexInBasket].explicit = trackDetails.explicit;
                 } else if (res === 'fail') {
-                    _this19.pendingTrackDetails.push(trackObject);
-                    _this19.controlSocket.emit('newTokenPlease');
+                    _this18.pendingTrackDetails.push(trackObject);
+                    _this18.controlSocket.emit('newTokenPlease');
                 }
             });
         },
@@ -1167,14 +1169,14 @@ var djSpotify = Vue.component('djSpotify', {
             this.$store.commit('badgeImage', { image: this.url, appName: this.appName });
         },
         getJukeboxApi: function getJukeboxApi() {
-            var _this20 = this;
+            var _this19 = this;
 
             var tag = document.createElement('script');
             // IOS mobile should have a video loaded by default to prevent error and not keep showing the power button
             var videoId = this.isIOS() && this.isMobileOrTablet() ? 'q1Yz0Vfp2jY' : undefined;
             // When api is ready to be used this will be called
             window.onYouTubeIframeAPIReady = function () {
-                _this20.jukeBoxInstance = new YT.Player('jukebox', {
+                _this19.jukeBoxInstance = new YT.Player('jukebox', {
                     height: '200',
                     width: '200',
                     videoId: videoId,
@@ -1182,15 +1184,15 @@ var djSpotify = Vue.component('djSpotify', {
                         'onError': function onError(event) {
                             console.error(new Error(event.data));
                             console.warn('Due to faliure i had to play the next song');
-                            _this20.playNextSong();
+                            _this19.playNextSong();
                         },
                         'onReady': function onReady() {
-                            if (_this20.isIOS() && _this20.isMobileOrTablet()) {
+                            if (_this19.isIOS() && _this19.isMobileOrTablet()) {
                                 document.querySelector('.jukebox-container').style.display = 'inline-block';
                             }
                         },
                         'onStateChange': function onStateChange(event) {
-                            _this20.jukeBoxStateChanged(event);
+                            _this19.jukeBoxStateChanged(event);
                         }
                     },
                     playerVars: {
@@ -1209,16 +1211,16 @@ var djSpotify = Vue.component('djSpotify', {
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         },
         jukeBoxStateChanged: function jukeBoxStateChanged(event) {
-            var _this21 = this;
+            var _this20 = this;
 
             switch (this.playerStates[event.data]) {
                 case 'ended':
                     this.widgetStarted = false;
                     // Sometimes the event fires in the order -1 0 -1 3 1 at the start of a new track
                     setTimeout(function () {
-                        if (_this21.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
-                            clearInterval(_this21.fadeOutIntervalInstance);
-                            _this21.playNextSong();
+                        if (_this20.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
+                            clearInterval(_this20.fadeOutIntervalInstance);
+                            _this20.playNextSong();
                         }
                     }, 3000);
                     break;
@@ -1241,7 +1243,7 @@ var djSpotify = Vue.component('djSpotify', {
             }
         },
         addToPlaylist: function addToPlaylist(song) {
-            var _this22 = this;
+            var _this21 = this;
 
             try {
                 if (this.jukeBoxList.length < 1) {
@@ -1260,10 +1262,10 @@ var djSpotify = Vue.component('djSpotify', {
                     window.onYouTubeIframeAPIReady();
                     // Needs some time after generating a new instance of the API
                     setTimeout(function () {
-                        _this22.jukeBoxInstance.loadVideoById({
-                            videoId: _this22.jukeBoxList[0].id,
+                        _this21.jukeBoxInstance.loadVideoById({
+                            videoId: _this21.jukeBoxList[0].id,
                             startSeconds: 0,
-                            endSeconds: _this22.isLocalhost ? 30 : _this22.endAtSeconds
+                            endSeconds: _this21.isLocalhost ? 30 : _this21.endAtSeconds
                         });
                         console.log('restarting.....');
                     }, 5000);
@@ -1301,18 +1303,18 @@ var djSpotify = Vue.component('djSpotify', {
             }
         },
         fadeOutVolume: function fadeOutVolume(milliseconds, volume) {
-            var _this23 = this;
+            var _this22 = this;
 
             var volumeMap = this.getVolumeTime();
             //console.log(volumeMap)
             this.fadeOutIntervalInstance = setInterval(function () {
-                var currentTime = Math.floor(_this23.jukeBoxInstance.getCurrentTime());
+                var currentTime = Math.floor(_this22.jukeBoxInstance.getCurrentTime());
                 var volume = volumeMap.get(currentTime);
                 if (volume !== undefined && volume > 1) {
-                    _this23.jukeBoxInstance.setVolume(volume);
+                    _this22.jukeBoxInstance.setVolume(volume);
                 }
                 if (volume === 20) {
-                    _this23.addNextAutoRequest();
+                    _this22.addNextAutoRequest();
                 }
             }, 1000);
         },
@@ -1340,7 +1342,7 @@ var djSpotify = Vue.component('djSpotify', {
             this.jukeBoxInstance.pauseVideo();
         },
         getAutoPlaylist: function getAutoPlaylist() {
-            var _this24 = this;
+            var _this23 = this;
 
             fetch('/allPlaylist').then(function (res) {
                 if (res.status === 200) {
@@ -1348,33 +1350,33 @@ var djSpotify = Vue.component('djSpotify', {
                 }
                 throw new Error('request failed');
             }).then(function (res) {
-                _this24.allPlayList = res;
+                _this23.allPlayList = res;
                 res.forEach(function (item) {
-                    _this24.allPlayListMap.set(item.genre, item.songs);
-                    _this24.genreOptions.push({
+                    _this23.allPlayListMap.set(item.genre, item.songs);
+                    _this23.genreOptions.push({
                         genre: item.genre,
                         selected: item.genre.includes('top 40') ? true : false
                     });
                 });
-                _this24.setupAutoPlay();
+                _this23.setupAutoPlay();
             });
         },
         setupAutoPlay: function setupAutoPlay() {
-            var _this25 = this;
+            var _this24 = this;
 
             this.autoPlayList = [];
             this.genreOptions.forEach(function (item) {
                 if (item.selected) {
                     var _autoPlayList;
 
-                    var songs = _this25.allPlayListMap.get(item.genre);
-                    (_autoPlayList = _this25.autoPlayList).push.apply(_autoPlayList, _toConsumableArray(songs));
+                    var songs = _this24.allPlayListMap.get(item.genre);
+                    (_autoPlayList = _this24.autoPlayList).push.apply(_autoPlayList, _toConsumableArray(songs));
                 }
             });
             this.randomize(this.autoPlayList);
             setTimeout(function () {
-                if (_this25.jukeBoxList.length < 1) {
-                    _this25.addNextAutoRequest();
+                if (_this24.jukeBoxList.length < 1) {
+                    _this24.addNextAutoRequest();
                 }
             }, 60000);
         },
@@ -1417,29 +1419,29 @@ var djSpotify = Vue.component('djSpotify', {
         }
     },
     created: function created() {
-        var _this26 = this;
+        var _this25 = this;
 
         this.validateId();
         this.controlSocket.on('connect', function (data) {
-            _this26.isConnected = true;
-            _this26.controlSocket.emit('getDj', { appName: _this26.appName });
+            _this25.isConnected = true;
+            _this25.controlSocket.emit('getDj', { appName: _this25.appName });
             console.log('connected my nigga');
         });
         this.controlSocket.on('disconnect', function (data) {
             // console.log('i am disconnected bro');
             // alert('i am disconnected bro')
-            _this26.isConnected = false;
+            _this25.isConnected = false;
         });
         this.controlSocket.on('answer', function (data) {
             console.log(data);
-            if (data.appName === _this26.appName) {
+            if (data.appName === _this25.appName) {
                 if ('task' in data && data.task === 'population') {
                     console.log('population gwoth complete', data);
-                    _this26.population.push(data);
+                    _this25.population.push(data);
                 }
                 if ('task' in data && data.task === 'request') {
-                    _this26.addRequest(data);
-                    _this26.controlSocket.emit('analytics', { appName: _this26.appName, requestNumber: _this26.requestList.length, task: 'request' });
+                    _this25.addRequest(data);
+                    _this25.controlSocket.emit('analytics', { appName: _this25.appName, requestNumber: _this25.requestList.length, task: 'request' });
                 }
                 if ('task' in data && data.task === 'pendingRequests') {
                     //pending requests from server will include requests already received before disconnection
@@ -1448,15 +1450,15 @@ var djSpotify = Vue.component('djSpotify', {
                         return accumulator + currentValue;
                     };
                     var totalRequestsReceived = 0; //default
-                    if (_this26.requestBasket.length > 0) {
-                        totalRequestsReceived = _this26.requestBasket.map(function (item) {
+                    if (_this25.requestBasket.length > 0) {
+                        totalRequestsReceived = _this25.requestBasket.map(function (item) {
                             return item.requestCount;
                         }).reduce(addUp);
                     }
 
                     var onlyNewPendingRequests = data.pendingRequests.slice(totalRequestsReceived);
                     onlyNewPendingRequests.forEach(function (request) {
-                        var checkIdExist = _this26.requestBasket.findIndex(function (item) {
+                        var checkIdExist = _this25.requestBasket.findIndex(function (item) {
                             return item.id === request.song.id;
                         });
                         console.log(checkIdExist);
@@ -1465,44 +1467,44 @@ var djSpotify = Vue.component('djSpotify', {
                             request.song.requestCount = 1;
                             request.song.hide = false;
                             request.song.bpm = '';
-                            _this26.requestBasket.push(request.song);
-                            _this26.getTrackBpm(request.song);
-                            if (_this26.jukeboxMode) {
-                                _this26.addToPlaylist(data.song);
+                            _this25.requestBasket.push(request.song);
+                            _this25.getTrackBpm(request.song);
+                            if (_this25.jukeboxMode) {
+                                _this25.addToPlaylist(data.song);
                             }
                         } else {
-                            _this26.requestBasket[checkIdExist].requestCount += 1;
+                            _this25.requestBasket[checkIdExist].requestCount += 1;
                         }
                     });
                 }
             }
         });
         this.controlSocket.on('newToken', function (data) {
-            _this26.$store.commit('accessToken', data);
-            if (_this26.pendingTrackDetails.length > 0) {
-                var tracks = _this26.pendingTrackDetails;
-                _this26.pendingTrackDetails = [];
+            _this25.$store.commit('accessToken', data);
+            if (_this25.pendingTrackDetails.length > 0) {
+                var tracks = _this25.pendingTrackDetails;
+                _this25.pendingTrackDetails = [];
                 tracks.forEach(function (item) {
-                    _this26.getTrackBpm(item);
+                    _this25.getTrackBpm(item);
                 });
             }
         });
         this.controlSocket.on('reconnect', function (data) {
             // console.log('i am reconnected bitch');
             // alert('i am reconnected bitch')
-            var payload = { appName: _this26.appName };
-            _this26.isConnected = true;
-            _this26.controlSocket.emit('updateRequests', payload);
+            var payload = { appName: _this25.appName };
+            _this25.isConnected = true;
+            _this25.controlSocket.emit('updateRequests', payload);
         });
         this.controlSocket.on('djData', function (data) {
-            _this26.getInstaImage(data.djData.handle).then(function (res) {
-                var payload = { appName: _this26.appName, image: res };
-                _this26.$store.commit('badgeImage', payload);
+            _this25.getInstaImage(data.djData.handle).then(function (res) {
+                var payload = { appName: _this25.appName, image: res };
+                _this25.$store.commit('badgeImage', payload);
             });
         });
         this.controlSocket.on('sessionOver', function (data) {
-            if (_this26.appName.toLowerCase() === data) {
-                _this26.$router.replace('/home');
+            if (_this25.appName.toLowerCase() === data) {
+                _this25.$router.replace('/home');
                 M.toast({
                     html: 'Something went wrong. Please host a new party room',
                     displayLength: 60000
@@ -1541,14 +1543,14 @@ var report = Vue.component('report', {
     },
     methods: {
         getReport: function getReport() {
-            var _this27 = this;
+            var _this26 = this;
 
             var params = { clubId: this.clientId, date: this.reportDate };
             if (this.safe(this.reportDate)) {
                 this.loader = true;
                 axios.get('https://styleminions.co/api/bmr-report', { params: params }).then(function (res) {
-                    _this27.reportResponse = res.data;
-                    _this27.buildReport();
+                    _this26.reportResponse = res.data;
+                    _this26.buildReport();
                 });
             }
         },
@@ -1557,7 +1559,7 @@ var report = Vue.component('report', {
             this.reportDate = moment(date).format('YYYY-MM-DD');
         },
         buildReport: function buildReport() {
-            var _this28 = this;
+            var _this27 = this;
 
             var clubs = this.clubs;
             var clubMapping = new Map();
@@ -1586,7 +1588,7 @@ var report = Vue.component('report', {
             this.reportDisplay = !this.safe(this.clientId) ? clubs.sort(function (a, b) {
                 return b.totalRequest - a.totalRequest;
             }) : clubs.filter(function (item) {
-                return item.id === _this28.clientId;
+                return item.id === _this27.clientId;
             });
             this.$forceUpdate();
             this.loader = false;

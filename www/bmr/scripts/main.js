@@ -578,6 +578,11 @@ const homeTwo = Vue.component('homeTwo', {
                             name: 'laptop',
                             width: '10%'
                         },
+                        {
+                            img: 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZpZXdCb3g9IjAgMCAxNzIgMTcyIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtbGluZWNhcD0iYnV0dCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIiBzdHJva2UtZGFzaGFycmF5PSIiIHN0cm9rZS1kYXNob2Zmc2V0PSIwIiBmb250LWZhbWlseT0ibm9uZSIgZm9udC13ZWlnaHQ9Im5vbmUiIGZvbnQtc2l6ZT0ibm9uZSIgdGV4dC1hbmNob3I9Im5vbmUiIHN0eWxlPSJtaXgtYmxlbmQtbW9kZTogbm9ybWFsIj48cGF0aCBkPSJNMCwxNzJ2LTE3MmgxNzJ2MTcyeiIgZmlsbD0ibm9uZSI+PC9wYXRoPjxnIGZpbGw9IiNmZmZmZmYiPjxwYXRoIGQ9Ik01OS4xMjUsMS4zNDM3NWMtOS42NzUsMCAtMTcuNDY4NzUsNy43OTM3NSAtMTcuNDY4NzUsMTcuNDY4NzV2MjAuMTU2MjVjMCwyLjI4NDM3IDEuNzQ2ODcsNC4wMzEyNSA0LjAzMTI1LDQuMDMxMjVjMi4yODQzOCwwIDQuMDMxMjUsLTEuNzQ2ODggNC4wMzEyNSwtNC4wMzEyNXYtMjAuMTU2MjVjMCwtNS4yNDA2MiA0LjE2NTYyLC05LjQwNjI1IDkuNDA2MjUsLTkuNDA2MjVoOTQuMDYyNWM1LjI0MDYyLDAgOS40MDYyNSw0LjE2NTYzIDkuNDA2MjUsOS40MDYyNXYxMzQuMzc1YzAsNS4yNDA2MiAtNC4xNjU2Myw5LjQwNjI1IC05LjQwNjI1LDkuNDA2MjVoLTI2Ljg3NWMtMi4yODQzNywwIC00LjAzMTI1LDEuNzQ2ODcgLTQuMDMxMjUsNC4wMzEyNWMwLDIuMjg0MzggMS43NDY4OCw0LjAzMTI1IDQuMDMxMjUsNC4wMzEyNWgyNi44NzVjOS42NzUsMCAxNy40Njg3NSwtNy43OTM3NSAxNy40Njg3NSwtMTcuNDY4NzV2LTEzNC4zNzVjMCwtOS42NzUgLTcuNzkzNzUsLTE3LjQ2ODc1IC0xNy40Njg3NSwtMTcuNDY4NzV6TTMyLjI1LDU1LjA5Mzc1Yy05LjY3NSwwIC0xNy40Njg3NSw3Ljc5Mzc1IC0xNy40Njg3NSwxNy40Njg3NXY4MC42MjVjMCw5LjY3NSA3Ljc5Mzc1LDE3LjQ2ODc1IDE3LjQ2ODc1LDE3LjQ2ODc1aDQwLjMxMjVjOS42NzUsMCAxNy40Njg3NSwtNy43OTM3NSAxNy40Njg3NSwtMTcuNDY4NzV2LTgwLjYyNWMwLC05LjY3NSAtNy43OTM3NSwtMTcuNDY4NzUgLTE3LjQ2ODc1LC0xNy40Njg3NXpNMzIuMjUsNjMuMTU2MjVoNDAuMzEyNWM1LjI0MDYyLDAgOS40MDYyNSw0LjE2NTYzIDkuNDA2MjUsOS40MDYyNXY4MC42MjVjMCw1LjI0MDYyIC00LjE2NTYzLDkuNDA2MjUgLTkuNDA2MjUsOS40MDYyNWgtNDAuMzEyNWMtNS4yNDA2MiwwIC05LjQwNjI1LC00LjE2NTYzIC05LjQwNjI1LC05LjQwNjI1di04MC42MjVjMCwtNS4yNDA2MiA0LjE2NTYzLC05LjQwNjI1IDkuNDA2MjUsLTkuNDA2MjV6TTEwNi4xNTYyNSwxNTQuNjMwOThjLTEuMDQxNDEsMCAtMi4wODIyOSwwLjM3MTEgLTIuODIxMzUsMS4xMTAxN2MtMC44MDYyNSwwLjgwNjI1IC0xLjIwOTksMS43NDYzNSAtMS4yMDk5LDIuODIxMzVjMCwxLjA3NSAwLjQwMzY1LDIuMTQ5NDggMS4yMDk5LDIuODIxMzVsMC41MzgwMiwwLjUzODAyYzAuMjY4NzUsMC4xMzQzOCAwLjUzNzUsMC4yNjk4IDAuNjcxODgsMC40MDQxN2MwLjI2ODc1LDAuMTM0MzggMC41MzY5OCwwLjEzMzMzIDAuODA1NzMsMC4yNjc3YzAuMjY4NzUsMCAwLjUzNjk3LDAuMTMzODUgMC44MDU3MiwwLjEzMzg1YzAuMjY4NzUsMCAwLjUzNjk3LDAuMDAwNTIgMC44MDU3MiwtMC4xMzM4NWMwLjI2ODc1LDAgMC41MzY5OCwtMC4xMzMzMyAwLjgwNTczLC0wLjI2NzdjMC4yNjg3NSwtMC4xMzQzOCAwLjUzNzUsLTAuMjY5OCAwLjY3MTg4LC0wLjQwNDE3YzAuMjY4NzUsLTAuMTM0MzggMC40MDM2NSwtMC4yNjkyNyAwLjUzODAyLC0wLjUzODAyYzAuODA2MjUsLTAuODA2MjUgMS4yMDk5LC0xLjc0NjM1IDEuMjA5OSwtMi44MjEzNWMwLC0xLjA3NSAtMC40MDM2NSwtMi4xNDk0OCAtMS4yMDk5LC0yLjgyMTM1Yy0wLjczOTA2LC0wLjczOTA2IC0xLjc3OTk0LC0xLjExMDE3IC0yLjgyMTM1LC0xLjExMDE3eiI+PC9wYXRoPjwvZz48L2c+PC9zdmc+',
+                            name: 'mobile-tablet',
+                            width: '10%'
+                        }
                     ],
                     classes: {'host-card': true, 'shake': this.hostPartyIsMobile, 'fadeInUp': !this.hostPartyIsMobile && !this.hostChecked},
                     placeholder: 'Enter Party Name',
@@ -712,25 +717,25 @@ const homeTwo = Vue.component('homeTwo', {
             M.Toast.dismissAll()
             switch(this.modalType){
                 case 'host party':
-                    if (this.isMobileOrTablet()) {
-                        this.showHostMobile = false
-                        this.hostChecked = true
-                        this.hostPartyIsMobile = true
-                        if (this.toastInstance === undefined){
-                            this.toastInstance = M.toast({
-                                html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
-                                displayLength: 8000,
-                                completeCallback: () => {
-                                    this.toastInstance = undefined
-                                }
-                            })
-                        }
-                        setTimeout(() => {
-                            this.hostPartyIsMobile = false
-                            this.showHostMobile = true
-                        }, 1500)
-                        return
-                    }
+                    // if (this.isMobileOrTablet()) {
+                    //     this.showHostMobile = false
+                    //     this.hostChecked = true
+                    //     this.hostPartyIsMobile = true
+                    //     if (this.toastInstance === undefined){
+                    //         this.toastInstance = M.toast({
+                    //             html: 'Mobile/Tablet not supported currently. Please host party with laptop, smart TV & gaming console browsers.',
+                    //             displayLength: 8000,
+                    //             completeCallback: () => {
+                    //                 this.toastInstance = undefined
+                    //             }
+                    //         })
+                    //     }
+                    //     setTimeout(() => {
+                    //         this.hostPartyIsMobile = false
+                    //         this.showHostMobile = true
+                    //     }, 1500)
+                    //     return
+                    // }
                     this.showModal = true
                     break
                 case 'join party':
