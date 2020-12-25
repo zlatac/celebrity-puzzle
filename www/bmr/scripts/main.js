@@ -320,6 +320,25 @@ const serviceProvider = {
     }
 }
 const jukeboxMixin = {
+    data: function(){
+        return{
+            searchInput: '',
+            searchResult: [],
+            pendingSearch: [],
+            requestedSongs:[],
+            noResult:false,
+        }
+    },
+    computed:{
+        displaySearchResult(){
+            //Used in conjuction with v-html for html entities
+            return this.searchResult.map((item) => {
+                item.song = this.$root.$options.filters.songName(item.song)
+                item.artist = this.$root.$options.filters.songName(item.artist)
+                return item
+            })
+        }
+    },
     methods: {
         SharePartyRoom(){
             if ('share' in navigator) {
@@ -331,6 +350,51 @@ const jukeboxMixin = {
                 .catch((error) => {
                     console.error(new Error(error))
                 })
+            }
+        },
+        youtube(query){
+            this.loader = true
+            const searchUrl = 'https://www.googleapis.com/youtube/v3/search'
+            const key = 'AIzaSyCZVImtMr37nqi5MPRuNtvr0D-kp0Eq0Bk'
+            const maxTime = 247 // 4 minutes - if longer than 4 minutes then set maxtime
+            const params = new URLSearchParams({
+                q: `${query} audio`,
+                part: 'snippet',
+                maxResults: 5,
+                key
+            })
+            fetch(`${searchUrl}?${params.toString()}`)
+            .then((response) => {
+                if (response.status === 200){
+                    return response.json()
+                }
+            })
+            .then((res) => {
+                this.searchResult = res.items.map((item)=>{
+                    let obj = {}
+                    obj.image = item.snippet.thumbnails.default.url
+                    obj.song = item.snippet.title.split(' - ')[1]
+                    obj.artist = item.snippet.title.split(' - ')[0]
+                    obj.id = item.id.videoId
+                    return obj
+                })
+                this.noResult = (this.searchResult.length === 0) ? true : false
+                this.pendingSearch = []
+                this.loader = false;
+                this.scrollToResultTop()
+                console.log(res, 'am done')
+            })
+        },
+        alreadyRequested(payload){
+            if(this.requestedSongs.findIndex(item => item === payload) !== -1){
+                return true
+            }
+            return false
+        },
+        scrollToResultTop(){
+            let elem = document.querySelector('.firstresult')
+            if(this.safe(elem)){
+                elem.scrollIntoView(false) //false aligns the bottom of the element to the bottom of available space and vice versa
             }
         }
     }
@@ -1072,6 +1136,8 @@ const djSpotify = Vue.component('djSpotify', {
             endAtSeconds: 240,
             playing: false,
             widgetStarted: false,
+            showHostRequest: false,
+            jukeboxPlayerReady: false,
             modalPage: {
                 page: 'djspotify',
                 insta: false,
@@ -1220,6 +1286,7 @@ const djSpotify = Vue.component('djSpotify', {
                             if (this.isIOS() && this.isMobileOrTablet()) {
                                 document.querySelector('.jukebox-container').style.display = 'inline-block'
                             }
+                            this.jukeboxPlayerReady = true
                         },
                         'onStateChange': (event) => {
                             this.jukeBoxStateChanged(event)
@@ -1386,6 +1453,7 @@ const djSpotify = Vue.component('djSpotify', {
         },
         setupAutoPlay(){
             this.autoPlayList = []
+            const autoDjStartPlayTime = 60000 * 3
             this.genreOptions.forEach((item) => {
                 if (item.selected) {
                     const songs = this.allPlayListMap.get(item.genre)
@@ -1397,7 +1465,7 @@ const djSpotify = Vue.component('djSpotify', {
                 if (this.jukeBoxList.length < 1) {
                     this.addNextAutoRequest()
                 }
-            }, 60000)
+            }, autoDjStartPlayTime)
         },
         addNextAutoRequest(){
             if (this.autoPlayList.length > 0 && this.jukeBoxList.length <= 1) {
@@ -1433,6 +1501,29 @@ const djSpotify = Vue.component('djSpotify', {
                     this.addNextAutoRequest()
                 }
             }
+        },
+        hostSearchTrack(){
+            if(this.safe(this.searchInput)){
+                this.youtube(this.searchInput)
+            }
+        },
+        hostSendRequest(payload){
+            if(this.safe(payload)){
+                payload.timestamp = moment().toISOString()
+                console.log(payload)
+                this.addRequest({song: payload})
+                this.requestedSongs.push(payload.id)
+                payload.trackTask = 'request'
+                payload.domain = location.host
+                this.trackAction(payload)
+            }
+        },
+        toggleShowHostRequest(){
+            if(this.showHostRequest) {
+                this.showHostRequest = false
+                return
+            }
+            this.showHostRequest = true
         }
     },
     created:function(){
@@ -1527,7 +1618,7 @@ const djSpotify = Vue.component('djSpotify', {
     },
     mounted: function() {
         this.getJukeboxApi()
-        M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
+        //M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
         this.getAutoPlaylist()
     },
     destroyed: function(){

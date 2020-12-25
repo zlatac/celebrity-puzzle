@@ -183,6 +183,64 @@
             <get-insta :comp="modalPage" @get-profile="getProfile" style="margin-top: 23px;padding: 0 10%;"></get-insta>
             <div class="btn btn-background" v-if="modalPage.imageacquired" @click="setDj">Take The Spotlight</div>
         </badge>
+        <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4" @click="toggleShowHostRequest" v-show="jukeboxPlayerReady">
+            <i class="material-icons" style="font-size:32px;color:white;margin-top:2px;">playlist_add</i>
+        </div>
+        <slide-modal :show="showHostRequest" @close="toggleShowHostRequest">
+            <div class="host-search-container">
+                <div class="row" style="margin-bottom: 0px;width:100%;padding:6%">
+                    <form  novalidate @submit.stop.prevent="hostSearchTrack">
+                        <div class="col s9">
+                            <input type="text" name="q" placeholder="Search tracks" v-model="searchInput" 
+                                   v-inputHighlight autocomplete="off">
+                        </div>
+                        <div class="col s3">
+                            <button type="submit" class="btn btn-floating waves-effect waves-light">
+                                <i class="material-icons">search</i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="host-search-results" style="overflow-y:scroll;flex-grow:1;padding:0 6%;">
+                    <spinner :colorClass="'default'" v-show="loader"></spinner>
+                    <div class="row " v-show="!loader">
+                        <div class="card dark-card animated fadeInUp" v-show="noResult === true">
+                            <div class="row">
+                                <div class="col s12">
+                                    <p><b>Sorry!! Can't find that song.</b></p>
+                                    <p><b>Search for another song.</b></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}" :key="x.id">
+                            <div class="row">
+                                <div class="col s4">
+                                    <div style="position: relative;width: min-content;margin: 0 auto;">
+                                        <img :src="x.image" class="img-result">
+                                        <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="alreadyRequested(x.id) === true">
+                                            <i class="material-icons">check</i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col s5 song-details">
+                                    <span v-html="x.song"></span>
+                                    <p class="grey-text p-space" v-html="x.artist"></p>
+                                    
+                                </div>
+                                <div class="col s3">
+                                    <span class="btn btn-floating waves-effect waves-light" @click="hostSendRequest(x)" 
+                                        :disabled="alreadyRequested(x.id) === true"
+                                        :class="{'btn-opaque':alreadyRequested(x.id) === true}">
+                                        <i class="material-icons">send</i>
+                                    </span>
+                                    <p class="grey-text animated bounce" style="font-size:12px" v-show="alreadyRequested(x.id) === true">requested</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </slide-modal>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;">
@@ -214,7 +272,7 @@
         </div>
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
-            <div class="row " v-show="!loader">
+            <div class="row " style="margin-bottom: 60px" v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id">
                     <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">

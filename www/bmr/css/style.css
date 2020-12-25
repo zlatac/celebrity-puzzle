@@ -286,6 +286,12 @@ img{
     align-items: center;
     border-radius: 15%;
 }
+.host-search-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+}
 @media only screen and (max-width: 1297px){
     .party-card{
         width: 90%;
