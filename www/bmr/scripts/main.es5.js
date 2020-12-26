@@ -1279,6 +1279,11 @@ var djSpotify = Vue.component('djSpotify', {
             };
             tag.src = "https://www.youtube.com/iframe_api";
             var firstScriptTag = document.getElementsByTagName('script')[0];
+            if ('YT' in window) {
+                //When user refreshes while in this route the script becomes loaded before they get back to this route
+                window.onYouTubeIframeAPIReady();
+                return;
+            }
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         },
         jukeBoxStateChanged: function jukeBoxStateChanged(event) {
@@ -1804,7 +1809,7 @@ Vue.component('badge', {
 
 });
 Vue.component('slide-modal', {
-    template: '\n    <div class="dj-modal-container" v-if="show">\n        <div class="close-body" @click="$emit(\'close\')"></div>\n        <div class="dj-modal-body animated slideInUp">\n            <slot></slot>\n        </div>\n    </div>\n    ',
+    template: '\n    <div class="dj-modal-container" v-if="show">\n        <div class="close-body" @click="$emit(\'close\')">\n            <i class="material-icons" style="font-size:4em;color:white;">expand_more</i>\n        </div>\n        <div class="dj-modal-body animated slideInUp">\n            <slot></slot>\n        </div>\n    </div>\n    ',
     props: ['show']
 
 });
