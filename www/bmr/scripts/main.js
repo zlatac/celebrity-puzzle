@@ -1819,8 +1819,8 @@ Vue.component('badge', {
     template: `
     <div class="component">
         <div class="dj-chip chip animated fadeInRight" @click="show = true">
-        <img :src="imageUrl" alt="Host">
-        Host
+        <img :src="imageUrl" :alt="badgeName">
+        {{badgeName}}
         </div>
         <slide-modal :show="show" @close="hideSlideModal">
             <slot></slot>
@@ -1828,6 +1828,7 @@ Vue.component('badge', {
     </div>
     `,
     mixins: [serviceProvider],
+    props: ['name'],
     data: function(){
         return {
             show: false,
@@ -1841,6 +1842,12 @@ Vue.component('badge', {
             }
             
             return this.noProfileUrl
+        },
+        badgeName(){
+            if (this.safe(this.name)){
+                return this.name
+            }
+            return 'Host'
         }
     },
     methods: {
@@ -1855,7 +1862,7 @@ Vue.component('slide-modal', {
     template: `
     <div class="dj-modal-container" v-if="show">
         <div class="close-body" @click="$emit('close')">
-            <i class="material-icons" style="font-size:4em;color:white;">expand_more</i>
+            <i class="material-icons animated fadeInUp">cancel</i>
         </div>
         <div class="dj-modal-body animated slideInUp">
             <slot></slot>

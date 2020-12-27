@@ -1783,8 +1783,9 @@ Vue.component('adsense', {
 });
 
 Vue.component('badge', {
-    template: '\n    <div class="component">\n        <div class="dj-chip chip animated fadeInRight" @click="show = true">\n        <img :src="imageUrl" alt="Host">\n        Host\n        </div>\n        <slide-modal :show="show" @close="hideSlideModal">\n            <slot></slot>\n        </slide-modal>\n    </div>\n    ',
+    template: '\n    <div class="component">\n        <div class="dj-chip chip animated fadeInRight" @click="show = true">\n        <img :src="imageUrl" :alt="badgeName">\n        {{badgeName}}\n        </div>\n        <slide-modal :show="show" @close="hideSlideModal">\n            <slot></slot>\n        </slide-modal>\n    </div>\n    ',
     mixins: [serviceProvider],
+    props: ['name'],
     data: function data() {
         return {
             show: false
@@ -1798,6 +1799,12 @@ Vue.component('badge', {
             }
 
             return this.noProfileUrl;
+        },
+        badgeName: function badgeName() {
+            if (this.safe(this.name)) {
+                return this.name;
+            }
+            return 'Host';
         }
     },
     methods: {
@@ -1809,7 +1816,7 @@ Vue.component('badge', {
 
 });
 Vue.component('slide-modal', {
-    template: '\n    <div class="dj-modal-container" v-if="show">\n        <div class="close-body" @click="$emit(\'close\')">\n            <i class="material-icons" style="font-size:4em;color:white;">expand_more</i>\n        </div>\n        <div class="dj-modal-body animated slideInUp">\n            <slot></slot>\n        </div>\n    </div>\n    ',
+    template: '\n    <div class="dj-modal-container" v-if="show">\n        <div class="close-body" @click="$emit(\'close\')">\n            <i class="material-icons animated fadeInUp">cancel</i>\n        </div>\n        <div class="dj-modal-body animated slideInUp">\n            <slot></slot>\n        </div>\n    </div>\n    ',
     props: ['show']
 
 });

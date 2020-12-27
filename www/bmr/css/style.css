@@ -156,6 +156,15 @@ img{
 .close-body {
     flex-grow: 1;
     background-color: transparent;
+    display: flex;
+    justify-content: center;
+}
+.close-body i {
+    font-size:5em;
+    color:white;
+    background: #ffffff45;
+    align-self: flex-start;
+    border-radius: 50%;
 }
 .dj-insta {
     display: flex;
@@ -260,9 +269,15 @@ img{
 .image-container.dj-gold .lead-fab {
     background: var(--real-gold);
 }
+.genre {
+    display: inline-flex;
+    max-width: 84%;
+    overflow-x: scroll;
+}
 .genre .chip {
     cursor: pointer;
     text-transform: capitalize;
+    min-width: fit-content;
 }
 .chip.genre-selected {
     background: var(--default-main);

@@ -176,8 +176,9 @@
 </script>
 <script type="text/x-template" id="djspotify">
     <div class="zontainer center-align animated fadeIn">
-        <badge @close-badge="setupAutoPlay">
+        <badge name="Settings" @close-badge="setupAutoPlay">
             <div class="col s12 genre">
+                <span class="chip" style="opacity:0.5;">Auto DJ</span>
                 <span class="chip" :class="{'genre-selected': x.selected}" v-for="(x, index) in genreOptions" :key="index" @click="toggleGenre(x)">{{x.genre}}</span>
             </div>
             <get-insta :comp="modalPage" @get-profile="getProfile" style="margin-top: 23px;padding: 0 10%;"></get-insta>
