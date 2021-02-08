@@ -1138,6 +1138,7 @@ const djSpotify = Vue.component('djSpotify', {
             widgetStarted: false,
             showHostRequest: false,
             jukeboxPlayerReady: false,
+            endedStateActive: false,
             modalPage: {
                 page: 'djspotify',
                 insta: false,
@@ -1281,6 +1282,7 @@ const djSpotify = Vue.component('djSpotify', {
                             console.error(new Error(event.data))
                             console.warn('Due to faliure i had to play the next song')
                             this.playNextSong()
+                            // error 150 video examples - videoId [k0XheliA6RY, V3RfzGpYu_0]
                         },
                         'onReady': () => {
                             if (this.isIOS() && this.isMobileOrTablet()) {
@@ -1317,12 +1319,17 @@ const djSpotify = Vue.component('djSpotify', {
                 case 'ended':
                     this.widgetStarted = false
                     // Sometimes the event fires in the order -1 0 -1 3 1 at the start of a new track
+                    if (!this.endedStateActive) {
+                        // this if block is just in case the ended event is called back to back immediately
+                        this.endedStateActive = true
                     setTimeout(() => {
                         if (this.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
                             clearInterval(this.fadeOutIntervalInstance)
                             this.playNextSong()
                         }
+                            this.endedStateActive = false
                     }, 3000)
+                    }
                     break;
                 case 'playing':
                     this.playing = true
@@ -1372,6 +1379,8 @@ const djSpotify = Vue.component('djSpotify', {
         },
         playNextSong(){
             this.widgetStarted =  false
+            // When error 150 happens add another auto request
+            this.addNextAutoRequest()
             this.jukeBoxList.shift()
             if (this.jukeBoxList.length > 0) {
                 this.jukeBoxInstance.setVolume(100)
