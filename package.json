@@ -11,8 +11,10 @@
     "develop": "gulp build",
     "build:engine": "webpack --config-name bmr-engine",
     "build:bmr": "webpack --config-name bmr",
+    "build:cbt": "webpack --config-name cbt",
     "dev:engine": "webpack-dev-server --open",
-    "dev:bmr": "webpack --config-name bmr --watch"
+    "dev:bmr": "webpack --config-name bmr --watch",
+    "dev:cbt": "webpack --config-name cbt --watch"
   },
   "author": "zlatac",
   "license": "UNLICENSED",

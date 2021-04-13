@@ -51,5 +51,23 @@ module.exports = [
         node: {
             Buffer: false
         }
+    },
+    {
+        name: 'cbt',
+        entry: './www/cbt/scripts/main.js',
+        mode: production ? 'production': 'development',
+        devtool: production ? 'none' : 'inline-source-map',
+        devServer: {
+            contentBase: './www/cbt/dist',
+            port: 8080,
+        },
+        output: {
+            filename: "bundle.js",
+            path: path.resolve(__dirname, 'www/cbt/dist')
+        },
+        module: {},
+        node: {
+            Buffer: false
+        }
     }
 ];

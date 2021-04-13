@@ -36,6 +36,10 @@ app.get('/dj', function(req,res){
     res.sendFile(__dirname + '/www/bmr/index.html');
 })
 
+app.get('/cbt', function(req,res){
+    res.sendFile(__dirname + '/www/cbt/index.html');
+})
+
 app.get('/myipaddress', function (req, res) {
     let ip = (req.headers['x-forwarded-for'] ||
     req.connection.remoteAddress ||

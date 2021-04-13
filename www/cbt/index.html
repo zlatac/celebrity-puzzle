@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta name="description" content="A fun song request platform & digital jukebox">
+    <meta name="keywords" content="jukebox,digital jukebox,jukebox software,blessmyrequest,bless my request,digital song request">
+    <meta property="og:image" content="">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:url" content="http://blessmyrequest.com">
+    <meta property="og:title" content="Bless My Request">
+    <meta property="og:description" content="A fun song request platform">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
+    <title>Bless My Request</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script> -->
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+    <script src="https://unpkg.com/vuex"></script>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Oswald" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link href="css/animate.css" rel="stylesheet">
+    <link href="bmr/css/style.css" rel="stylesheet">
+    <!-- favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="cbt/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="cbt/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="cbt/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="cbt/assets/favicon/site.webmanifest">
+    <link rel="mask-icon" href="cbt/assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
+    <!-- <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff"> -->
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script> -->
+    <!-- <script src="/bmr/lib/socket.io.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script> -->
+</head>
+<body>
+    <div id="myapp">
+        <router-view></router-view>
+    </div>
+<script type="text/x-template" id="landing"> 
+    <div>
+        <div class="background"></div>
+        <div class="color-overlay"></div>
+        <div class="center-align white-text" style="font-family: 'Oswald', cursive;">
+            <div style="font-size: 40px;margin-top: 7%;font-weight: bold;letter-spacing: 3px;">
+                <div>BLESSMYREQUEST</div>
+                <img class="circle" style="margin-top: 50px;width:180px;height:180px;" src="bmr/assets/logo.png">
+            </div>
+            <spinner class="animated fadeIn" style="margin-top:100px" :colorClass="'white'"></spinner>
+        </div>
+    </div>
+</script>
+<script src="cbt/dist/bundle.js"></script>
+<!-- <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script> -->
+</body>
+</html>

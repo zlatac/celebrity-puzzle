@@ -3,4 +3,5 @@ node_modules/
 .env
 www/bmr/engine/dist/bundle.js
 www/bmr/dist/
+**/**/dist/
 playlist.json
