@@ -6,11 +6,13 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "build": "npm run build:engine",
+    "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1",
     "develop": "gulp build",
-    "build:engine": "webpack",
-    "dev:engine": "webpack-dev-server --open"
+    "build:engine": "webpack --config-name bmr-engine",
+    "build:bmr": "webpack --config-name bmr",
+    "dev:engine": "webpack-dev-server --open",
+    "dev:bmr": "webpack --config-name bmr --watch"
   },
   "author": "zlatac",
   "license": "UNLICENSED",
@@ -30,6 +32,7 @@
   "dependencies": {
     "axios": "^0.18.1",
     "css-loader": "^2.1.0",
+    "dotenv": "^8.2.0",
     "express": "^4.16.3",
     "lodash": "^4.17.15",
     "socket.io": "^2.2.0",

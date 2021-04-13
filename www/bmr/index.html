@@ -26,21 +26,20 @@
     <link href="css/animate.css" rel="stylesheet">
     <link href="bmr/css/style.css" rel="stylesheet">
     <!-- favicon -->
-    <!-- <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png">
-    <link rel="manifest" href="assets/favicon/site.webmanifest">
-    <link rel="mask-icon" href="assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
-    <meta name="msapplication-TileColor" content="#da532c">
+    <link rel="apple-touch-icon" sizes="180x180" href="bmr/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="bmr/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="bmr/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="bmr/assets/favicon/site.webmanifest">
+    <link rel="mask-icon" href="bmr/assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
+    <!-- <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff"> -->
 
     <!-- Compiled and minified JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.min.js"></script> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
-    <!-- <script src="scripts/tones.js"></script> -->
     <script src="/bmr/lib/socket.io.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script> -->
 </head>
 <body>
     <div id="myapp">
@@ -53,10 +52,35 @@
         <div class="center-align white-text" style="font-family: 'Oswald', cursive;">
             <div style="font-size: 40px;margin-top: 7%;font-weight: bold;letter-spacing: 3px;">
                 <div>BLESSMYREQUEST</div>
-                <img class="circle" style="margin-top: 50px;width:180px;height:180px;" :src="logo">
+                <img class="circle" style="margin-top: 50px;width:180px;height:180px;" src="bmr/assets/logo.png">
             </div>
             <spinner class="animated fadeIn" style="margin-top:100px" :colorClass="'white'"></spinner>
         </div>
+    </div>
+</script>
+<script type="text/x-template" id="home-two">
+    <div>
+        <div class="card dark-card animated party-card" v-for="(x, index) in partyCards" 
+            :key="index" :class="x.classes" @click="openModal(x.name)">
+            <div class="top">
+                <button>{{x.name}}</button>
+                <img class="animated fadeInUpBig" v-show="x.name === 'host party' && showHostMobile" style="margin: 0 5px;"
+                    :src="mobileOffImage" width="10%"/>
+            </div>
+            <div class="footer animated fadeInRight">
+                <img style="margin: 0 5px;" v-for="(item, imgIndex) in x.icons" :key="imgIndex" :src="item.img" :width="item.width"/>
+            </div>
+        </div>
+        <slide-modal :show="showModal" @close="closeModal" class="small-modal" style="background: var(--main-opaque)" :class="{'host-hue': isHostParty}">
+            <div class="party-modal" style="padding: 10%;display: grid;">
+                <input type="text" class="animated" :maxlength="partyModal.maxLength" :placeholder="partyModal.placeholder" v-model="modalInput"
+                    :style="partyModal.inputStyle" :class="{'error shake': partyModalError}" @keyup="inputTyping" @keyup.enter="submitModalInput"/>
+                <div class="btn btn-background animated fadeInUp" style="margin-top: 20px;width: 50%;place-self: center;"
+                    v-show="modalInput !== '' && !partyModalLoader" @click="submitModalInput">{{partyModal.name}}</div>
+                <spinner class="animated fadeIn" :colorClass="'default'" v-show="partyModalLoader" style="justify-self: center"></spinner>
+            </div>
+        </slide-modal>
+
     </div>
 </script>
 <script type="text/x-template" id="spotify">
@@ -83,10 +107,13 @@
                              v-imgfallback 
                              alt="" class="circle animated infinite" width="90px" height="90px" @click="goToDjView"
                              :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected, 'img-vip': isVip}">
-                        <p class="zero-margin">{{club.name}} <span class="grey-text animated fadeIn" v-show="!isConnected">- Reconnecting...</span></p>
+                        <p class="zero-margin" style="text-transform:capitalize;">
+                            {{club.name}}<span class="grey-text animated fadeIn" v-show="!isConnected"> - Reconnecting...</span>
+                        </p>
                         <p class="zero-margin-bottom">
                             <!-- <span><i class="material-icons">people</i>56</span> -->
-                            <span class="chip" v-show="!isVip" @click="enterVip">Enter VIP</span>
+                            <span class="chip" @click="SharePartyRoom">Share Party: {{club.id}}</span>
+                            <!-- <span class="chip" v-show="!isVip" @click="enterVip">Enter VIP</span> -->
                             <span class="chip vip-chip" v-show="isVip">VIP Room - {{vipMode.limit}} requests left</span>
                         </p>
                     </div>
@@ -118,10 +145,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}" :key="x.id">
                     <div class="row">
                         <div class="col s4">
-                            <div style="position: relative;">
+                            <div style="position: relative;width: min-content;margin: 0 auto;">
                                 <img :src="x.image" class="img-result">
                                 <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="alreadyRequested(x.id) === true">
                                     <i class="material-icons">check</i>
@@ -149,10 +176,72 @@
 </script>
 <script type="text/x-template" id="djspotify">
     <div class="zontainer center-align animated fadeIn">
-        <badge>
+        <badge name="Settings" @close-badge="setupAutoPlay">
+            <div class="col s12 genre">
+                <span class="chip" style="opacity:0.5;">Auto DJ</span>
+                <span class="chip" :class="{'genre-selected': x.selected}" v-for="(x, index) in genreOptions" :key="index" @click="toggleGenre(x)">{{x.genre}}</span>
+            </div>
             <get-insta :comp="modalPage" @get-profile="getProfile" style="margin-top: 23px;padding: 0 10%;"></get-insta>
             <div class="btn btn-background" v-if="modalPage.imageacquired" @click="setDj">Take The Spotlight</div>
         </badge>
+        <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4" @click="toggleShowHostRequest" v-show="jukeboxPlayerReady">
+            <i class="material-icons" style="font-size:32px;color:white;margin-top:2px;">playlist_add</i>
+        </div>
+        <slide-modal :show="showHostRequest" @close="toggleShowHostRequest">
+            <div class="host-search-container">
+                <div class="row" style="margin-bottom: 0px;width:100%;padding:6%">
+                    <form  novalidate @submit.stop.prevent="hostSearchTrack">
+                        <div class="col s9">
+                            <input type="text" name="q" placeholder="Search tracks" v-model="searchInput" 
+                                   v-inputHighlight autocomplete="off">
+                        </div>
+                        <div class="col s3">
+                            <button type="submit" class="btn btn-floating waves-effect waves-light">
+                                <i class="material-icons">search</i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="host-search-results" style="overflow-y:scroll;flex-grow:1;padding:0 6%;">
+                    <spinner :colorClass="'default'" v-show="loader"></spinner>
+                    <div class="row " v-show="!loader">
+                        <div class="card dark-card animated fadeInUp" v-show="noResult === true">
+                            <div class="row">
+                                <div class="col s12">
+                                    <p><b>Sorry!! Can't find that song.</b></p>
+                                    <p><b>Search for another song.</b></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card dark-card animated fadeInUp" v-for="(x, index) in displaySearchResult" :class="{'firstresult': index === 0}" :key="x.id">
+                            <div class="row">
+                                <div class="col s4">
+                                    <div style="position: relative;width: min-content;margin: 0 auto;">
+                                        <img :src="x.image" class="img-result">
+                                        <span class="btn btn-small btn-floating lead-fab z-depth-3 animated bounceIn" v-show="alreadyRequested(x.id) === true">
+                                            <i class="material-icons">check</i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col s5 song-details">
+                                    <span v-html="x.song"></span>
+                                    <p class="grey-text p-space" v-html="x.artist"></p>
+                                    
+                                </div>
+                                <div class="col s3">
+                                    <span class="btn btn-floating waves-effect waves-light" @click="hostSendRequest(x)" 
+                                        :disabled="alreadyRequested(x.id) === true"
+                                        :class="{'btn-opaque':alreadyRequested(x.id) === true}">
+                                        <i class="material-icons">send</i>
+                                    </span>
+                                    <p class="grey-text animated bounce" style="font-size:12px" v-show="alreadyRequested(x.id) === true">requested</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </slide-modal>
         <div class="zow">
             <div class="col s12 lead-fixed">
                 <div class="card-panel" style="margin-top: 0px;">
@@ -162,23 +251,39 @@
                                  alt="" class="circle animated infinite" width="90px" height="90px" v-imgfallback
                                  :class="{'img-online pulse': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
-                        <div class="col s3"><span><i class="material-icons">people</i>{{population.length}}</span></div>
-                        <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div>
+                        <div class="col s4"><span><i class="material-icons">people</i>{{population.length}}</span></div>
+                        <div class="col s4" style="font-weight:bold;letter-spacing:1px;" @click="SharePartyRoom">
+                            <span class="btn btn-floating">
+                                <i class="material-icons" v-if="!isMobileOrTablet()">vpn_key</i>
+                                <i class="material-icons" style="transform: rotateY(180deg)" v-if="isMobileOrTablet()">reply</i>
+                            </span> {{club.id}}
+                        </div>
+                        <!-- <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div> -->
                     </div>
-                    <div id="jukebox" style="display:none"></div>
+                    <div class="jukebox-container" style="display:none">
+                        <div class="jukebox-cover">
+                            <i class="material-icons" style="font-size: 8em">power_settings_new</i>
+                        </div>
+                        <div id="jukebox"></div>
+                    </div>
+                    
                     
                 </div>
             </div>
         </div>
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
-            <div class="row " v-show="!loader">
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" v-if="x.hide === false">
+            <div class="row " style="margin-bottom: 60px" v-show="!loader">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id">
                     <div class="row" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
-                            <div style="position: relative;">
+                            <div class="image-container" :class="{'first-image': index === 0, 'dj-gold': x.isAuto}">
                                 <img class="img-result" :src="x.image">
-                                <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.requestCount}}</span>
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.isAuto ? 'DJ' : x.requestCount}}</span>
+                                <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && !playing"
+                                @click="mediaPlay">play_arrow</i>
+                                <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && playing"
+                                @click="mediaPause">pause</i>
                             </div>   
                         </div>                     
                         <div class="col s5 song-details">
@@ -190,8 +295,8 @@
                                     Yes
                                 </label>
                             </div>
-                            {{x.song}} 
-                            <p class="grey-text p-space">{{x.artist}}</p>
+                            {{x.song | songName}} 
+                            <p class="grey-text p-space">{{x.artist | songName}}</p>
                             <p class="p-space" v-if="!jukeboxMode"><b>[ {{x.bpm}} ]</b></p>
                             <p class="p-space" v-if="!jukeboxMode && x.explicit"><b>---- Explicit ----</b></p>
                         </div>
@@ -282,7 +387,7 @@
         </div>
     </div>
 </script>
-<script src="bmr/scripts/main.es5.js"></script>
+<script src="bmr/dist/bundle.js"></script>
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 </body>
 </html>

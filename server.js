@@ -5,6 +5,10 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var axios = require('axios');
 var querystring = require('querystring');
+var fs = require('fs').promises;
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config()
+}
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
 
@@ -48,8 +52,11 @@ app.get('/engine', function(req,res){
 
 app.use(express.static(path.resolve(__dirname, 'www')));
 
-var dataStore = {acquiringToken:false,pendingRequests:[],djData:[]};
+var dataStore = {acquiringToken:false,pendingRequests:[],djData:[],partyRooms:{}};
 var authorize = Buffer.from('69b05d3b1a0a4bb9a404d8748c5f5a54:84a00b36aff4410a8fdaee869f7fec02').toString('base64')
+var alphaMap = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'];
+var milk = ''
+
 function spotifyToken(client){
     if(dataStore.acquiringToken === false){
         dataStore.acquiringToken = true
@@ -77,6 +84,67 @@ function spotifyToken(client){
     
 }
 
+function youtubePlaylist(playListId){
+    return axios.request({
+        method:'get',
+        url:'https://www.googleapis.com/youtube/v3/playlistItems',
+        headers:{
+            Accept: 'application/json',
+            origin: 'https://blessmyrequest.com',
+            referer: 'https://blessmyrequest.com'
+        },
+        params: {
+            part: 'snippet',
+            playlistId: playListId,
+            key: process.env.YOUTUBE_KEY,
+            maxResults: 50
+        }
+    })
+}
+
+async function getPlaylists(){
+    try {
+        const playList = [
+            {playListId:'PLz12V8TsgQRnZxHemWzJDIqiZl5lfLqJ_', genre: 'top 40'},
+            {playListId:'PLz12V8TsgQRk6bcrtWiIf7KZ2it0upRIG', genre: 'afrobeats'},
+            {playListId:'PLz12V8TsgQRkCigOqDmMvxM5WatnJTOcP', genre: 'hip hop'},
+
+        ]
+        // const playList = JSON.parse(process.env.PLAY_LIST)
+        const listMapping = {}
+        playList.forEach((item) => {listMapping[item.playListId] = item.genre})
+        const playlistMap = playList.map((item) => youtubePlaylist(item.playListId))
+        const responses = await axios.all(playlistMap)
+        if (responses.every((item) => item.status === 200)) {
+            //console.log(responses)
+            const bucket = responses.map((item) => {
+                const songs = item.data.items.map((i)=>{
+                    let obj = {}
+                    obj.image = i.snippet.thumbnails.default.url
+                    obj.song = i.snippet.title.split(' - ')[1] || ''
+                    obj.artist = i.snippet.title.split(' - ')[0] || ''
+                    obj.id = i.snippet.resourceId.videoId
+                    return obj
+                })
+                return {
+                    genre: listMapping[item.config.params.playlistId],
+                    songs
+                }
+            })
+            //console.log(bucket, bucket[0].songs[0])
+            await fs.writeFile('playlist.json', JSON.stringify(bucket))
+
+        }else {
+            throw new Error('oh oh')
+        }
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+//console.log(process.env.YOUTUBE_KEY)
+getPlaylists()
+
 function clearDataLater(){
     dataStore.timeout = function(){
         //this empties the question data saved after 20 minutes
@@ -99,6 +167,20 @@ function clearDataLater(){
         
     }();
     //console.log('wowowowowowo')
+}
+
+function generatePartyCode(){
+    let hash = '';
+    for(let i=0; i < 4; i++){
+        hash += alphaMap[Math.floor(Math.random()*alphaMap.length)]
+    }
+    
+    // if code is already in use create a new code
+    if (hash in dataStore.partyRooms) {
+        return generatePartyCode()
+    }
+
+    return hash
 }
 
 
@@ -212,6 +294,49 @@ app.get('/profile', function(req,res){
     }else{
         res.status(400)
         res.send(insta)
+    }
+});
+
+app.post('/startParty', function(req,res){
+    const partyName = req.query.name.trim();
+    if(partyName !== undefined && partyName !== '' && partyName.length <= 26){
+        const partyCode = generatePartyCode()
+        dataStore.partyRooms[partyCode] = {name: partyName}
+        res.status(200)
+        res.send({
+            code: partyCode.toUpperCase(),
+            name: partyName
+        })
+    }else{
+        res.status(400)
+        res.send('Need a name for the party (26 characters max)')
+    }
+});
+
+app.get('/startParty', function(req,res){
+    const partyCode = req.query.code.trim().toLowerCase();
+    if(partyCode !== undefined && partyCode !== '' && partyCode.length <= 5 && partyCode in dataStore.partyRooms){
+        const partyName = dataStore.partyRooms[partyCode].name
+        res.status(200)
+        res.send({
+            code: partyCode.toUpperCase(),
+            name: partyName
+        })
+    }else{
+        res.status(400)
+        res.send(`Party "${partyCode}" does not exist`)
+        io.sockets.emit('sessionOver', partyCode);
+    }
+});
+
+app.get('/allPlaylist', async function(req,res){
+    try {
+        const data = await fs.readFile('playlist.json')
+        res.status(200)
+        res.send(JSON.parse(data))
+    } catch (error) {
+        res.status(404)
+        res.send('ooops something went wrong')
     }
 });
 
