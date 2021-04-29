@@ -1,3 +1,5 @@
+import { times } from 'lodash';
+import progress from './components/progress';
 const serviceProvider = {
     data: function(){
         return{
@@ -135,6 +137,31 @@ const serviceProvider = {
         },
         isIOS(){
             return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        },
+        openDatePicker(event){
+            event.preventDefault()
+            const datePickerInstance = M.Datepicker.getInstance(event.target)
+            datePickerInstance.open()
+        },
+        setDate(){
+            const dateInputs = Object.values(document.querySelectorAll('.date-input'))
+            const dateInputInstances = dateInputs.map((item) => M.Datepicker.getInstance(item))
+            const instanceWithOpenDatePicker = dateInputInstances.filter(item => item.isOpen === true)
+            if (instanceWithOpenDatePicker.length === 1) {
+                const vueDataProperty = instanceWithOpenDatePicker[0].el.getAttribute('data-vm')
+                this.$set(this,vueDataProperty, instanceWithOpenDatePicker.toString())
+            }
+        },
+        instantiateDatePicker(){
+            const currentYear = new Date().getFullYear()
+            const ninetyYearsAgo = currentYear - 90
+            const options = {
+                format: 'dd-mm-yyyy',
+                yearRange: [ninetyYearsAgo,currentYear],
+                onSelect: this.setDate
+            }
+            const dateInputs = document.querySelectorAll('.date-input')
+            M.Datepicker.init(dateInputs, options)
         }
     }
 }
@@ -145,7 +172,285 @@ const landing = Vue.component('landing', {
     // dark experiment:#252525
     template:'#landing',
     mixins: [serviceProvider],
-    created: function(){}
+    mounted: function(){
+        const currentYear = new Date().getFullYear()
+        const ninetyYearsAgo = currentYear - 90
+        const options = {
+            format: 'dd-mm-yyyy',
+            yearRange: [ninetyYearsAgo,currentYear],
+            onSelect: this.setDateOfBirth
+        }
+        this.datePickerInstance = M.Datepicker.init(this.$refs.date, options)
+    },
+    data: function(){
+        return {
+            searchInput: '',
+            searchDate: '',
+            datePickerInstance: undefined,
+            loading: false,
+            showModal: false,
+            showErrorDate: false,
+        }
+    },
+    methods: {
+        setDateOfBirth(){
+            this.searchDate = this.datePickerInstance.toString()
+            this.showErrorDate = false
+        },
+        openDatePicker(event){
+            event.preventDefault()
+            this.datePickerInstance.open()
+        },
+        searchFreeReport(){
+            this.showErrorDate = false
+            if (this.safe(this.searchInput) && !this.loading) {
+                const dateOfBirth = this.searchDate
+                const correctDateFormat = /[0-9]{2}-[0-9]{2}-[0-9]{4}/.test(dateOfBirth)
+                if (this.safe(dateOfBirth) && correctDateFormat) {
+                    try {
+                        this.loading = true
+                        // make http request to find individual
+                        this.showModal = true
+                    } catch (error) {
+                        console.error(new Error(error))
+                    } finally {
+                        this.loading = false
+                    }
+                } else {
+                    this.showErrorDate = true
+                }
+            }
+        },
+        startPaymentProcess() {
+            // initiate payment step
+        },
+        getPaidReport() {
+            // use invoice id to retrieve report 
+        }
+    }
+});
+
+const tenantInfo = {
+    template:'#tenant-info',
+    mixins: [serviceProvider],
+    data: function(){
+        return {
+            name: '',
+            dateOfBirth: '',
+            submitted: false,
+        }
+    },
+    mounted: function(){
+        this.instantiateDatePicker()
+    },
+    computed: {
+        tenant(){
+            const name = this.name
+            const dateOfBirth = this.dateOfBirth
+            return {name, dateOfBirth}
+        }
+    },
+    methods: {
+        async submit(){
+            this.submitted =  false
+            const valid = await this.$refs.form.validate()
+            if (valid) {
+                this.$emit('next', {tenant: this.tenant})
+            } else {
+                this.submitted = true
+            }
+        }
+    }
+};
+const landlordInfo = {
+    template:'#landlord-info',
+    mixins: [serviceProvider],
+    data: function(){
+        return {
+            fullname: '',
+            email: '',
+            submitted: false,
+        }
+    },
+    computed: {
+        landlord(){
+            const fullname = this.fullname
+            const email = this.email
+            return {fullname, email}
+        }
+    },
+    methods: {
+        async submit(){
+            this.submitted =  false
+            const valid = await this.$refs.form.validate()
+            if (valid) {
+                this.$emit('next', {landlord: this.landlord})
+            } else {
+                this.submitted = true
+            }
+        }
+    }
+};
+const incident = {
+    template:'#incident',
+    mixins: [serviceProvider],
+    data: function(){
+        return {
+            summary: '',
+            amount: '',
+            incidentType: '',
+            dateOfIncident: '',
+            files: {
+                proofImages: [],
+                leaseAgreement: [],
+                propertyTaxBill: [],
+            },
+            submitted: false,
+        }
+    },
+    computed: {
+        incident(){
+            const summary = this.summary
+            const amount = this.amount
+            const incidentType = this.incidentType
+            const dateOfIncident = this.dateOfIncident
+            const files = this.files
+            return {summary, amount, incidentType, dateOfIncident, files}
+        }
+    },
+    mounted: function(){
+        const elems = document.querySelectorAll('select');
+        M.FormSelect.init(elems);
+        new M.CharacterCounter(this.$refs.summary)
+        this.instantiateDatePicker()
+    },
+    methods: {
+        async submit(){
+            this.submitted =  false
+            const valid = await this.$refs.form.validate()
+            if (valid) {
+                this.getAllFiles()
+                this.$emit('next', {incident: this.incident})
+            } else {
+                this.submitted = true
+            }
+        },
+        getAllFiles(){
+            this.files.proofImages = this.$refs.proofImages.value
+            this.files.leaseAgreement = this.$refs.leaseAgreement.value
+            this.files.propertyTaxBill = this.$refs.propertyTaxBill.value
+        }
+    }
+};
+
+const pay = {
+    template: `
+    <form id="payment-form" @submit.prevent="submit">
+        <div id="card-element" ref="pay">
+        <!-- Elements will create input elements here -->
+        </div>
+    
+        <!-- We'll put the error messages in this element -->
+        <div id="card-errors" role="alert"></div>
+    
+        <button id="submit">Submit Payment</button>
+        </form>
+    `,
+    data: function(){
+        return {
+            paySecret: '',
+            payInstance: undefined,
+            card: undefined,
+            stripe: undefined,
+        }
+    },
+    async mounted(){
+        this.setupElements()
+        this.mountPayment()
+    },
+    methods: {
+        setupElements(){
+            this.stripe = Stripe('pk_test_N88xhltrU10L6A5HnZliFjNP');
+            this.payInstance = this.stripe.elements()
+        },
+        mountPayment(){
+            this.card = this.payInstance.create("card");
+            this.card.mount(this.$refs.pay);
+        },
+        async getClientSecret(){
+            const response = await fetch('/paySecret');
+            const data = await response.json();
+            this.paySecret = data.client_secret
+        },
+        async submit(){
+            await this.getClientSecret()
+            const result = await this.stripe.confirmCardPayment(this.paySecret, {
+                payment_method: {
+                  card: this.card,
+                  billing_details: {
+                    name: 'Jenny Rosen'
+                  }
+                }
+            })
+
+            console.log(result.paymentIntent.status)
+        }
+    }
+}
+
+const reportTenant = Vue.component('report-tenant', {
+    template:'#report-tenant',
+    components: {
+        'tenant-info': tenantInfo,
+        'landlord-info': landlordInfo,
+        'incident': incident,
+        'pay': pay
+    },
+    data: function(){
+        return {
+            step: 4,
+            steps: [
+                'tenant-info',
+                'landlord-info',
+                'incident',
+                'pay',
+            ],
+            reportFiled: {
+                // Must be in order of steps data property
+                tenant: {},
+                landlord: {},
+                incident: {}
+            }
+        }
+    },
+    computed: {
+        formStep(){
+            return this.steps[this.step - 1]
+        }
+    },
+    methods: {
+       goForward(payload){
+           this.updateReportFilled(payload)
+           if (this.step !== this.steps.length) {
+               this.step++
+           }
+       },
+       goBackward(){
+            if (this.step > 1) {
+                this.step--
+            }
+       },
+       updateReportFilled(payload){
+           const key = Object.keys(this.reportFiled)[this.step - 1]
+            if (key in payload) {
+                this.reportFiled[key] = payload[key]
+            }
+       }   
+    }
+});
+
+const terms = Vue.component('terms', {
+    template:'#terms',
 });
 
 Vue.component('modal',{
@@ -322,8 +627,30 @@ const store = new Vuex.Store({
     }
 })
 
+VeeValidate.extend('email', VeeValidate.Rules.email)
+VeeValidate.extend('required', VeeValidate.Rules.required)
+VeeValidate.extend('is_not', VeeValidate.Rules.is_not)
+VeeValidate.extend('ext', VeeValidate.Rules.ext)
+VeeValidate.extend('size', VeeValidate.Rules.size)
+VeeValidate.extend('length', VeeValidate.Rules.length)
+VeeValidate.extend('image', VeeValidate.Rules.image)
+VeeValidate.extend('max', VeeValidate.Rules.max)
+VeeValidate.extend('file_max', {
+    validate(value, args) {
+        const length = value.length;
+    
+        return length <= args.max;
+      },
+      params: ['max']
+})
+
+Vue.component('ValidationObserver', VeeValidate.ValidationObserver);
+Vue.component('ValidationProvider', VeeValidate.ValidationProvider);
+
 const routes = [
   { path: '/', component: landing },
+  { path: '/terms', component: terms },
+  { path: '/report-tenant', component: reportTenant },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({

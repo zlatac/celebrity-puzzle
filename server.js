@@ -6,6 +6,7 @@ var io = require('socket.io')(server);
 var axios = require('axios');
 var querystring = require('querystring');
 var fs = require('fs').promises;
+const stripe = require('stripe')('sk_test_vFdI1YPYvp7LcAU3b9Cc39bF');
 if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
@@ -343,4 +344,22 @@ app.get('/allPlaylist', async function(req,res){
         res.send('ooops something went wrong')
     }
 });
+
+app.get('/paySecret', async function(req,res){
+    try {
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: 499,
+            currency: 'usd',
+            // Verify your integration in this guide by including this parameter
+            metadata: {integration_check: 'accept_a_payment'},
+        });
+        // send transaction id to database
+        res.json({client_secret: paymentIntent.client_secret});
+    } catch (error) {
+        res.status(404)
+        res.send('ooops something went wrong')
+    }
+});
+
+
 
