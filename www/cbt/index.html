@@ -98,7 +98,7 @@
     <div>
         <cbt-progress :current="step" :max="steps.length"></cbt-progress>
         <keep-alive>
-            <component :is="formStep" @back="goBackward" @next="goForward"></component>
+            <component :is="formStep" @back="goBackward" @next="goForward" :submit-call="submitReportFilled"></component>
         </keep-alive>
     </div>
 </script>

@@ -346,22 +346,34 @@ const incident = {
 const pay = {
     template: `
     <form id="payment-form" @submit.prevent="submit">
+        <div class="input-feild">
+            <input  
+            type="text"
+            required
+            placeholder="Name of cardholder"
+            v-model="cardName">
+        </div>
         <div id="card-element" ref="pay">
         <!-- Elements will create input elements here -->
         </div>
     
         <!-- We'll put the error messages in this element -->
-        <div id="card-errors" role="alert"></div>
+        <div id="card-errors" role="alert">{{errorMessage}}</div>
     
         <button id="submit">Submit Payment</button>
         </form>
     `,
+    props: ['submit-call'],
     data: function(){
         return {
             paySecret: '',
             payInstance: undefined,
             card: undefined,
             stripe: undefined,
+            cardName: '',
+            errorMessage: '',
+            submitted: false,
+            submissionId: 0,
         }
     },
     async mounted(){
@@ -374,8 +386,21 @@ const pay = {
             this.payInstance = this.stripe.elements()
         },
         mountPayment(){
-            this.card = this.payInstance.create("card");
+            const style = {
+                base: {
+                    color: "#32325d",
+                }
+            };
+              
+            this.card = this.payInstance.create("card", {style});
             this.card.mount(this.$refs.pay);
+            this.card.on('change', ({error}) => {
+                if (error) {
+                    this.errorMessage = error.message
+                } else {
+                    this.errorMessage = ''
+                }
+            })
         },
         async getClientSecret(){
             const response = await fetch('/paySecret');
@@ -383,17 +408,40 @@ const pay = {
             this.paySecret = data.client_secret
         },
         async submit(){
-            await this.getClientSecret()
-            const result = await this.stripe.confirmCardPayment(this.paySecret, {
-                payment_method: {
-                  card: this.card,
-                  billing_details: {
-                    name: 'Jenny Rosen'
-                  }
-                }
-            })
+            if (!this.submitted) {
+                try {
+                    // First get transaction id
+                    await this.getClientSecret()
+                    // submit form data with transaction id
+                    this.submissionId = await this.submitCall(this.paySecret)
+                    // finalize payment
+                    const result = await this.stripe.confirmCardPayment(this.paySecret, {
+                        payment_method: {
+                            card: this.card,
+                            billing_details: {
+                                name: this.cardName
+                            }
+                        }
+                    })
+                    if (result.error) {
+                        this.errorMessage = result.error.message
+                        return
+                    } else if(result.paymentIntent.status === 'succeeded') {
+                        await this.confirmSuccessfulPayment()
+                        // Show success message and hide pay elements
+                    }
+                } catch(e) {
 
-            console.log(result.paymentIntent.status)
+                } finally {
+                    this.submitted = false
+                }
+            }
+            
+        },
+        async confirmSuccessfulPayment(){
+            await fetch(`http://localhost:8081/cbt/${this.submissionId}/${this.paySecret}`, {
+                method: 'POST',
+            })
         }
     }
 }
@@ -408,7 +456,7 @@ const reportTenant = Vue.component('report-tenant', {
     },
     data: function(){
         return {
-            step: 4,
+            step: 1,
             steps: [
                 'tenant-info',
                 'landlord-info',
@@ -445,6 +493,34 @@ const reportTenant = Vue.component('report-tenant', {
             if (key in payload) {
                 this.reportFiled[key] = payload[key]
             }
+       },
+       // Called inside payment component
+       async submitReportFilled(transactionId){
+           const formData = new FormData()
+           let incident, files
+           ({files, ...incident} = this.reportFiled.incident)
+           formData.append('tenant', JSON.stringify(this.reportFiled.tenant))
+           formData.append('landlord', JSON.stringify(this.reportFiled.landlord))
+           formData.append('incident', JSON.stringify(incident))
+           formData.append('propertyTaxBill', files.propertyTaxBill[0])
+           formData.append('leaseAgreement', files.leaseAgreement[0])
+           files.proofImages.forEach((item) => {
+            formData.append('proofImages[]', item)
+           })
+           formData.append('transactionId', transactionId)
+           //formData.append('proofImages[]', files.proofImages)
+
+           const resp = await fetch('http://localhost:8081/cbt', {
+                method: 'POST',
+                body: formData,
+           })
+
+           const data = await resp.json()
+           if (resp.status === 200 && data) {
+            return Promise.resolve(data)
+           }
+           
+           console.log(data)
        }   
     }
 });
