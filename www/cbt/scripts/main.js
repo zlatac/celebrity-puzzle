@@ -210,11 +210,15 @@ const landing = Vue.component('landing', {
                     try {
                         this.loading = true
                         // make http request to find individual
-                        this.showModal = true
+                        setTimeout(()=>{
+                            this.showModal = true
+                            this.loading = false
+                        }, 1500)
+                        //this.showModal = true
                     } catch (error) {
                         console.error(new Error(error))
                     } finally {
-                        this.loading = false
+                        //this.loading = false
                     }
                 } else {
                     this.showErrorDate = true
@@ -478,6 +482,8 @@ const reportTenant = Vue.component('report-tenant', {
             ],
             showProgressStep: true,
             showPaySuccess: false,
+            animateForward: false, 
+            animateBackward: false, 
             reportFiled: {
                 // Must be in order of steps data property
                 tenant: {},
@@ -499,11 +505,15 @@ const reportTenant = Vue.component('report-tenant', {
            this.updateReportFilled(payload)
            if (this.step !== this.steps.length) {
                this.step++
+               this.animateBackward = false
+               this.animateForward = true
            }
        },
        goBackward(){
             if (this.step > 1) {
                 this.step--
+                this.animateForward = false
+                this.animateBackward = true
             }
        },
        updateReportFilled(payload){

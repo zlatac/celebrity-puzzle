@@ -24,6 +24,10 @@ html, body, #myapp {
     position: relative;
     overflow: auto;
 }
+.landing .dj-modal-body {
+    padding: 5% 5% 0;
+    text-align: center;
+}
 .name-search {
     position: relative;
     margin-top: 15vh;
@@ -101,7 +105,7 @@ header {
     top: 0px;
     padding: 5px 4% 0;
     z-index: 5;
-    background-color: white;
+    background-color: #fff;
 }
 header .btn {
     border-radius: 25px;
@@ -197,6 +201,7 @@ h3 {
     justify-content: space-evenly;
     width: 100%;
     padding: 0 10%;
+    margin-bottom: 36px;
 }
 .navigate-alone {
     width: 100%;
@@ -224,8 +229,11 @@ h3 {
     color: limegreen;
     font-size: 7rem;
 }
-.pay-success p span {
+.pay-success p span, .landing .not-found p span {
     color: var(--main);
+}
+.capitalize {
+     text-transform: capitalize;
 }
 
 /******************************************/
