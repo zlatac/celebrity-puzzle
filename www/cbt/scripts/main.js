@@ -346,22 +346,27 @@ const incident = {
 const pay = {
     template: `
     <form id="payment-form" @submit.prevent="submit">
-        <div class="input-feild">
-            <input  
-            type="text"
-            required
-            placeholder="Name of cardholder"
-            v-model="cardName">
+        <h3>Checkout</h3>
+        <div class="input-field">
+            <input
+                id="card-payment-name"
+                type="text"
+                required
+                v-model="cardName">
+            <label for="card-payment-name">Name of Cardholder</label>
         </div>
         <div id="card-element" ref="pay">
         <!-- Elements will create input elements here -->
         </div>
     
         <!-- We'll put the error messages in this element -->
-        <div id="card-errors" role="alert">{{errorMessage}}</div>
+        <div id="card-errors" class="error" role="alert" style="margin-top: 7px;">{{errorMessage}}</div>
     
-        <button id="submit">Submit Payment</button>
-        </form>
+        <button id="submit" class="btn navigate-alone" style="margin-top: 7px;" :class="{'disabled': submitted}">
+            <span v-show="!submitted">Pay - $29.99</span>
+            <spinner color-class="white" v-show="submitted"></spinner>
+        </button>
+    </form>
     `,
     props: ['submit-call'],
     data: function(){
@@ -429,6 +434,7 @@ const pay = {
                     } else if(result.paymentIntent.status === 'succeeded') {
                         await this.confirmSuccessfulPayment()
                         // Show success message and hide pay elements
+                        this.$emit('paySuccess')
                     }
                 } catch(e) {
 
@@ -446,23 +452,32 @@ const pay = {
     }
 }
 
+const paySuccess = {
+    template: '#pay-success',
+    props: ['report-filed'],
+
+}
+
 const reportTenant = Vue.component('report-tenant', {
     template:'#report-tenant',
     components: {
         'tenant-info': tenantInfo,
         'landlord-info': landlordInfo,
         'incident': incident,
-        'pay': pay
+        'pay': pay,
+        'pay-success': paySuccess
     },
     data: function(){
         return {
-            step: 1,
+            step: 4,
             steps: [
                 'tenant-info',
                 'landlord-info',
                 'incident',
                 'pay',
             ],
+            showProgressStep: true,
+            showPaySuccess: false,
             reportFiled: {
                 // Must be in order of steps data property
                 tenant: {},
@@ -473,6 +488,9 @@ const reportTenant = Vue.component('report-tenant', {
     },
     computed: {
         formStep(){
+            if (this.showPaySuccess) {
+                return 'pay-success'
+            }
             return this.steps[this.step - 1]
         }
     },
@@ -521,6 +539,11 @@ const reportTenant = Vue.component('report-tenant', {
            }
            
            console.log(data)
+       },
+       paySuccess(){
+           this.step = 5
+           this.showProgressStep = false
+           this.showPaySuccess = true
        }   
     }
 });

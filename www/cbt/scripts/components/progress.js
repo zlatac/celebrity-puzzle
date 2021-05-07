@@ -9,7 +9,7 @@ class Progress extends HTMLElement {
 		const shadow = this.attachShadow({mode: 'open'})
         this.shadowRoot.appendChild(template.cloneNode(true))
         this.addProgress()
-        console.log(this.current, this.max)
+        //console.log(this.current, this.max)
     }
     
     set current(value) {
