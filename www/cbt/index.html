@@ -106,7 +106,7 @@
         <cbt-progress :current="step" :max="steps.length" v-show="showProgressStep"></cbt-progress>
         <keep-alive>
             <component 
-                class="animated fadeIn"
+                class="animated fadeIn report-form-container"
                 :is="formStep" 
                 @back="goBackward" 
                 @next="goForward"

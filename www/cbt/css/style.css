@@ -235,6 +235,9 @@ h3 {
 .capitalize {
      text-transform: capitalize;
 }
+.report-form-container {
+    padding: 0 5%;
+}
 
 /******************************************/
 

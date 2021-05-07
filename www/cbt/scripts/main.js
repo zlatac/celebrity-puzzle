@@ -1,4 +1,3 @@
-import { times } from 'lodash';
 import progress from './components/progress';
 const serviceProvider = {
     data: function(){
@@ -419,6 +418,7 @@ const pay = {
         async submit(){
             if (!this.submitted) {
                 try {
+                    this.submitted = true
                     // First get transaction id
                     await this.getClientSecret()
                     // submit form data with transaction id
@@ -473,7 +473,7 @@ const reportTenant = Vue.component('report-tenant', {
     },
     data: function(){
         return {
-            step: 4,
+            step: 1,
             steps: [
                 'tenant-info',
                 'landlord-info',
@@ -736,6 +736,21 @@ const store = new Vuex.Store({
     }
 })
 
+const validateDictionary = {
+    en: {
+        messages:{
+            ext: (fieldName, params, data) => {
+                console.log(params.length, data)
+                const list = Object.entries(params) //[[0,v],[1,v]]
+                    .filter(i => Number(i[0]) >= 0)
+                    .map(i => i[1])
+                const allExtenstions = list.join(', ').toUpperCase()
+                return `File(s) must be (${allExtenstions})`
+            }
+        }
+    }
+}
+VeeValidate.localize(validateDictionary)
 VeeValidate.extend('email', VeeValidate.Rules.email)
 VeeValidate.extend('required', VeeValidate.Rules.required)
 VeeValidate.extend('is_not', VeeValidate.Rules.is_not)
@@ -747,10 +762,13 @@ VeeValidate.extend('max', VeeValidate.Rules.max)
 VeeValidate.extend('file_max', {
     validate(value, args) {
         const length = value.length;
+        if (length <= args.max) {
+            return true
+        }
     
-        return length <= args.max;
+        return `Max # of files is ${args.max}. You added ${length}`;
       },
-      params: ['max']
+      params: ['max'],
 })
 
 Vue.component('ValidationObserver', VeeValidate.ValidationObserver);
