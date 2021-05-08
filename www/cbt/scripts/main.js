@@ -24,6 +24,9 @@ const serviceProvider = {
         },
         isLocalhost(){
             return location.href.includes(':8000') || location.href.includes('localhost')
+        },
+        postUrl(){
+            return this.isLocalhost ? 'http://localhost:8081': 'https://styleminions.co/api'
         }
 
     },
@@ -372,6 +375,7 @@ const pay = {
     </form>
     `,
     props: ['submit-call'],
+    mixins: [serviceProvider],
     data: function(){
         return {
             paySecret: '',
@@ -449,7 +453,7 @@ const pay = {
             
         },
         async confirmSuccessfulPayment(){
-            await fetch(`http://localhost:8081/cbt/${this.submissionId}/${this.paySecret}`, {
+            await fetch(`${this.postUrl}/cbt/${this.submissionId}/${this.paySecret}`, {
                 method: 'POST',
             })
         }
@@ -464,6 +468,7 @@ const paySuccess = {
 
 const reportTenant = Vue.component('report-tenant', {
     template:'#report-tenant',
+    mixins: [serviceProvider],
     components: {
         'tenant-info': tenantInfo,
         'landlord-info': landlordInfo,
@@ -538,7 +543,7 @@ const reportTenant = Vue.component('report-tenant', {
            formData.append('transactionId', transactionId)
            //formData.append('proofImages[]', files.proofImages)
 
-           const resp = await fetch('http://localhost:8081/cbt', {
+           const resp = await fetch(`${this.postUrl}/cbt`, {
                 method: 'POST',
                 body: formData,
            })
