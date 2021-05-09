@@ -61,28 +61,30 @@
     </div>
 <script type="text/x-template" id="landing">
     <div class="landing">
-        <div class="name-search">
-            <input 
-                class="browser-default search-box" 
-                type="search" 
-                v-model="searchInput"
-                aria-label="Enter first and last name to search for an individual"
-                placeholder="search tenant fullname"/>
-            <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
-                <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
-                <spinner color-class="default" v-show="loading"></spinner>
-            </button>
-        </div>
-        <div class="input-container">
-            <input 
-                class="browser-default search-box search-dob animated"
-                :class="{'shake': showErrorDate, 'error': showErrorDate}"
-                type="text"
-                ref="date"
-                :value="searchDate"
-                @keydown="openDatePicker"
-                aria-label="Enter the date of birth of the individual you are searching for"
-                placeholder="Date of birth"/>
+        <div class="landing-container">
+            <div class="name-search">
+                <input 
+                    class="browser-default search-box" 
+                    type="search" 
+                    v-model="searchInput"
+                    aria-label="Enter first and last name to search for an individual"
+                    placeholder="search tenant fullname"/>
+                <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
+                    <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
+                    <spinner color-class="default" v-show="loading"></spinner>
+                </button>
+            </div>
+            <div class="input-container">
+                <input 
+                    class="browser-default search-box search-dob animated"
+                    :class="{'shake': showErrorDate, 'error': showErrorDate}"
+                    type="text"
+                    ref="date"
+                    :value="searchDate"
+                    @keydown="openDatePicker"
+                    aria-label="Enter the date of birth of the individual you are searching for"
+                    placeholder="Date of birth"/>
+            </div>
         </div>
         <slide-modal :show="showModal" @close="showModal=false">
             <div class="score-found hide">
@@ -95,14 +97,14 @@
                 </button>
             </div>
             <div class="not-found">
-                <h4>No reports found</h4>
+                <h4 class="capitalize">No reports found</h4>
                 <p>Request at least 2 reference letters (family, friends, previous landlord) from <span class="capitalize">{{searchInput}}</span></p>
             </div>
         </slide-modal>
     </div>
 </script>
 <script type="text/x-template" id="report-tenant">
-    <div>
+    <div class="report-tenant-container">
         <cbt-progress :current="step" :max="steps.length" v-show="showProgressStep"></cbt-progress>
         <keep-alive>
             <component 
@@ -202,7 +204,7 @@
                 <div class="input-field" :class="{'invalid': invalid & submitted}">
                     <i class="material-icons prefix">description</i>
                     <select v-model="incidentType" required>
-                        <option value="0" disabled selected>Select</option>
+                        <option value="" disabled selected>Select</option>
                         <option value="property_damage">Property damage</option>
                         <option value="no_payment">No payment</option>
                         <option value="other">Other</option>
@@ -215,7 +217,7 @@
                 <div class="input-field" :class="{'invalid': invalid & submitted}">
                     <i class="material-icons prefix">attach_money</i>
                     <select v-model="amount" required>
-                        <option value="0" disabled selected>Select</option>
+                        <option value="" disabled selected>Select</option>
                         <option value="499">$1 - $499</option>
                         <option value="999"> $500 - $999</option>
                         <option value="4999">$1000 - $4999</option>
@@ -246,7 +248,7 @@
                 <label for="tenant-dob">Date of incident (Day-Month-Year)</label>
                 <span class="helper-text" data-error="Date of incident is required"></span>
             </div>
-            <validation-provider name="image(s)" v-slot="{ errors,validate,invalid }" rules="required|image|file_max:5|size:2000" slim ref="proofImages">
+            <validation-provider name="image(s)" v-slot="{ errors,validate,invalid }" rules="required|image|file_max:5|size:3000" slim ref="proofImages">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>Images</span>
@@ -258,7 +260,7 @@
                     </div>
                 </div>
             </validation-provider>
-            <validation-provider name="lease agreement file" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:2000" slim ref="leaseAgreement">
+            <validation-provider name="lease agreement" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="leaseAgreement">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>File</span>
@@ -270,7 +272,7 @@
                     </div>
                 </div>
             </validation-provider>
-            <validation-provider name="property tax bill file" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:2000" slim ref="propertyTaxBill">
+            <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="propertyTaxBill">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>File</span>

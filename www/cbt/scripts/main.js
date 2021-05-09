@@ -745,12 +745,17 @@ const validateDictionary = {
     en: {
         messages:{
             ext: (fieldName, params, data) => {
-                console.log(params.length, data)
                 const list = Object.entries(params) //[[0,v],[1,v]]
                     .filter(i => Number(i[0]) >= 0)
                     .map(i => i[1])
+                const moreThanOneFile = list.length > 1
+                const plural = moreThanOneFile ? 's' : ''
                 const allExtenstions = list.join(', ').toUpperCase()
-                return `File(s) must be (${allExtenstions})`
+                return `File${plural} must be (${allExtenstions})`
+            },
+            size: (fieldName, params) => {
+                const fileSizeInMegaBytes = params.size/1000
+                return `File size must be less than ${fileSizeInMegaBytes}MB`
             }
         }
     }
