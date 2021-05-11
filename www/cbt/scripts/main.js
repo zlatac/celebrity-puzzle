@@ -178,14 +178,20 @@ const landing = Vue.component('landing', {
     mixins: [serviceProvider],
     mounted: function(){
         const today = new Date()
+        const minDate = new Date()
         const currentYear = today.getFullYear()
         const eigtheenYearsAgo = currentYear - 18
         const ninetyYearsAgo = currentYear - 90
         today.setYear(eigtheenYearsAgo)
+        minDate.setYear(ninetyYearsAgo)
+        minDate.setMonth(0)
+        minDate.setDate(1)
+
         const options = {
             format: 'dd-mm-yyyy',
             yearRange: [ninetyYearsAgo,eigtheenYearsAgo],
             maxDate: today,
+            minDate,
             defaultDate: today,
             onSelect: this.setDateOfBirth
         }
@@ -255,12 +261,17 @@ const tenantInfo = {
     },
     mounted: function(){
         const today = new Date()
+        const minDate = new Date()
         const currentYear = today.getFullYear()
         const eigtheenYearsAgo = currentYear - 18
         const ninetyYearsAgo = currentYear - 90
         today.setYear(eigtheenYearsAgo)
+        minDate.setYear(ninetyYearsAgo)
+        minDate.setMonth(0)
+        minDate.setDate(1)
         const dateOptions = {
             yearRange: [ninetyYearsAgo,eigtheenYearsAgo],
+            minDate,
             maxDate: today,
             defaultDate: today,
         }
@@ -348,9 +359,13 @@ const incident = {
         new M.CharacterCounter(this.$refs.summary)
 
         const today = new Date()
+        const minDate = new Date()
         const currentYear = today.getFullYear()
+        minDate.setMonth(0)
+        minDate.setDate(1)
         const dateOptions = {
             yearRange: [currentYear,currentYear],
+            minDate,
             maxDate: today,
             defaultDate: today,
         }
