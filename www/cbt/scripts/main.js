@@ -154,16 +154,18 @@ const serviceProvider = {
                 this.$set(this,vueDataProperty, instanceWithOpenDatePicker.toString())
             }
         },
-        instantiateDatePicker(){
-            const currentYear = new Date().getFullYear()
-            const ninetyYearsAgo = currentYear - 90
-            const options = {
+        instantiateDatePicker(dateOptions){
+            let additionalOptions = {}
+            const defaultOptions = {
                 format: 'dd-mm-yyyy',
-                yearRange: [ninetyYearsAgo,currentYear],
                 onSelect: this.setDate
             }
+            if (typeof dateOptions === 'object') {
+                additionalOptions = {...dateOptions}
+            }
+            
             const dateInputs = document.querySelectorAll('.date-input')
-            M.Datepicker.init(dateInputs, options)
+            M.Datepicker.init(dateInputs, {...defaultOptions,...additionalOptions})
         }
     }
 }
@@ -175,11 +177,16 @@ const landing = Vue.component('landing', {
     template:'#landing',
     mixins: [serviceProvider],
     mounted: function(){
-        const currentYear = new Date().getFullYear()
+        const today = new Date()
+        const currentYear = today.getFullYear()
+        const eigtheenYearsAgo = currentYear - 18
         const ninetyYearsAgo = currentYear - 90
+        today.setYear(eigtheenYearsAgo)
         const options = {
             format: 'dd-mm-yyyy',
-            yearRange: [ninetyYearsAgo,currentYear],
+            yearRange: [ninetyYearsAgo,eigtheenYearsAgo],
+            maxDate: today,
+            defaultDate: today,
             onSelect: this.setDateOfBirth
         }
         this.datePickerInstance = M.Datepicker.init(this.$refs.date, options)
@@ -247,7 +254,17 @@ const tenantInfo = {
         }
     },
     mounted: function(){
-        this.instantiateDatePicker()
+        const today = new Date()
+        const currentYear = today.getFullYear()
+        const eigtheenYearsAgo = currentYear - 18
+        const ninetyYearsAgo = currentYear - 90
+        today.setYear(eigtheenYearsAgo)
+        const dateOptions = {
+            yearRange: [ninetyYearsAgo,eigtheenYearsAgo],
+            maxDate: today,
+            defaultDate: today,
+        }
+        this.instantiateDatePicker(dateOptions)
     },
     computed: {
         tenant(){
@@ -275,6 +292,7 @@ const landlordInfo = {
         return {
             fullname: '',
             email: '',
+            confirmEmail: '',
             submitted: false,
         }
     },
@@ -328,7 +346,15 @@ const incident = {
         const elems = document.querySelectorAll('select');
         M.FormSelect.init(elems);
         new M.CharacterCounter(this.$refs.summary)
-        this.instantiateDatePicker()
+
+        const today = new Date()
+        const currentYear = today.getFullYear()
+        const dateOptions = {
+            yearRange: [currentYear,currentYear],
+            maxDate: today,
+            defaultDate: today,
+        }
+        this.instantiateDatePicker(dateOptions)
     },
     methods: {
         async submit(){
@@ -762,6 +788,7 @@ const validateDictionary = {
 }
 VeeValidate.localize(validateDictionary)
 VeeValidate.extend('email', VeeValidate.Rules.email)
+VeeValidate.extend('confirmed', VeeValidate.Rules.confirmed)
 VeeValidate.extend('required', VeeValidate.Rules.required)
 VeeValidate.extend('is_not', VeeValidate.Rules.is_not)
 VeeValidate.extend('ext', VeeValidate.Rules.ext)

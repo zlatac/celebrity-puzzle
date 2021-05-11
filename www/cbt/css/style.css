@@ -165,6 +165,9 @@ td.is-today[aria-selected="false"],
 .datepicker-controls button:focus {
     background-color: var(--border-grey);
 }
+.datepicker-controls .select-month input {
+    width: 80px;
+}
 .invalid input[type="text"]:not(.browser-default), .invalid input[type="text"]:not(.browser-default):focus {
     border-bottom: 1px solid #F44336;
     box-shadow: 0 1px 0 0 #F44336;
