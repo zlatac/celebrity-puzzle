@@ -335,6 +335,7 @@ const incident = {
             amount: '',
             incidentType: '',
             dateOfIncident: '',
+            tooltip: "This information is used to assess the legitimacy of your report",
             files: {
                 proofImages: [],
                 leaseAgreement: [],
@@ -393,7 +394,7 @@ const incident = {
 const pay = {
     template: `
     <form id="payment-form" @submit.prevent="submit">
-        <h3>Checkout</h3>
+        <h3>Review Fee <i class="material-icons tooltipped" data-position="top" :data-tooltip="tooltip">help</i></h3>
         <div class="input-field">
             <input
                 id="card-payment-name"
@@ -427,6 +428,7 @@ const pay = {
             errorMessage: '',
             submitted: false,
             submissionId: 0,
+            tooltip: "This fee is to review & confirm the legitimacy of your report based on the information you've provided",
         }
     },
     async mounted(){

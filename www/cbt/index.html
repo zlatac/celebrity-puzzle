@@ -211,7 +211,7 @@
 </script>
 <script type="text/x-template" id="incident">
     <div>
-        <h3>Incident</h3>
+        <h3>Incident <i class="material-icons tooltipped" data-position="top" :data-tooltip="tooltip">help</i></h3>
         <validation-observer ref="form" class="form-incident">
             <validation-provider name="incident type" v-slot="{ errors,valid,invalid,validated }" rules="required|is_not:0" slim>
                 <div class="input-field" :class="{'invalid': invalid & submitted}">
@@ -269,7 +269,7 @@
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Proof of incident">
-                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
+                        <span class="helper-text" :data-error="errors[0]">Upload 1-5 images (Max size 3MB)</span>
                     </div>
                 </div>
             </validation-provider>

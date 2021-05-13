@@ -251,6 +251,10 @@ h3 {
 .report-form-container {
     padding: 0 5%;
 }
+.tooltipped {
+    color: var(--main);
+    cursor: pointer;
+}
 
 /******************************************/
 
