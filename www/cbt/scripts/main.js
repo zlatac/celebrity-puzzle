@@ -830,7 +830,7 @@ Vue.component('ValidationProvider', VeeValidate.ValidationProvider);
 
 const routes = [
   { path: '/', component: landing },
-  { path: '/terms', component: terms },
+  //{ path: '/terms', component: terms },
   { path: '/report-tenant', component: reportTenant },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
