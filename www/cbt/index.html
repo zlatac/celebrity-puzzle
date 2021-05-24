@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-    <meta name="description" content="A platform for screening tenants and managing existing tenants">
+    <meta name="description" content="Platform for screening tenants and managing existing tenants">
     <meta name="keywords" content="tenant,landlord,tenant screening,tenant report">
     <meta property="og:image" content="">
     <meta property="og:image:type" content="image/png">
     <meta property="og:url" content="http://cannotbetrusted.com">
     <meta property="og:title" content="Cannot Be Trusted">
-    <meta property="og:description" content="Tenant screening system">
+    <meta property="og:description" content="Tenant screening platform">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" />
+    <!-- <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" /> -->
     <title>Cannot Be Trusted</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script> -->
@@ -176,7 +176,7 @@
                     <span class="helper-text" :data-error="errors[0]"></span>
                 </div>
             </validation-provider>
-            <validation-provider name="Landlord email" v-slot="{ errors,valid,invalid,validated }" slim>
+            <validation-provider name="Landlord email" v-slot="{ errors,valid,invalid,validated }" vid="landlordEmail" slim>
                 <div class="input-field">
                     <i class="material-icons prefix">email</i>
                         <input 
@@ -189,6 +189,19 @@
                     <span class="helper-text" :data-error="errors[0]"></span>
                 </div>
             </validation-provider>
+            <validation-provider name="confirm email" rules="confirmed:landlordEmail" v-slot="{ errors,invalid }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">email</i>
+                        <input 
+                            id="icon_confirm" 
+                            type="email"
+                            required 
+                            v-model="confirmEmail"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_confirm">Confrim Email</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
         </validation-observer>
         <div class="navigate">
             <button class="btn"  @click="$emit('back')">back</button>
@@ -198,7 +211,7 @@
 </script>
 <script type="text/x-template" id="incident">
     <div>
-        <h3>Incident</h3>
+        <h3>Incident <i class="material-icons tooltipped" data-position="top" :data-tooltip="tooltip">help</i></h3>
         <validation-observer ref="form" class="form-incident">
             <validation-provider name="incident type" v-slot="{ errors,valid,invalid,validated }" rules="required|is_not:0" slim>
                 <div class="input-field" :class="{'invalid': invalid & submitted}">
@@ -251,36 +264,36 @@
             <validation-provider name="image(s)" v-slot="{ errors,validate,invalid }" rules="required|image|file_max:5|size:3000" slim ref="proofImages">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
-                    <span>Images</span>
-                        <input type="file" multiple @change="validate">
+                        <span>Images</span>
+                        <input type="file" multiple @change="validate" accept=".jpeg, .jpg, .png">
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Proof of incident">
-                        <span class="helper-text" :data-error="errors[0]"></span>
+                        <span class="helper-text" :data-error="errors[0]">Upload 1-5 images (Max size 3MB)</span>
                     </div>
                 </div>
             </validation-provider>
             <validation-provider name="lease agreement" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="leaseAgreement">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
-                    <span>File</span>
-                        <input type="file" @change="validate">
+                    <span>PDF</span>
+                        <input type="file" @change="validate" accept=".pdf">
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Lease agreement with tenant">
-                        <span class="helper-text" :data-error="errors[0]"></span>
+                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
                     </div>
                 </div>
             </validation-provider>
             <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="propertyTaxBill">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
-                    <span>File</span>
-                        <input type="file" @change="validate">
+                    <span>PDF</span>
+                        <input type="file" @change="validate" accept=".pdf">
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Latest property tax bill">
-                        <span class="helper-text" :data-error="errors[0]"></span>
+                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
                     </div>
                 </div>
             </validation-provider>
