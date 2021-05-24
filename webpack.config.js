@@ -1,4 +1,6 @@
 const path = require('path');
+const webpack = require('webpack');
+require('dotenv').config();
 const production = process.env.NODE_ENV === 'production'
 
 module.exports = [
@@ -68,6 +70,11 @@ module.exports = [
         module: {},
         node: {
             Buffer: false
-        }
+        },
+        plugins: [
+            new webpack.DefinePlugin({
+                'process.env.STRIPE_PUBLIC_KEY': JSON.stringify(process.env.STRIPE_PUBLIC_KEY)
+            })
+        ]
     }
 ];

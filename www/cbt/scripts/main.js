@@ -394,7 +394,7 @@ const pay = {
     },
     methods: {
         setupElements(){
-            this.stripe = Stripe('pk_test_N88xhltrU10L6A5HnZliFjNP');
+            this.stripe = Stripe(process.env.STRIPE_PUBLIC_KEY);
             this.payInstance = this.stripe.elements()
         },
         mountPayment(){
