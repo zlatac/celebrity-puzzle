@@ -578,7 +578,9 @@ const reportTenant = Vue.component('report-tenant', {
            formData.append('tenant', JSON.stringify(this.reportFiled.tenant))
            formData.append('landlord', JSON.stringify(this.reportFiled.landlord))
            formData.append('incident', JSON.stringify(incident))
-           formData.append('propertyTaxBill', files.propertyTaxBill[0])
+           if (this.safe(files.propertyTaxBill[0])) {
+               formData.append('propertyTaxBill', files.propertyTaxBill[0])
+           }
            formData.append('leaseAgreement', files.leaseAgreement[0])
            files.proofImages.forEach((item) => {
             formData.append('proofImages[]', item)

@@ -285,14 +285,14 @@
                     </div>
                 </div>
             </validation-provider>
-            <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="propertyTaxBill">
+            <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="ext:pdf|size:3000" slim ref="propertyTaxBill">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>PDF</span>
                         <input type="file" @change="validate" accept=".pdf">
                     </div>
                     <div class="file-path-wrapper">
-                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Latest property tax bill">
+                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Latest property tax bill (optional)">
                         <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
                     </div>
                 </div>
