@@ -9,6 +9,7 @@ var fs = require('fs').promises;
 if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
+const stripe = require('stripe')(process.env.STRIPE_PRIVATE_KEY);
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
 
@@ -25,6 +26,8 @@ app.get('/', function (req, res) {
         res.sendFile(__dirname + '/www/index.html');
     }else if(req.hostname.includes('blessmyrequest')){
         res.sendFile(__dirname + '/www/bmr/index.html');
+    }else if(req.hostname.includes('betrusted')){
+        res.sendFile(__dirname + '/www/cbt/index.html');
     }else{
         // default is celebrity puzzle app
         res.sendFile(__dirname + '/www/index.html');
@@ -34,6 +37,10 @@ app.get('/', function (req, res) {
 
 app.get('/dj', function(req,res){
     res.sendFile(__dirname + '/www/bmr/index.html');
+})
+
+app.get('/cbt', function(req,res){
+    res.sendFile(__dirname + '/www/cbt/index.html');
 })
 
 app.get('/myipaddress', function (req, res) {
@@ -339,4 +346,22 @@ app.get('/allPlaylist', async function(req,res){
         res.send('ooops something went wrong')
     }
 });
+
+app.get('/paySecret', async function(req,res){
+    try {
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: 2999,
+            currency: 'usd',
+            // Verify your integration in this guide by including this parameter
+            metadata: {integration_check: 'accept_a_payment'},
+        });
+        // send transaction id to database
+        res.json({client_secret: paymentIntent.client_secret});
+    } catch (error) {
+        res.status(404)
+        res.send('ooops something went wrong')
+    }
+});
+
+
 

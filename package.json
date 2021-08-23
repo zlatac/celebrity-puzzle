@@ -11,8 +11,10 @@
     "develop": "gulp build",
     "build:engine": "webpack --config-name bmr-engine",
     "build:bmr": "webpack --config-name bmr",
+    "build:cbt": "webpack --config-name cbt",
     "dev:engine": "webpack-dev-server --open",
-    "dev:bmr": "webpack --config-name bmr --watch"
+    "dev:bmr": "webpack --config-name bmr --watch",
+    "dev:cbt": "webpack --config-name cbt --watch"
   },
   "author": "zlatac",
   "license": "UNLICENSED",
@@ -36,6 +38,7 @@
     "express": "^4.16.3",
     "lodash": "^4.17.15",
     "socket.io": "^2.2.0",
+    "stripe": "^8.145.0",
     "style-loader": "^0.23.1",
     "stylus": "^0.54.5",
     "stylus-loader": "^3.0.2",

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta name="description" content="Platform for screening tenants and managing existing tenants">
+    <meta name="keywords" content="tenant,landlord,tenant screening,tenant report">
+    <meta property="og:image" content="">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:url" content="http://cannotbetrusted.com">
+    <meta property="og:title" content="Cannot Be Trusted">
+    <meta property="og:description" content="Tenant screening platform">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!-- <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" /> -->
+    <title>Cannot Be Trusted</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script> -->
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+    <script src="https://unpkg.com/vuex"></script>
+    <script src="https://unpkg.com/vee-validate@latest/dist/vee-validate.full.min.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Oswald" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link href="css/animate.css" rel="stylesheet">
+    <link href="cbt/css/style.css" rel="stylesheet">
+    <!-- favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="cbt/assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="cbt/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="cbt/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="cbt/assets/favicon/site.webmanifest">
+    <link rel="mask-icon" href="cbt/assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
+    <!-- <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff"> -->
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script> -->
+    <!-- <script src="/bmr/lib/socket.io.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script> -->
+</head>
+<body>
+    <div id="myapp">
+        <header>
+            <router-link to="/">CBT</router-link>
+            <router-link to="/report-tenant">
+                <button class="waves-effect waves-light btn">Report tenant</button>
+            </router-link>
+        </header>
+        <router-view></router-view>
+        <footer>
+            <router-link to="/about">About us</router-link>
+            <a href="mailto:info@cannotbetrusted.com">Contact us</a>
+            <router-link to="/faq">FAQ</router-link>
+            <router-link to="/terms">Terms & Conditions</router-link>
+        </footer>
+    </div>
+<script type="text/x-template" id="landing">
+    <div class="landing">
+        <div class="landing-container">
+            <div class="name-search">
+                <input 
+                    class="browser-default search-box" 
+                    type="search" 
+                    v-model="searchInput"
+                    aria-label="Enter first and last name to search for an individual"
+                    placeholder="search tenant fullname"/>
+                <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
+                    <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
+                    <spinner color-class="default" v-show="loading"></spinner>
+                </button>
+            </div>
+            <div class="input-container">
+                <input 
+                    class="browser-default search-box search-dob animated"
+                    :class="{'shake': showErrorDate, 'error': showErrorDate}"
+                    type="text"
+                    ref="date"
+                    :value="searchDate"
+                    @keydown="openDatePicker"
+                    aria-label="Enter the date of birth of the individual you are searching for"
+                    placeholder="Date of birth"/>
+            </div>
+        </div>
+        <slide-modal :show="showModal" @close="showModal=false">
+            <div class="score-found hide">
+                <div>
+                    <div class="btn-floating score"><span></span><span></span>%</div>
+                </div>
+                <button class="waves-effect waves-light btn" style="display:inline-flex">
+                    <i class="material-icons" style="margin-right: 5px;">visibility</i>    
+                    See rent score
+                </button>
+            </div>
+            <div class="not-found">
+                <h4 class="capitalize">No reports found</h4>
+                <p>Request at least 2 reference letters (family, friends, previous landlord) from <span class="capitalize">{{searchInput}}</span></p>
+            </div>
+        </slide-modal>
+    </div>
+</script>
+<script type="text/x-template" id="report-tenant">
+    <div class="report-tenant-container">
+        <cbt-progress :current="step" :max="steps.length" v-show="showProgressStep"></cbt-progress>
+        <keep-alive>
+            <component 
+                class="animated fadeIn report-form-container"
+                :is="formStep" 
+                @back="goBackward" 
+                @next="goForward"
+                @paySuccess="paySuccess"
+                :report-filed="reportFiled"
+                :submit-call="submitReportFilled">
+            </component>
+        </keep-alive>
+    </div>
+</script>
+<script type="text/x-template" id="tenant-info">
+    <div>
+        <h3>Tenant info</h3>
+        <validation-observer ref="form" class="wow">
+            <validation-provider name="Tenant fullname" v-slot="{ errors,valid,invalid,validated }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">account_circle</i>
+                        <input 
+                            id="icon_prefix" 
+                            type="text"
+                            required 
+                            v-model="name"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_prefix">Full name</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider name="Tenant date of birth" v-slot="{ errors,invalid }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">today</i>
+                        <input
+                            class="date-input"
+                            :class="{'invalid': invalid & submitted}"
+                            id="tenant-dob"
+                            type="text"
+                            required
+                            :value="dateOfBirth"
+                            data-vm="dateOfBirth"
+                            @keydown="openDatePicker"
+                            aria-label="Enter tenant date of birth"/>
+                    <label for="tenant-dob">Date of birth (Day-Month-Year)</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+        </validation-observer>
+        <div class="navigate-alone">
+            <button class="btn middle" @click="submit">next</button>
+        </div>
+    </div>
+</script>
+<script type="text/x-template" id="landlord-info">
+    <div>
+        <h3>Landlord info</h3>
+        <validation-observer ref="form">
+            <validation-provider name="Landord fullname" v-slot="{ errors,valid,invalid,validated }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">account_circle</i>
+                        <input 
+                            id="icon_fullname"
+                            type="text"
+                            required 
+                            v-model="fullname"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_fullname">Full name</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider name="Landlord email" v-slot="{ errors,valid,invalid,validated }" vid="landlordEmail" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">email</i>
+                        <input 
+                            id="icon_email" 
+                            type="email"
+                            required 
+                            v-model="email"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_email">Email</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider name="confirm email" rules="confirmed:landlordEmail" v-slot="{ errors,invalid }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">email</i>
+                        <input 
+                            id="icon_confirm" 
+                            type="email"
+                            required 
+                            v-model="confirmEmail"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_confirm">Confrim Email</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+        </validation-observer>
+        <div class="navigate">
+            <button class="btn"  @click="$emit('back')">back</button>
+            <button  class="btn" @click="submit">next</button>
+        </div>
+    </div>
+</script>
+<script type="text/x-template" id="incident">
+    <div>
+        <h3>Incident <i class="material-icons tooltipped" data-position="top" :data-tooltip="tooltip">help</i></h3>
+        <validation-observer ref="form" class="form-incident">
+            <validation-provider name="incident type" v-slot="{ errors,valid,invalid,validated }" rules="required|is_not:0" slim>
+                <div class="input-field" :class="{'invalid': invalid & submitted}">
+                    <i class="material-icons prefix">description</i>
+                    <select v-model="incidentType" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="property_damage">Property damage</option>
+                        <option value="no_payment">No payment</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <label>Type of incident</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider v-slot="{ valid,invalid,validated }" rules="required|is_not:0" slim>
+                <div class="input-field" :class="{'invalid': invalid & submitted}">
+                    <i class="material-icons prefix">attach_money</i>
+                    <select v-model="amount" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="499">$1 - $499</option>
+                        <option value="999"> $500 - $999</option>
+                        <option value="4999">$1000 - $4999</option>
+                        <option value="5000">$5000+</option>
+                    </select>
+                    <label>Amount in damages/no payment</label>
+                </div>
+            </validation-provider>
+            <div class="input-field">
+                <i class="material-icons prefix">mode_edit</i>
+                <textarea id="summary" ref="summary" v-model="summary" class="materialize-textarea" data-length="200" maxlength="200"></textarea>
+                <label for="summary">Summary of incident</label>
+            </div>
+            <div class="input-field">
+                <i class="material-icons prefix">today</i>
+                <validation-provider v-slot="{ invalid }" slim>
+                    <input
+                    class="date-input"
+                    :class="{'invalid': invalid & submitted}"
+                    id="tenant-dob"
+                    type="text"
+                    required
+                    :value="dateOfIncident"
+                    data-vm="dateOfIncident"
+                    @keydown="openDatePicker"
+                    aria-label="Enter date of incident"/>
+                </validation-provider>
+                <label for="tenant-dob">Date of incident (Day-Month-Year)</label>
+                <span class="helper-text" data-error="Date of incident is required"></span>
+            </div>
+            <validation-provider name="image(s)" v-slot="{ errors,validate,invalid }" rules="required|image|file_max:5|size:3000" slim ref="proofImages">
+                <div class="file-field input-field">
+                    <div class="btn file-upload">
+                        <span>Images</span>
+                        <input type="file" multiple @change="validate" accept=".jpeg, .jpg, .png">
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Proof of incident">
+                        <span class="helper-text" :data-error="errors[0]">Upload 1-5 images (Max size 3MB)</span>
+                    </div>
+                </div>
+            </validation-provider>
+            <validation-provider name="lease agreement" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="leaseAgreement">
+                <div class="file-field input-field">
+                    <div class="btn file-upload">
+                    <span>PDF</span>
+                        <input type="file" @change="validate" accept=".pdf">
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Lease agreement with tenant">
+                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
+                    </div>
+                </div>
+            </validation-provider>
+            <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="ext:pdf|size:3000" slim ref="propertyTaxBill">
+                <div class="file-field input-field">
+                    <div class="btn file-upload">
+                    <span>PDF</span>
+                        <input type="file" @change="validate" accept=".pdf">
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Latest property tax bill (optional)">
+                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
+                    </div>
+                </div>
+            </validation-provider>
+        </validation-observer>
+        <div class="navigate">
+            <button  class="btn" @click="$emit('back')">back</button>
+            <button  class="btn" @click="submit">next</button>
+        </div>
+    </div>
+</script>
+<script type="text/x-template" id="pay-success"> 
+    <div class="pay-success">
+        <i class="material-icons">check_circle_outline</i>
+        <p>Your tenant report has been submitted for review.</p>
+        <p>We will email <span>{{reportFiled.landlord.email}}</span> with an approval/rejection based on the information provided.</p>
+    </div>
+</script>
+<script type="text/x-template" id="terms"> 
+    <h1 style="margin-top:1000px">Terms and conditions</h1>
+</script>
+<template id="progress">
+    <style>
+        .progress {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(25px, 1fr));
+            grid-template-rows: 100%;
+            width: 100%;
+            height: 10px;
+            column-gap: 3%;
+        }
+        .item {
+            height: 100%;
+            width: 100%;
+            background-color: lime;
+            border-radius: 10px;
+            box-shadow: 5px 8px 9px #d5d5d5, -5px -2px 9px #fff;
+        }
+        .item.grey {
+            background-color: lightgrey;
+        }
+    </style>
+    <div class="progress">
+        <div class="item"></div>
+    </div>
+</template>
+<script src="cbt/dist/bundle.js"></script>
+<!-- <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script> -->
+</body>
+</html>
