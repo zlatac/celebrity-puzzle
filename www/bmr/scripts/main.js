@@ -1903,6 +1903,11 @@ Vue.component('get-insta', {
     props:['comp'],
     mixins:[serviceProvider],
 });
+Vue.component('go-back', {
+    template: `
+        <i @click="$router.go(-1)" class="material-icons" style="position: absolute;top: 2px;left: 4px;color: #e4e4e4;cursor: pointer;font-size: 28px;">arrow_back</i>
+    `
+})
 Vue.directive('imgfallback', {
     bind: function(el,binding,vnode){
         let fallback = serviceProvider.data().noProfileUrl;
