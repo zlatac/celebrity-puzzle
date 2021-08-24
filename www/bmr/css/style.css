@@ -63,7 +63,7 @@ input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):
     color: white;
 }
 .lead-fab{
-    bottom:-7px;
+    bottom:-3px;
     position:absolute;
     right:-14px;
 }
@@ -306,6 +306,10 @@ img{
     flex-direction: column;
     height: 100%;
     position: relative;
+}
+.song-result-center {
+    display: flex;
+    align-items: center;
 }
 @media only screen and (max-width: 1297px){
     .party-card{

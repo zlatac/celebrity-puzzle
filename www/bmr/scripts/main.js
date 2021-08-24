@@ -1871,7 +1871,7 @@ Vue.component('slide-modal', {
     template: `
     <div class="dj-modal-container" v-if="show">
         <div class="close-body" @click="$emit('close')">
-            <i class="material-icons animated fadeInUp">cancel</i>
+            <!--<i class="material-icons animated fadeInUp">cancel</i>-->
         </div>
         <div class="dj-modal-body animated slideInUp">
             <slot></slot>
