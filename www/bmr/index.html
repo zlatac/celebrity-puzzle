@@ -277,15 +277,19 @@
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
             <div class="row " style="margin-bottom: 60px" v-show="!loader">
-                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id">
+                <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id" :class="{'first-in-queue': index === 0}">
                     <div class="row song-result-center" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
                             <div class="image-container" :class="{'first-image': index === 0, 'dj-gold': x.isAuto}">
                                 <img class="img-result" :src="x.image">
-                                <span class="btn btn-small btn-floating lead-fab z-depth-3">{{x.isAuto ? 'DJ' : x.requestCount}}</span>
-                                <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && !playing"
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3" v-if="x.isAuto">DJ</span>
+                                <span class="btn btn-small btn-floating lead-fab z-depth-3 waves-effect" v-if="widgetStarted && !x.isAuto && index !== 0"
+                                      @click="skipCurrentSongToSelectedSong(index)">
+                                    <i class="material-icons">play_arrow</i>
+                                </span>
+                                <i class="material-icons animated bounceIn music-control" v-show="index < 1 && widgetStarted && !playing"
                                 @click="mediaPlay">play_arrow</i>
-                                <i class="material-icons animated bounceIn" v-show="index < 1 && widgetStarted && playing"
+                                <i class="material-icons animated bounceIn music-control" v-show="index < 1 && widgetStarted && playing"
                                 @click="mediaPause">pause</i>
                             </div>   
                         </div>                     

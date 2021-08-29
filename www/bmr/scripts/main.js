@@ -1538,6 +1538,11 @@ const djSpotify = Vue.component('djSpotify', {
                 return
             }
             this.showHostRequest = true
+        },
+        skipCurrentSongToSelectedSong(index){
+            const selectedSong = this.jukeBoxList.splice(index, 1)
+            this.jukeBoxList.splice(1,0,...selectedSong)
+            this.doNotPlaySong(this.jukeBoxList[0])
         }
     },
     created:function(){
@@ -1905,7 +1910,7 @@ Vue.component('get-insta', {
 });
 Vue.component('go-back', {
     template: `
-        <i @click="$router.go(-1)" class="material-icons" style="position: absolute;top: 2px;left: 4px;color: #e4e4e4;cursor: pointer;font-size: 28px;">arrow_back</i>
+        <i @click="$router.go(-1)" class="material-icons back-button">arrow_back</i>
     `
 })
 Vue.directive('imgfallback', {
