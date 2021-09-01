@@ -362,6 +362,3 @@ app.get('/paySecret', async function(req,res){
         res.send('ooops something went wrong')
     }
 });
-
-
-

@@ -1361,7 +1361,7 @@ const djSpotify = Vue.component('djSpotify', {
                     })
                     return
                 }
-                this.jukeBoxList.push(song)
+                this.jukeBoxList.push({...song, showOptions: false})
             } catch (error) {
                if (this.jukeBoxInstance === undefined && 'YT' in window) {
                     window.onYouTubeIframeAPIReady()
@@ -1539,10 +1539,17 @@ const djSpotify = Vue.component('djSpotify', {
             }
             this.showHostRequest = true
         },
-        skipCurrentSongToSelectedSong(index){
+        moveSelectedSongToPlayNext(index, play = false){
             const selectedSong = this.jukeBoxList.splice(index, 1)
             this.jukeBoxList.splice(1,0,...selectedSong)
-            this.doNotPlaySong(this.jukeBoxList[0])
+            if (play) {
+                this.doNotPlaySong(this.jukeBoxList[0])
+                return
+            }
+            this.toggleOptions(selectedSong[0])
+        },
+        toggleOptions(song){
+            song.showOptions = !song.showOptions
         }
     },
     created:function(){
