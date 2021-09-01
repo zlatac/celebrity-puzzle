@@ -278,7 +278,7 @@
             <spinner :colorClass="'default'" v-show="loader"></spinner>
             <div class="row " style="margin-bottom: 60px" v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id" :class="{'first-in-queue': index === 0}">
-                    <i class="material-icons more-vert-icon" :class="{'white-text': x.showOptions}" v-show="index > 0" @click="toggleOptions(x)">more_vert</i>
+                    <i class="material-icons more-vert-icon" :class="{'white-text': x.showOptions}" v-if="index > 0" @click="toggleOptions(x)">more_vert</i>
                     <div class="row song-result-center" :class="{'dj-vip': x.vipList.size > 0}">
                         <div class="col s4">
                             <div class="image-container" :class="{'first-image': index === 0, 'dj-gold': x.isAuto}">
