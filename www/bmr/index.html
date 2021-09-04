@@ -39,6 +39,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script>
     <script src="/bmr/lib/socket.io.js"></script>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script> -->
 </head>
 <body>
@@ -254,12 +255,14 @@
                                  :class="{'img-online': isConnected, 'img-offline wobble': !isConnected}">
                         </div>
                         <div class="col s4"><span><i class="material-icons">people</i>{{population.length}}</span></div>
-                        <div class="col s4" style="font-weight:bold;letter-spacing:1px;" @click="SharePartyRoom">
-                            <span class="btn btn-floating">
-                                <i class="material-icons" v-if="!isMobileOrTablet()">vpn_key</i>
+                        <div class="col s4" style="font-weight:bold;letter-spacing:1px;position: relative;" @click="SharePartyRoom">
+                            <!-- <span class="btn btn-floating">
+                                <i class="material-icons" v-if="!isMobileOrTablet()">share</i>
                                 <i class="material-icons" style="transform: rotateY(180deg)" v-if="isMobileOrTablet()">share</i>
                             </span> {{club.id}}
-                            <div style="font-size: 11px;text-transform: capitalize;color: #9e9e9e;margin-top: 3px;letter-spacing: 0.5px;">invite friends</div>
+                            <div style="font-size: 11px;text-transform: capitalize;color: #9e9e9e;margin-top: 3px;letter-spacing: 0.5px;">invite friends</div> -->
+                            <div class="qrCode" ref="qrCode" width="60px"></div>
+                            <span style="position: absolute;bottom: -17px;left: 39px;">{{club.id}}</span>
                         </div>
                         <!-- <div class="col s5"><span class="btn btn-floating">{{requestList.length}}</span> Requests</div> -->
                     </div>

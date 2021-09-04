@@ -337,6 +337,9 @@ const jukeboxMixin = {
                 item.artist = this.$root.$options.filters.songName(item.artist)
                 return item
             })
+        },
+        shareClubLink() {
+            return `${window.location.origin}/#/join/${this.club.id}`
         }
     },
     methods: {
@@ -345,7 +348,7 @@ const jukeboxMixin = {
                 navigator.share({
                     title: 'BlessMyRequest',
                     text: 'Request a song now & enjoy the party',
-                    url: `${window.location.origin}/#/join/${this.club.id}`
+                    url: this.shareClubLink
                 })
                 .catch((error) => {
                     console.error(new Error(error))
@@ -396,6 +399,16 @@ const jukeboxMixin = {
             if(this.safe(elem)){
                 elem.scrollIntoView(false) //false aligns the bottom of the element to the bottom of available space and vice versa
             }
+        },
+        generateQRCode(){
+            new QRCode(this.$refs.qrCode, {
+                text: this.shareClubLink,
+                width: 60,
+                height: 60,
+                colorDark : "#7dd5d6",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            })
         }
     }
 }
@@ -1550,7 +1563,8 @@ const djSpotify = Vue.component('djSpotify', {
         },
         toggleOptions(song){
             song.showOptions = !song.showOptions
-        }
+        },
+        
     },
     created:function(){
         this.validateId()
@@ -1646,6 +1660,7 @@ const djSpotify = Vue.component('djSpotify', {
         this.getJukeboxApi()
         //M.toast({html: 'Join party on mobile/tablet to request songs now.', displayLength: 10000, classes: 'toast-lower'})
         this.getAutoPlaylist()
+        this.generateQRCode()
     },
     destroyed: function(){
         //console.log('damn son am out')

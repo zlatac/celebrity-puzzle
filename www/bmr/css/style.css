@@ -343,6 +343,9 @@ i.more-vert-icon {
     color: #9e9e9e;
     cursor:pointer;
 }
+.qrCode img {
+    display: initial !important;
+}
 @media only screen and (max-width: 1297px){
     .party-card{
         width: 90%;
