@@ -345,9 +345,7 @@ i.more-vert-icon {
 }
 .qrCode img {
     display: initial !important;
-    min-width: 64px;
-    width: 13vh;
-    max-width: 128px;
+    width: 64px;
 }
 .cursor {
     cursor: pointer;
