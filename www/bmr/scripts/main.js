@@ -401,12 +401,13 @@ const jukeboxMixin = {
             }
         },
         generateQRCode(){
+            // QR must be >= 64px in size and black and white to be read consistently fast
             new QRCode(this.$refs.qrCode, {
                 text: this.shareClubLink,
-                width: 60,
-                height: 60,
-                colorDark : "#7dd5d6",
-                colorLight : "#ffffff",
+                width: 128,
+                height: 128,
+                // colorDark : "#7dd5d6",
+                // colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             })
         }
@@ -1854,10 +1855,12 @@ Vue.component('adsense',{
 Vue.component('badge', {
     template: `
     <div class="component">
-        <div class="dj-chip chip animated fadeInRight" @click="show = true">
-        <img :src="imageUrl" :alt="badgeName">
-        {{badgeName}}
-        </div>
+        <slot name="trigger" v-bind:badgeShow="{openSlideModal}">
+            <div class="dj-chip chip animated fadeInRight" @click="openSlideModal">
+                <img :src="imageUrl" :alt="badgeName">
+                {{badgeName}}
+            </div>
+        </slot>
         <slide-modal :show="show" @close="hideSlideModal">
             <slot></slot>
         </slide-modal>
@@ -1890,6 +1893,9 @@ Vue.component('badge', {
         hideSlideModal(){
             this.show = false
             this.$emit('close-badge')
+        },
+        openSlideModal(){
+            this.show = true
         }
     }
 

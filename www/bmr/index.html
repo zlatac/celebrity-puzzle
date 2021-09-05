@@ -179,6 +179,9 @@
 <script type="text/x-template" id="djspotify">
     <div class="zontainer center-align animated fadeIn">
         <badge name="Settings" @close-badge="setupAutoPlay">
+            <template slot="trigger" slot-scope="slotProps">
+                <i class="material-icons dj-chip cursor" style="color: #25252580; right: 5px;" @click="slotProps.badgeShow.openSlideModal">settings</i>
+            </template>
             <div class="col s12 genre">
                 <span class="chip" style="opacity:0.5;">Auto DJ</span>
                 <span class="chip" :class="{'genre-selected': x.selected}" v-for="(x, index) in genreOptions" :key="index" @click="toggleGenre(x)">{{x.genre}}</span>
@@ -206,7 +209,7 @@
                 </div>
                 <div class="host-search-results" style="overflow-y:scroll;flex-grow:1;padding:0 6%;">
                     <spinner :colorClass="'default'" v-show="loader"></spinner>
-                    <div class="row " v-show="!loader">
+                    <div class="row" v-show="!loader">
                         <div class="card dark-card animated fadeInUp" v-show="noResult === true">
                             <div class="row">
                                 <div class="col s12">

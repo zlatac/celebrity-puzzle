@@ -279,7 +279,7 @@ img{
     text-transform: capitalize;
 }
 .genre .chip {
-    min-width: fit-content;
+    min-width: max-content;
 }
 .chip.genre-selected {
     background: var(--default-main);
@@ -345,6 +345,12 @@ i.more-vert-icon {
 }
 .qrCode img {
     display: initial !important;
+    min-width: 64px;
+    width: 13vh;
+    max-width: 128px;
+}
+.cursor {
+    cursor: pointer;
 }
 @media only screen and (max-width: 1297px){
     .party-card{
