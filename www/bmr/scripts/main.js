@@ -419,30 +419,11 @@ const landing = Vue.component('landing', {
     // dark experiment:#252525
     template:'#landing',
     mixins: [serviceProvider],
-    created: function(){
-        fetch(`https://styleminions.co/api/bmrclients`)
-        .then((res)=>{
-            if(res.status === 200){
-                return res.json()
-            }else{
-                return 'fail'
-            }                           
-        })
-        .catch((err)=>{
-            console.log(new Error(err))
-        })
-        .then((res)=>{
-            if(res !== 'fail'){
-                this.$store.commit('clubs',res)
-                setTimeout(()=>{
-                    this.$router.push('/home');
-                },2000)
-            }else if(res === 'fail'){
-    
-            }                    
-        })
-        
-    
+    mounted: function(){
+        setTimeout(()=>{
+            this.$store.commit('clubs',{}) // will loop routes back to / without this
+            this.$router.push('/home');
+        },2000)
     }
 });
 
