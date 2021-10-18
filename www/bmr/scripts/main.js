@@ -366,6 +366,7 @@ const jukeboxMixin = {
                 maxResults: 5,
                 key
             })
+            this.addToSearchHistory(query)
             fetch(`${searchUrl}?${params.toString()}`)
             .then((response) => {
                 if (response.status === 200){
@@ -410,6 +411,20 @@ const jukeboxMixin = {
                 // colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             })
+        },
+        addToSearchHistory(input){
+            try {
+                const searchHistory = this.safe(localStorage.searchHistory)
+                ? JSON.parse(localStorage.searchHistory)
+                : []
+                if (searchHistory.indexOf(input) === -1) {
+                    searchHistory.push(input)
+                    localStorage.searchHistory = JSON.stringify(searchHistory)
+                } 
+            } catch (error) {
+                console.error(new Error(error))
+            }
+            
         }
     }
 }
@@ -607,6 +622,8 @@ const homeTwo = Vue.component('homeTwo', {
             hostChecked: false,
             partyModalLoader: false,
             partyModalError: false,
+            partySessionExists: false,
+            currentPartySessionData: {},
             toastInstance: undefined,
             mobileOffImage: 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZpZXdCb3g9IjAgMCAxNzIgMTcyIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtbGluZWNhcD0iYnV0dCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIiBzdHJva2UtZGFzaGFycmF5PSIiIHN0cm9rZS1kYXNob2Zmc2V0PSIwIiBmb250LWZhbWlseT0ibm9uZSIgZm9udC13ZWlnaHQ9Im5vbmUiIGZvbnQtc2l6ZT0ibm9uZSIgdGV4dC1hbmNob3I9Im5vbmUiIHN0eWxlPSJtaXgtYmxlbmQtbW9kZTogbm9ybWFsIj48cGF0aCBkPSJNMCwxNzJ2LTE3MmgxNzJ2MTcyeiIgZmlsbD0ibm9uZSI+PC9wYXRoPjxnIGZpbGw9IiNmZmZmZmYiPjxwYXRoIGQ9Ik01Mi45MjMwOCwwYy0xMS4yNDA5OSwwIC0xOS44NDYxNSw4LjYwNTE3IC0xOS44NDYxNSwxOS44NDYxNXY2LjQwODY1bC0xOC4zOTkwNCwtMTguMzk5MDRjLTEuMjQwMzgsLTEuMzE3OTEgLTIuOTQ1OTEsLTIuMDQxNDcgLTQuNzU0ODEsLTIuMDY3MzFjLTIuNzEzMzQsLTAuMDUxNjggLTUuMjE5OTUsMS41NTA0OCAtNi4yNTM2LDQuMDU3MDljLTEuMDU5NSwyLjUwNjYyIC0wLjQ2NTE1LDUuNDI2NjkgMS40OTg3OSw3LjMxMzFsMTQ4LjIyNTk2LDE0Ny42MDU3N2MxLjYwMjE3LDEuOTYzOTQgNC4xNjA0NiwyLjg2ODM5IDYuNjQxMjIsMi4yOTk4OGMyLjQ1NDkzLC0wLjU2ODUxIDQuMzkzMDMsLTIuNTA2NjEgNC45NjE1NCwtNC45NjE1NGMwLjU2ODUxLC0yLjQ4MDc3IC0wLjMzNTk0LC01LjAzOTA2IC0yLjI5OTg4LC02LjY0MTIybC0xNy4xNTg2NSwtMTcuMTU4NjV2LTExOC40NTY3M2MwLC0xMS4yNDA5OSAtOC42MDUxNywtMTkuODQ2MTUgLTE5Ljg0NjE1LC0xOS44NDYxNXpNODIuNjkyMzEsNi42MTUzOGgxMy4yMzA3N2MxLjk4OTc4LDAgMy4zMDc2OSwxLjMxNzkxIDMuMzA3NjksMy4zMDc2OWMwLDEuOTg5NzggLTEuMzE3OTEsMy4zMDc2OSAtMy4zMDc2OSwzLjMwNzY5aC0xMy4yMzA3N2MtMS45ODk3OCwwIC0zLjMwNzY5LC0xLjMxNzkxIC0zLjMwNzY5LC0zLjMwNzY5YzAsLTEuOTg5NzggMS4zMTc5MSwtMy4zMDc2OSAzLjMwNzY5LC0zLjMwNzY5ek00OS42MTUzOCwxOS44NDYxNWg3OS4zODQ2MmMxLjk4OTc4LDAgMy4zMDc2OSwxLjMxNzkxIDMuMzA3NjksMy4zMDc2OXYxMDEuOTE4MjdsLTg2LC04NS41ODY1NHYtMTYuMzMxNzNjMCwtMS45ODk3OCAxLjMxNzkxLC0zLjMwNzY5IDMuMzA3NjksLTMuMzA3Njl6TTMzLjA3NjkyLDYzLjQ2NjM1djg4LjY4NzVjMCwxMS4yNDA5OSA4LjYwNTE3LDE5Ljg0NjE1IDE5Ljg0NjE1LDE5Ljg0NjE1aDcyLjc2OTIzYzQuNjI1NiwwIDguNjgyNjksLTEuMjkyMDYgMTEuOTkwMzgsLTMuOTI3ODhsLTI5LjE0OTA0LC0yOS4xNDkwNGgtNTguOTE4MjdjLTEuOTg5NzgsMCAtMy4zMDc2OSwtMS4zMTc5MSAtMy4zMDc2OSwtMy4zMDc2OXYtNTguOTE4Mjd6TTg5LjMwNzY5LDE0Ni43Nzg4NWM0LjYyNTYsMCA4LjY4MjY5LDQuMDU3MDkgOC42ODI2OSw4LjY4MjY5YzAsNC42MjU2IC00LjA1NzA5LDguNjgyNjkgLTguNjgyNjksOC42ODI2OWMtNC42MjU2LDAgLTguNjgyNjksLTQuMDU3MDkgLTguNjgyNjksLTguNjgyNjljMCwtNC42MjU2IDQuMDU3MDksLTguNjgyNjkgOC42ODI2OSwtOC42ODI2OXoiPjwvcGF0aD48L2c+PC9nPjwvc3ZnPg=='
         }
@@ -687,6 +704,9 @@ const homeTwo = Vue.component('homeTwo', {
         },
         isHostParty(){
             return this.modalType.includes('host')
+        },
+        continueSessionCopy(){
+            return this.isHostParty ? 'Continue hosting' : 'Conitinue to join'
         }
     },
     mounted: function(){
@@ -716,6 +736,7 @@ const homeTwo = Vue.component('homeTwo', {
                     image: this.appLogoImage
                 }
                 this.$store.commit('clubs', [party])
+                this.setSessionType('host', party.name, party.id)
                 this.$router.push(`/dj/${party.id}`)
                 this.partyModalLoader = false
             })   
@@ -746,6 +767,7 @@ const homeTwo = Vue.component('homeTwo', {
                     image: this.appLogoImage
                 }
                 this.$store.commit('clubs', [party])
+                this.setSessionType('join', party.name, party.id)
                 this.$router.push(`/request/${party.id}`)
                 this.partyModalLoader = false
             })   
@@ -756,15 +778,17 @@ const homeTwo = Vue.component('homeTwo', {
             })
         },
         submitModalInput(){
-            switch(this.modalType){
-                case 'host party':
-                    this.startParty()
-                    break
-                case 'join party':
-                    this.joinParty()
-                    break
-                default:
-            }
+            if (this.modalInput !== '') {
+                switch(this.modalType){
+                    case 'host party':
+                        this.startParty()
+                        break
+                    case 'join party':
+                        this.joinParty()
+                        break
+                    default:
+                }
+            }   
         },
         closeModal(){
             this.showModal = false;
@@ -802,6 +826,7 @@ const homeTwo = Vue.component('homeTwo', {
                     break
                 default:
             }
+            this.checkForExistingSession()
         },
         inputTyping(){
             if (this.partyModalError) {
@@ -816,6 +841,66 @@ const homeTwo = Vue.component('homeTwo', {
                 this.showModal = true
                 this.$store.commit('joinParty', '')
             }
+        },
+        currentPartySession(){
+            if (!this.safe(sessionStorage.sessionType)) {
+                return undefined
+            }
+
+            return JSON.parse(sessionStorage.sessionType)
+        },
+        setSessionType(partyType,partyName,clubId){
+            const sessionType = {partyType, partyName, clubId}
+            sessionStorage.sessionType = JSON.stringify(sessionType)
+        },
+        clearSessionType(){
+            sessionStorage.clear('sessionType')
+        },
+        skipCurrentPartySession(){
+            this.partySessionExists = false
+        },
+        async checkForExistingSession(){
+            try {
+                this.partyModalLoader = true
+                this.partySessionExists = false
+                if (!this.safe(this.currentPartySession()) || !this.modalType.includes(this.currentPartySession().partyType)) {
+                    this.partyModalLoader = false
+                    return
+                }
+                this.currentPartySessionData = this.currentPartySession()
+                const clubId = this.currentPartySessionData.clubId
+                const response = await fetch(`/startParty?code=${clubId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                if (response.status === 200) {
+                    this.partySessionExists = true
+                } else {
+                    this.clearSessionType()
+                }
+                this.partyModalLoader = false
+            } catch (error) {
+                
+            }
+        },
+        continueExistingPartySession(){
+            this.partyModalLoader = true
+            const currentPartySession = this.currentPartySession()
+            const party = {
+                name: currentPartySession.partyName,
+                id: currentPartySession.clubId,
+                client_type: 'jukebox',
+                image: this.appLogoImage
+            }
+            this.$store.commit('clubs', [party])
+            if (this.isHostParty) {
+                this.$router.push(`/dj/${party.id}`)
+            } else {
+                this.$router.push(`/request/${party.id}`)
+            }
+            this.partyModalLoader = false
         }
     }
 })
@@ -1000,39 +1085,6 @@ const spotify = Vue.component('spotify',{
             const change = vip ? gold : normal
             doc.style.setProperty('--main', change)
             console.log('fired', change)
-        },
-        youtube(query){
-            this.loader = true
-            const searchUrl = 'https://www.googleapis.com/youtube/v3/search'
-            const key = 'AIzaSyCZVImtMr37nqi5MPRuNtvr0D-kp0Eq0Bk'
-            const maxTime = 247 // 4 minutes - if longer than 4 minutes then set maxtime
-            const params = new URLSearchParams({
-                q: `${query} audio`,
-                part: 'snippet',
-                maxResults: 5,
-                key
-            })
-            fetch(`${searchUrl}?${params.toString()}`)
-            .then((response) => {
-                if (response.status === 200){
-                    return response.json()
-                }
-            })
-            .then((res) => {
-                this.searchResult = res.items.map((item)=>{
-                    let obj = {}
-                    obj.image = item.snippet.thumbnails.default.url
-                    obj.song = item.snippet.title.split(' - ')[1]
-                    obj.artist = item.snippet.title.split(' - ')[0]
-                    obj.id = item.id.videoId
-                    return obj
-                })
-                this.noResult = (this.searchResult.length === 0) ? true : false
-                this.pendingSearch = []
-                this.loader = false;
-                this.scrollToResultTop()
-                console.log(res, 'am done')
-            })
         }
     },
     watch: {
@@ -1190,6 +1242,15 @@ const djSpotify = Vue.component('djSpotify', {
             return this.requestList
         }
     },
+    watch: {
+        jukeBoxList: function(newValue, oldValue){
+            const jukeBoxSession = {
+                clubId: this.club.id,
+                songList: newValue
+            }
+            sessionStorage.jukeBoxList = JSON.stringify(jukeBoxSession)
+        }
+    },
     methods: {
         hideRequest(payload){
             if(this.safe(payload)){
@@ -1284,6 +1345,7 @@ const djSpotify = Vue.component('djSpotify', {
                                 document.querySelector('.jukebox-container').style.display = 'inline-block'
                             }
                             this.jukeboxPlayerReady = true
+                            this.getExistingSessionSongList()
                         },
                         'onStateChange': (event) => {
                             this.jukeBoxStateChanged(event)
@@ -1372,11 +1434,13 @@ const djSpotify = Vue.component('djSpotify', {
                 }
             }
         },
-        playNextSong(){
+        playNextSong(shift = true){
             this.widgetStarted =  false
             // When error 150 happens add another auto request
             this.addNextAutoRequest()
-            this.jukeBoxList.shift()
+            if (shift) {
+                this.jukeBoxList.shift()
+            }
             if (this.jukeBoxList.length > 0) {
                 this.jukeBoxInstance.setVolume(100)
                 this.jukeBoxInstance.loadVideoById({
@@ -1546,6 +1610,15 @@ const djSpotify = Vue.component('djSpotify', {
         toggleOptions(song){
             song.showOptions = !song.showOptions
         },
+        getExistingSessionSongList(){
+            if (this.safe(sessionStorage.jukeBoxList)) {
+                const jukeBoxList = JSON.parse(sessionStorage.jukeBoxList)
+                if(jukeBoxList.clubId === this.club.id) {
+                    this.jukeBoxList.push(...jukeBoxList.songList)
+                    this.playNextSong(false)
+                }
+            }
+        }
         
     },
     created:function(){
@@ -1969,7 +2042,7 @@ const store = new Vuex.Store({
             image: serviceProvider.data().noProfileUrl,
             appName: ''
         },
-        partyCodeFromLink: ''
+        partyCodeFromLink: '',
     },
     mutations:{
         url(state, data){

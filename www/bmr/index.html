@@ -83,11 +83,18 @@
         </div>
         <slide-modal :show="showModal" @close="closeModal" class="small-modal" style="background: var(--main-opaque)" :class="{'host-hue': isHostParty}">
             <div class="party-modal" style="padding: 10%;display: grid;">
-                <input type="text" class="animated" :maxlength="partyModal.maxLength" :placeholder="partyModal.placeholder" v-model="modalInput"
-                    :style="partyModal.inputStyle" :class="{'error shake': partyModalError}" @keyup="inputTyping" @keyup.enter="submitModalInput"/>
-                <div class="btn btn-background animated fadeInUp" style="margin-top: 20px;width: 50%;place-self: center;"
-                    v-show="modalInput !== '' && !partyModalLoader" @click="submitModalInput">{{partyModal.name}}</div>
                 <spinner class="animated fadeIn" :colorClass="'default'" v-show="partyModalLoader" style="justify-self: center"></spinner>
+                <div style="display:contents" v-if="!partyModalLoader && !partySessionExists">
+                    <input type="text" class="animated" :maxlength="partyModal.maxLength" :placeholder="partyModal.placeholder" v-model="modalInput"
+                        :style="partyModal.inputStyle" :class="{'error shake': partyModalError}" @keyup="inputTyping" @keyup.enter="submitModalInput"/>
+                    <div class="btn btn-background animated fadeInUp waves-effect waves-light" style="margin-top: 20px;width: 50%;place-self: center;"
+                        @click="submitModalInput">{{partyModal.name}}</div>
+                </div>
+                <div style="display:contents" v-if="!partyModalLoader && partySessionExists">
+                    <div class="center">{{continueSessionCopy}} <b>"{{currentPartySessionData.partyName}}"</b> party ({{currentPartySessionData.clubId}})</div>
+                    <div class="btn btn-background waves-effect waves-light" style="margin-top: 20px;width: 50%;place-self: center;" @click="continueExistingPartySession">Continue</div>
+                    <div class="btn btn-background waves-effect waves-light" style="margin-top: 20px;width: 50%;place-self: center;" @click="skipCurrentPartySession">New Party</div>
+                </div>
             </div>
         </slide-modal>
 
@@ -199,7 +206,7 @@
             <div class="btn btn-background" v-if="modalPage.imageacquired" @click="setDj">Take The Spotlight</div>
         </badge>
         <div class="btn-floating btn-large waves-effect waves-light fab-menu animated bounce z-depth-4" @click="toggleShowHostRequest" v-show="jukeboxPlayerReady">
-            <i class="material-icons" style="font-size:32px;color:white;margin-top:2px;">playlist_add</i>
+            <i class="material-icons" style="font-size:32px;color:white;">playlist_add</i>
         </div>
         <slide-modal :show="showHostRequest" @close="toggleShowHostRequest">
             <div class="host-search-container">
@@ -292,7 +299,7 @@
         </div>
         <div style="margin-top: 160px;">
             <spinner :colorClass="'default'" v-show="loader"></spinner>
-            <div class="row " style="margin-bottom: 60px" v-show="!loader">
+            <div class="row " style="margin-bottom: 70px" v-show="!loader">
                 <div class="card dark-card animated fadeInUp" v-for="(x, index) in displayRequests" :key="x.id" :class="{'first-in-queue': index === 0}">
                     <i class="material-icons more-vert-icon" :class="{'white-text': x.showOptions}" v-if="index > 0" @click="toggleOptions(x)">more_vert</i>
                     <div class="row song-result-center" :class="{'dj-vip': x.vipList.size > 0}">
@@ -326,7 +333,7 @@
                             <p class="p-space" v-if="!jukeboxMode && x.explicit"><b>---- Explicit ----</b></p>
                         </div>
                         <div class="col s3">
-                            <span class="btn btn-floating" @click="hideRequest(x)" v-show="x.vipList.size <= 0 || x.showVip">
+                            <span class="btn btn-floating" @click="hideRequest(x)">
                                 <i class="material-icons" >close</i>
                             </span>
                             <span class="btn btn-floating" @click="x.showVip = true" v-show="x.vipList.size > 0 && !x.showVip">
