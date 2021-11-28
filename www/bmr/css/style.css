@@ -348,7 +348,6 @@ i.more-vert-icon {
     cursor:pointer;
 }
 .qrCode img, .qrCode canvas {
-    display: initial !important;
     min-width: 64px;
     width: 13vh;
     max-width: 85px;
