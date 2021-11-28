@@ -347,7 +347,7 @@ i.more-vert-icon {
     color: #9e9e9e;
     cursor:pointer;
 }
-.qrCode img {
+.qrCode img, .qrCode canvas {
     display: initial !important;
     min-width: 64px;
     width: 13vh;
