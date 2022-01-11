@@ -1326,7 +1326,7 @@ const djSpotify = Vue.component('djSpotify', {
         getJukeboxApi(){
             const tag = document.createElement('script');
             // IOS mobile should have a video loaded by default to prevent error and not keep showing the power button
-            const videoId = this.isIOS() && this.isMobileOrTablet() ? 'q1Yz0Vfp2jY': undefined
+            const videoId = this.isMobileOrTablet() ? 'q1Yz0Vfp2jY': undefined
             // When api is ready to be used this will be called
             window.onYouTubeIframeAPIReady = () => {
                 this.jukeBoxInstance = new YT.Player('jukebox', {
@@ -1341,7 +1341,7 @@ const djSpotify = Vue.component('djSpotify', {
                             // error 150 video examples - videoId [k0XheliA6RY, V3RfzGpYu_0]
                         },
                         'onReady': () => {
-                            if (this.isIOS() && this.isMobileOrTablet()) {
+                            if (this.isMobileOrTablet()) {
                                 document.querySelector('.jukebox-container').style.display = 'inline-block'
                             }
                             this.jukeboxPlayerReady = true
@@ -1379,13 +1379,13 @@ const djSpotify = Vue.component('djSpotify', {
                     if (!this.endedStateActive) {
                         // this if block is just in case the ended event is called back to back immediately
                         this.endedStateActive = true
-                    setTimeout(() => {
-                        if (this.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
-                            clearInterval(this.fadeOutIntervalInstance)
-                            this.playNextSong()
-                        }
-                            this.endedStateActive = false
-                    }, 3000)
+                        setTimeout(() => {
+                            if (this.jukeBoxInstance.getPlayerState() === YT.PlayerState.ENDED) {
+                                clearInterval(this.fadeOutIntervalInstance)
+                                this.playNextSong()
+                            }
+                                this.endedStateActive = false
+                        }, 3000)
                     }
                     break;
                 case 'playing':
