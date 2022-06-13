@@ -445,10 +445,12 @@ const incident = {
         const today = new Date()
         const minDate = new Date()
         const currentYear = today.getFullYear()
+        const minimumYear = currentYear - 2
         minDate.setMonth(0)
         minDate.setDate(1)
+        minDate.setFullYear(minimumYear)
         const dateOptions = {
-            yearRange: [currentYear,currentYear],
+            yearRange: [minimumYear,currentYear],
             minDate,
             maxDate: today,
             defaultDate: today,
