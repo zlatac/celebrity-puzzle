@@ -1,4 +1,5 @@
 import progress from './components/progress';
+import incidents from './utils/incidents'
 const serviceProvider = {
     data: function(){
         return{
@@ -176,68 +177,93 @@ const landing = Vue.component('landing', {
     // dark experiment:#252525
     template:'#landing',
     mixins: [serviceProvider],
+    data: function(){
+        return {
+            searchInput: '',
+            searchStartDate: '',
+            searchEndDate: '',
+            startDatePickerInstance: undefined,
+            endDatePickerInstance: undefined,
+            loading: false,
+            showModal: false,
+            submitted: false,
+            errorShake: false,
+        }
+    },
     mounted: function(){
         const today = new Date()
         const minDate = new Date()
         const currentYear = today.getFullYear()
         const eigtheenYearsAgo = currentYear - 18
         const ninetyYearsAgo = currentYear - 90
-        today.setYear(eigtheenYearsAgo)
+        const startMaxDate = today
+        const endMaxDate = moment().add(1, 'y').toDate()
+        // today.setYear(eigtheenYearsAgo)
         minDate.setYear(ninetyYearsAgo)
         minDate.setMonth(0)
         minDate.setDate(1)
 
-        const options = {
-            format: 'dd-mm-yyyy',
-            yearRange: [ninetyYearsAgo,eigtheenYearsAgo],
-            maxDate: today,
-            minDate,
-            defaultDate: today,
-            onSelect: this.setDateOfBirth
+        const options = (maxDate, endYearRange, onSelect) => {
+            return {
+                format: 'dd-mm-yyyy',
+                yearRange: [ninetyYearsAgo, endYearRange],
+                maxDate: maxDate,
+                minDate,
+                defaultDate: today,
+                onSelect: onSelect
+            }
         }
-        this.datePickerInstance = M.Datepicker.init(this.$refs.date, options)
-    },
-    data: function(){
-        return {
-            searchInput: '',
-            searchDate: '',
-            datePickerInstance: undefined,
-            loading: false,
-            showModal: false,
-            showErrorDate: false,
-        }
+        this.startDatePickerInstance = M.Datepicker.init(this.$refs.startDate, options(today, currentYear, this.setDateInput.bind(this, 'startDate')))
+        this.endDatePickerInstance = M.Datepicker.init(this.$refs.endDate, options(endMaxDate, currentYear + 1, this.setDateInput.bind(this, 'endDate')))
     },
     methods: {
-        setDateOfBirth(){
-            this.searchDate = this.datePickerInstance.toString()
-            this.showErrorDate = false
+        setDateInput(dateType){
+            switch(dateType){
+                case 'startDate':
+                    this.searchStartDate = this.startDatePickerInstance.toString()
+                    break
+                case 'endDate':
+                    this.searchEndDate = this.endDatePickerInstance.toString()
+                    break
+                default:
+            }
         },
-        openDatePicker(event){
+        openDatePicker(event, dateType){
             event.preventDefault()
-            this.datePickerInstance.open()
+            switch(dateType){
+                case 'startDate':
+                    this.startDatePickerInstance.open()
+                    break
+                case 'endDate':
+                    this.endDatePickerInstance.open()
+                    break
+                default:
+            }
         },
-        searchFreeReport(){
-            this.showErrorDate = false
-            if (this.safe(this.searchInput) && !this.loading) {
-                const dateOfBirth = this.searchDate
-                const correctDateFormat = /[0-9]{2}-[0-9]{2}-[0-9]{4}/.test(dateOfBirth)
-                if (this.safe(dateOfBirth) && correctDateFormat) {
-                    try {
-                        this.loading = true
-                        // make http request to find individual
-                        setTimeout(()=>{
-                            this.showModal = true
-                            this.loading = false
-                        }, 1500)
-                        //this.showModal = true
-                    } catch (error) {
-                        console.error(new Error(error))
-                    } finally {
-                        //this.loading = false
-                    }
-                } else {
-                    this.showErrorDate = true
+        async searchFreeReport(){
+            this.submitted = false
+            const valid = await this.$refs.form.validate()
+            if (valid) {
+                // const correctDateFormat = /[0-9]{2}-[0-9]{2}-[0-9]{4}/.test(dateOfBirth)
+                try {
+                    this.loading = true
+                    // make http request to find individual
+                    setTimeout(()=>{
+                        this.showModal = true
+                        this.loading = false
+                    }, 1500)
+                    //this.showModal = true
+                } catch (error) {
+                    console.error(new Error(error))
+                } finally {
+                    //this.loading = false
                 }
+            } else {
+                this.submitted = true
+                this.errorShake = true
+                setTimeout(() => {
+                    this.errorShake = false
+                }, 1000)
             }
         },
         startPaymentProcess() {
@@ -249,6 +275,49 @@ const landing = Vue.component('landing', {
     }
 });
 
+const rentInfo = {
+    template:'#rent-info',
+    mixins: [serviceProvider],
+    data: function(){
+        return {
+            street: '',
+            unitNumber: '',
+            city: '',
+            country: '',
+            postalOrZipCode: '',
+            submitted: false,
+        }
+    },
+    mounted: function(){
+        const elems = document.querySelectorAll('select');
+        M.FormSelect.init(elems);
+    },
+    computed: {
+        rentInfo(){
+            const street = this.street
+            const unitNumber = this.unitNumber
+            const city = this.city
+            const country = this.country
+            const postalOrZipCode = this.postalOrZipCode.trim()
+                .replace(' ', '')
+                .toUpperCase()
+            
+            return {street, unitNumber, city, country, postalOrZipCode}
+        }
+    },
+    methods: {
+        async submit(){
+            this.submitted =  false
+            const valid = await this.$refs.form.validate()
+            if (valid) {
+                this.$emit('next', {rentInfo: this.rentInfo})
+            } else {
+                this.submitted = true
+            }
+        }
+    }
+};
+
 const tenantInfo = {
     template:'#tenant-info',
     mixins: [serviceProvider],
@@ -256,6 +325,10 @@ const tenantInfo = {
         return {
             name: '',
             dateOfBirth: '',
+            rentAddress: '',
+            rentunitNumber: '',
+            rentCountry: '',
+            rentPostalCode: '',
             submitted: false,
         }
     },
@@ -334,6 +407,7 @@ const incident = {
             summary: '',
             amount: '',
             incidentType: '',
+            incidentList: incidents,
             dateOfIncident: '',
             tooltip: "This information is used to assess the legitimacy of your report",
             files: {
@@ -352,6 +426,15 @@ const incident = {
             const dateOfIncident = this.dateOfIncident
             const files = this.files
             return {summary, amount, incidentType, dateOfIncident, files}
+        },
+        landlordIncidents(){
+            return this.incidentList.filter(i => i.landlord)
+                .sort((a,b) => {
+                    if (a.name > b.name) return 1
+                    if (a.name < b.name) return -1
+
+                    return 0
+                })
         }
     },
     mounted: function(){
@@ -386,7 +469,7 @@ const incident = {
         getAllFiles(){
             this.files.proofImages = this.$refs.proofImages.value
             this.files.leaseAgreement = this.$refs.leaseAgreement.value
-            this.files.propertyTaxBill = this.$refs.propertyTaxBill.value
+            // this.files.propertyTaxBill = this.$refs.propertyTaxBill.value
         }
     }
 };
@@ -411,7 +494,7 @@ const pay = {
         <div id="card-errors" class="error" role="alert" style="margin-top: 7px;">{{errorMessage}}</div>
     
         <button id="submit" class="btn navigate-alone" style="margin-top: 7px;" :class="{'disabled': submitted}">
-            <span v-show="!submitted">Pay - $29.99</span>
+            <span v-show="!submitted">Pay - $9.99</span>
             <spinner color-class="white" v-show="submitted"></spinner>
         </button>
     </form>
@@ -513,6 +596,7 @@ const reportTenant = Vue.component('report-tenant', {
     template:'#report-tenant',
     mixins: [serviceProvider],
     components: {
+        'rent-info': rentInfo,
         'tenant-info': tenantInfo,
         'landlord-info': landlordInfo,
         'incident': incident,
@@ -523,7 +607,7 @@ const reportTenant = Vue.component('report-tenant', {
         return {
             step: 1,
             steps: [
-                'tenant-info',
+                'rent-info',
                 'landlord-info',
                 'incident',
                 'pay',
@@ -534,7 +618,7 @@ const reportTenant = Vue.component('report-tenant', {
             animateBackward: false, 
             reportFiled: {
                 // Must be in order of steps data property
-                tenant: {},
+                rentInfo: {},
                 landlord: {},
                 incident: {}
             }
@@ -575,7 +659,8 @@ const reportTenant = Vue.component('report-tenant', {
            const formData = new FormData()
            let incident, files
            ({files, ...incident} = this.reportFiled.incident)
-           formData.append('tenant', JSON.stringify(this.reportFiled.tenant))
+        //    formData.append('tenant', JSON.stringify(this.reportFiled.tenant))
+           formData.append('rentInfo', JSON.stringify(this.reportFiled.rentInfo))
            formData.append('landlord', JSON.stringify(this.reportFiled.landlord))
            formData.append('incident', JSON.stringify(incident))
            if (this.safe(files.propertyTaxBill[0])) {
@@ -823,8 +908,24 @@ VeeValidate.extend('file_max', {
         }
     
         return `Max # of files is ${args.max}. You added ${length}`;
-      },
-      params: ['max'],
+    },
+    params: ['max'],
+})
+VeeValidate.extend('zip_code', {
+    validate(value, args) {
+        const sanitizedValue = value.trim().replace(' ', '')
+        const postalcode = /^[a-zA-Z][0-9][a-zA-Z][0-9][a-zA-Z][0-9]$/
+        const zipcode = /^[0-9]{5}(-[0-9]{4})?$/
+        if (
+            (args.country.includes('US') && zipcode.test(sanitizedValue)) ||
+            (args.country.includes('CA') && postalcode.test(sanitizedValue))
+            ) {
+            return true
+        }
+    
+        return false;
+    },
+    params: ['country'],
 })
 
 Vue.component('ValidationObserver', VeeValidate.ValidationObserver);

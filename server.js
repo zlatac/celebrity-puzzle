@@ -350,7 +350,7 @@ app.get('/allPlaylist', async function(req,res){
 app.get('/paySecret', async function(req,res){
     try {
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: 2999,
+            amount: 999,
             currency: 'usd',
             // Verify your integration in this guide by including this parameter
             metadata: {integration_check: 'accept_a_payment'},
