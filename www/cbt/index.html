@@ -62,29 +62,52 @@
 <script type="text/x-template" id="landing">
     <div class="landing">
         <div class="landing-container">
-            <div class="name-search">
-                <input 
-                    class="browser-default search-box" 
-                    type="search" 
-                    v-model="searchInput"
-                    aria-label="Enter first and last name to search for an individual"
-                    placeholder="search tenant fullname"/>
-                <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
-                    <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
-                    <spinner color-class="default" v-show="loading"></spinner>
-                </button>
-            </div>
-            <div class="input-container">
-                <input 
-                    class="browser-default search-box search-dob animated"
-                    :class="{'shake': showErrorDate, 'error': showErrorDate}"
-                    type="text"
-                    ref="date"
-                    :value="searchDate"
-                    @keydown="openDatePicker"
-                    aria-label="Enter the date of birth of the individual you are searching for"
-                    placeholder="Date of birth"/>
-            </div>
+            <validation-observer ref="form">
+                <validation-provider name="Street Address" v-slot="{ errors,valid,invalid,validated }" slim>
+                    <div class="name-search">
+                        <input 
+                            class="browser-default search-box animated"
+                            :class="{'error': submitted && invalid, 'shake': invalid && errorShake}"
+                            type="search" 
+                            v-model="searchInput"
+                            required
+                            aria-label="Enter full address with zip or postal code"
+                            placeholder="search Address"/>
+                        <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
+                            <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
+                            <spinner color-class="default" v-show="loading"></spinner>
+                        </button>
+                    </div>
+                </validation-provider>
+                <validation-provider name="Rent Start Date" v-slot="{ errors,valid,invalid,validated }" slim>
+                    <div class="input-container">
+                        <input 
+                            class="browser-default search-box search-dob animated"
+                            :class="{'error': submitted && invalid, 'shake': invalid && errorShake}"
+                            type="text"
+                            ref="startDate"
+                            :value="searchStartDate"
+                            @keydown="openDatePicker('startDate')"
+                            required
+                            aria-label="Enter the start date of the rental property"
+                            placeholder="Rent Start Date"/>
+                    </div>
+                </validation-provider>
+                <validation-provider name="Rent End Date" v-slot="{ errors,valid,invalid,validated }" slim>
+                    <div class="input-container">
+                        <input 
+                            class="browser-default search-box search-dob animated"
+                            :class="{'error': submitted && invalid, 'shake': invalid && errorShake}"
+                            type="text"
+                            ref="endDate"
+                            :value="searchEndDate"
+                            @keydown="openDatePicker('endDate')"
+                            required
+                            aria-label="Enter the end date of the rental property"
+                            placeholder="Rent End Date"/>
+                    </div>
+                </validation-provider>
+            </validation-observer>  
         </div>
         <slide-modal :show="showModal" @close="showModal=false">
             <div class="score-found hide">
@@ -98,7 +121,7 @@
             </div>
             <div class="not-found">
                 <h4 class="capitalize">No reports found</h4>
-                <p>Request at least 2 reference letters (family, friends, previous landlord) from <span class="capitalize">{{searchInput}}</span></p>
+                <!-- <p>Request at least 2 reference letters (family, friends, previous landlord) from <span class="capitalize">{{searchInput}}</span></p> -->
             </div>
         </slide-modal>
     </div>
@@ -117,6 +140,78 @@
                 :submit-call="submitReportFilled">
             </component>
         </keep-alive>
+    </div>
+</script>
+<script type="text/x-template" id="rent-info">
+    <div>
+        <h3>Rental Location</h3>
+        <validation-observer ref="form" class="wow">
+            <validation-provider name="Street Address" v-slot="{ errors,valid,invalid,validated }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">place</i>
+                        <input 
+                            id="rental-street" 
+                            type="text"
+                            required 
+                            v-model="street"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="rental-street">Street Address</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider name="Unit Number" v-slot="{ errors,valid,invalid,validated }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">edit</i>
+                        <input 
+                            id="rental-unit" 
+                            type="text" 
+                            v-model="unitNumber"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="rental-unit"># Unit</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider name="City" v-slot="{ errors,valid,invalid,validated }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">place</i>
+                        <input 
+                            id="rental-city"
+                            type="text"
+                            required 
+                            v-model="city"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="rental-city">City</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider v-slot="{ valid,invalid,validated }" rules="required|is_not:0" slim>
+                <div class="input-field" :class="{'invalid': invalid & submitted}">
+                    <i class="material-icons prefix">public</i>
+                    <select v-model="country" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="CA">Canada</option>
+                        <option value="US">USA</option>
+                    </select>
+                    <label>Country</label>
+                </div>
+            </validation-provider>
+            <validation-provider name="Zip/Postal Code" :rules="`zip_code:${country}`" v-slot="{ errors,valid,invalid,validated }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">place</i>
+                        <input 
+                            id="rental-zipcode"
+                            type="text"
+                            required
+                            v-model="postalOrZipCode"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="rental-zipcode">Zip/Postal Code</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+        </validation-observer>
+        <div class="navigate-alone">
+            <button class="btn middle" @click="submit">next</button>
+        </div>
     </div>
 </script>
 <script type="text/x-template" id="tenant-info">
@@ -218,9 +313,7 @@
                     <i class="material-icons prefix">description</i>
                     <select v-model="incidentType" required>
                         <option value="" disabled selected>Select</option>
-                        <option value="property_damage">Property damage</option>
-                        <option value="no_payment">No payment</option>
-                        <option value="other">Other</option>
+                        <option v-for="(incident, index) in landlordIncidents" :key="index" :value="incident.value">{{incident.name}}</option>
                     </select>
                     <label>Type of incident</label>
                     <span class="helper-text" :data-error="errors[0]"></span>
@@ -231,6 +324,7 @@
                     <i class="material-icons prefix">attach_money</i>
                     <select v-model="amount" required>
                         <option value="" disabled selected>Select</option>
+                        <option value="0">$0</option>
                         <option value="499">$1 - $499</option>
                         <option value="999"> $500 - $999</option>
                         <option value="4999">$1000 - $4999</option>
@@ -285,7 +379,7 @@
                     </div>
                 </div>
             </validation-provider>
-            <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="ext:pdf|size:3000" slim ref="propertyTaxBill">
+            <!-- <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="ext:pdf|size:3000" slim ref="propertyTaxBill">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>PDF</span>
@@ -296,7 +390,7 @@
                         <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
                     </div>
                 </div>
-            </validation-provider>
+            </validation-provider> -->
         </validation-observer>
         <div class="navigate">
             <button  class="btn" @click="$emit('back')">back</button>

@@ -90,6 +90,16 @@ html, body, #myapp {
     border-bottom: 1px solid #1652f0;
     width: 4%;
 }
+.input-container:last-of-type::before {
+    content: "";
+    position: absolute;
+    height: 44px;
+    border-left: 1px solid #1652f0;
+    bottom: 0;
+    left: 21%;
+    top: -60px;
+    width: 4%;
+}
 input::placeholder {
     color: #737373
 }
@@ -160,7 +170,11 @@ footer a:hover {
 .datepicker-done,
 td.is-today[aria-selected="false"],
 .dropdown-content li > span {
-    color: var(--main)
+    color: var(--main);
+}
+.dropdown-content li > span,
+.select-dropdown.dropdown-trigger {
+    text-transform: capitalize;
 }
 .datepicker-controls button:focus {
     background-color: var(--border-grey);
