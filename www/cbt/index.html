@@ -39,6 +39,7 @@
     <!-- Compiled and minified JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js"></script> -->
     <!-- <script src="/bmr/lib/socket.io.js"></script> -->
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script> -->
@@ -72,6 +73,7 @@
                             v-model="searchInput"
                             required
                             aria-label="Enter full address with zip or postal code"
+                            title="Example: Unit# - Address, City, Zip/Postal code"
                             placeholder="search Address"/>
                         <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
                             <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
@@ -109,7 +111,7 @@
                 </validation-provider>
             </validation-observer>  
         </div>
-        <slide-modal :show="showModal" @close="showModal=false">
+        <slide-modal  v-if="showModal" show="true" @close="closeReportModal">
             <div class="score-found hide">
                 <div>
                     <div class="btn-floating score"><span></span><span></span>%</div>
@@ -120,8 +122,14 @@
                 </button>
             </div>
             <div class="not-found">
-                <h4 class="capitalize">No reports found</h4>
+                <h4 v-if="!isMobileOrTablet()" class="capitalize" style="margin-top: 0;">No reports found</h4>
+                <h5 v-if="isMobileOrTablet()" class="capitalize" style="margin-top: 0;">No reports found</h5>
+                <span class="underline" @click="showSampleReport">{{sampleReport ? 'Showing' : 'See'}} sample report</span>
                 <!-- <p>Request at least 2 reference letters (family, friends, previous landlord) from <span class="capitalize">{{searchInput}}</span></p> -->
+            </div>
+            <div class="report-found">
+                <div ref="incidentReport"></div>
+                <div ref="monetaryLossReport"></div>
             </div>
         </slide-modal>
     </div>
@@ -326,8 +334,15 @@
                         <option value="" disabled selected>Select</option>
                         <option value="0">$0</option>
                         <option value="499">$1 - $499</option>
-                        <option value="999"> $500 - $999</option>
-                        <option value="4999">$1000 - $4999</option>
+                        <option value="999">$500 - $999</option>
+                        <option value="1499">$1000 - $1499</option>
+                        <option value="1999">$1500 - $1999</option>
+                        <option value="2499">$2000 - $2499</option>
+                        <option value="2999">$2500 - $2999</option>
+                        <option value="3499">$3000 - $3499</option>
+                        <option value="3999">$3500 - $3999</option>
+                        <option value="4499">$4000 - $4499</option>
+                        <option value="4999">$4500 - $4999</option>
                         <option value="5000">$5000+</option>
                     </select>
                     <label>Amount in damages/no payment</label>

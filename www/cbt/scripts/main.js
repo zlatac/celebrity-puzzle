@@ -1,5 +1,6 @@
 import progress from './components/progress';
 import incidents from './utils/incidents'
+import pieChartColorList from './utils/pieChartColorList'
 const serviceProvider = {
     data: function(){
         return{
@@ -188,6 +189,23 @@ const landing = Vue.component('landing', {
             showModal: false,
             submitted: false,
             errorShake: false,
+            sampleReport: false,
+            incidentReport: [
+                ['Incident Type', 'amount',],
+                ['No Payment',     4], //$500 - 750 - $999 | 2000 - 3000 - 3996
+                ['Property Damage', 1], //$1000 - 1250 - $1499 | 1000 - 1250 - 1499
+                ['Contract Breach',  3], // $1 - 250 - $499 | 3 - 750 - 1497 
+                ['Other', 2], // $0                     | 3003 - 5000 - 6992
+            ],
+            monetaryLossReport: [
+                ['monetary loss', 'amount'],
+                ['No Payment',     3000],
+                ['Property Damage', 1250],
+                ['Contract Breach', 750],
+                ['Other', 0],
+            ],
+            pieChartIncidentInstance: undefined,
+            pieChartMonterayLossInstance: undefined,
         }
     },
     mounted: function(){
@@ -215,6 +233,7 @@ const landing = Vue.component('landing', {
         }
         this.startDatePickerInstance = M.Datepicker.init(this.$refs.startDate, options(today, currentYear, this.setDateInput.bind(this, 'startDate')))
         this.endDatePickerInstance = M.Datepicker.init(this.$refs.endDate, options(endMaxDate, currentYear + 1, this.setDateInput.bind(this, 'endDate')))
+        google.charts.load('current', {'packages':['corechart']}); 
     },
     methods: {
         setDateInput(dateType){
@@ -249,8 +268,8 @@ const landing = Vue.component('landing', {
                     this.loading = true
                     // make http request to find individual
                     setTimeout(()=>{
-                        this.showModal = true
                         this.loading = false
+                        this.showModal = true
                     }, 1500)
                     //this.showModal = true
                 } catch (error) {
@@ -271,6 +290,50 @@ const landing = Vue.component('landing', {
         },
         getPaidReport() {
             // use invoice id to retrieve report 
+        },
+        generateIncidentReport() {
+            const options = {
+                title: 'Number Of Incidents: 10',
+                pieHole: 0.4,
+                slices: pieChartColorList,
+                titleTextStyle: {
+                    color: 'rgba(0, 0, 0, 0.87)',
+                    fontSize: 12,
+                }          
+            }
+            const formatData = google.visualization.arrayToDataTable(this.incidentReport)
+            this.pieChartIncidentInstance = new google.visualization.PieChart(this.$refs.incidentReport);
+            this.pieChartIncidentInstance.draw(formatData, options)
+        },
+        generateMonetaryLossReport() {
+            const options = {
+                // title: 'Monetary Loss: $3,003 - $6,992',
+                title: 'Monetary Loss: ~$5,000',
+                pieHole: 0.4,
+                slices: pieChartColorList,
+                tooltip: {
+                    text: 'percentage'
+                },
+                titleTextStyle: {
+                    color: 'rgba(0, 0, 0, 0.87)',
+                    fontSize: 12,
+                },
+            }
+            const formatData = google.visualization.arrayToDataTable(this.monetaryLossReport)
+            this.pieChartMonterayLossInstance = new google.visualization.PieChart(this.$refs.monetaryLossReport);
+            this.pieChartMonterayLossInstance.draw(formatData, options)
+        },
+        initiateChartReport(){
+            this.generateIncidentReport()
+            this.generateMonetaryLossReport()
+        },
+        closeReportModal(){
+            this.showModal = false
+            this.sampleReport = false
+        },
+        showSampleReport(){
+            this.sampleReport = true
+            this.initiateChartReport()
         }
     }
 });
@@ -834,6 +897,9 @@ Vue.component('slide-modal', {
     </div>
     `,
     props:['show'],
+    mounted(){
+        this.$emit('slideMounted')
+    }
 
 });
 Vue.directive('imgfallback', {
