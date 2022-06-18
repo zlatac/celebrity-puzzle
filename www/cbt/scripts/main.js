@@ -295,6 +295,9 @@ const landing = Vue.component('landing', {
             const options = {
                 title: 'Number Of Incidents: 10',
                 pieHole: 0.4,
+                pieSliceTextStyle: {
+                    color: this.incidentReport.length == 2 ? 'black' : undefined,
+                },
                 slices: pieChartColorList,
                 titleTextStyle: {
                     color: 'rgba(0, 0, 0, 0.87)',
@@ -310,6 +313,9 @@ const landing = Vue.component('landing', {
                 // title: 'Monetary Loss: $3,003 - $6,992',
                 title: 'Monetary Loss: ~$5,000',
                 pieHole: 0.4,
+                pieSliceTextStyle: {
+                    color: this.monetaryLossReport.length == 2 ? 'black' : undefined,
+                },
                 slices: pieChartColorList,
                 tooltip: {
                     text: 'percentage'
@@ -611,15 +617,17 @@ const pay = {
             this.paySecret = data.client_secret
         },
         async submit(){
+            let stripeResult = {}
             if (!this.submitted) {
                 try {
                     this.submitted = true
+                    this.errorMessage = ''
                     // First get transaction id
                     await this.getClientSecret()
                     // submit form data with transaction id
                     this.submissionId = await this.submitCall(this.paySecret)
                     // finalize payment
-                    const result = await this.stripe.confirmCardPayment(this.paySecret, {
+                    stripeResult = await this.stripe.confirmCardPayment(this.paySecret, {
                         payment_method: {
                             card: this.card,
                             billing_details: {
@@ -627,16 +635,19 @@ const pay = {
                             }
                         }
                     })
-                    if (result.error) {
-                        this.errorMessage = result.error.message
+                    if (stripeResult.error) {
+                        this.errorMessage = stripeResult.error.message
                         return
-                    } else if(result.paymentIntent.status === 'succeeded') {
+                    } else if(stripeResult.paymentIntent.status === 'succeeded') {
                         await this.confirmSuccessfulPayment()
                         // Show success message and hide pay elements
                         this.$emit('paySuccess')
                     }
                 } catch(e) {
-
+                    if ('paymentIntent' in stripeResult && stripeResult.paymentIntent.status === 'succeeded') {
+                        this.$emit('paySuccess')
+                    }
+                    this.errorMessage = 'Something went wrong on our end. Please try again later'
                 } finally {
                     this.submitted = false
                 }
@@ -757,6 +768,25 @@ const reportTenant = Vue.component('report-tenant', {
        }   
     }
 });
+
+const aboutUs = {
+    template: '#about-us',
+}
+
+const faq = {
+    template: '#faq',
+    data: function(){
+        return {
+            collapsibleInstance: undefined,
+            collapsibleOptions: {
+                accordion: true
+            }
+        }
+    },
+    mounted(){
+        this.collapsibleInstance = M.Collapsible.init(this.$refs.collapse, this.collapsibleOptions)
+    }
+}
 
 const terms = Vue.component('terms', {
     template:'#terms',
@@ -984,14 +1014,26 @@ VeeValidate.extend('zip_code', {
         const sanitizedValue = value.trim().replace(' ', '')
         const postalcode = /^[a-zA-Z][0-9][a-zA-Z][0-9][a-zA-Z][0-9]$/
         const zipcode = /^[0-9]{5}(-[0-9]{4})?$/
-        if (
-            (args.country.includes('US') && zipcode.test(sanitizedValue)) ||
-            (args.country.includes('CA') && postalcode.test(sanitizedValue))
-            ) {
-            return true
+        const countryCode = args.country
+        switch(countryCode){
+            case 'US':
+                if (zipcode.test(sanitizedValue)) {
+                    return true
+                }
+                return 'Zip code is invalid'
+                break
+            case 'CA':
+                if (postalcode.test(sanitizedValue)) {
+                    return true
+                }
+                return 'Postal code is invalid' 
+                break
+            default:
+                return (
+                    (zipcode.test(sanitizedValue)) ||
+                    (postalcode.test(sanitizedValue))
+                )
         }
-    
-        return false;
     },
     params: ['country'],
 })
@@ -1001,7 +1043,9 @@ Vue.component('ValidationProvider', VeeValidate.ValidationProvider);
 
 const routes = [
   { path: '/', component: landing },
-  //{ path: '/terms', component: terms },
+//   { path: '/terms', component: terms },
+  { path: '/about', component: aboutUs },
+  { path: '/faq', component: faq },
   { path: '/report-tenant', component: reportTenant },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];

@@ -1,6 +1,7 @@
 :root {
     --main: rgb(22, 82, 240);
     --border-grey: #dfe1e5;
+    --secondar-color: #f2f2f2;
     --main-opaque: linear-gradient(120deg, #92fe9dab 0%, #00c9ffd9 107%);
     --dark-theme:#252525;
     --light-theme:#ffff;
@@ -28,6 +29,11 @@ html, body, #myapp {
 .landing .dj-modal-body {
     padding: 5% 5% 0;
     text-align: center;
+}
+.landing-container {
+    max-width: 500px;
+    width: 100%;
+    margin: 0 auto;
 }
 .name-search {
     position: relative;
@@ -128,7 +134,7 @@ header a:first-of-type {
     letter-spacing: -2px;
 }
 footer {
-    background-color: #f2f2f2;
+    background-color: var(--secondar-color);
     display: flex;
     justify-content: space-evenly;
     align-items: center;
@@ -203,9 +209,6 @@ td.is-today[aria-selected="false"],
     }
 }
 @media only screen and (min-width: 1024px){
-    .landing-container {
-        padding: 0 25%;
-    }
     .report-tenant-container {
         padding: 0 20%;
     }
@@ -283,10 +286,38 @@ h3 {
     color: var(--main);
     cursor: pointer;
 }
+.about-us {
+    line-height: 35px;
+    border-top: 10px solid var(--border-grey);
+    font-size: 1.3em;
+    min-height: 76%;
+    width: 80%;
+    margin: 0 auto;
+    max-width: 398px;
+}
+.faq-container {
+    margin: 0 3%;
+}
+.collapsible.popout > li {
+    margin-bottom: 10px;
+}
+.collapsible-header {
+    text-transform: capitalize;
+    min-height: 60px;
+    letter-spacing: .04em;
+    /* font-weight: 600; */
+}
+.collapsible-body {
+    background-color: var(--secondar-color);
+    text-align: center;
+}
 @media only screen and (min-width: 810px){
     .report-found {
         grid-template-rows: repeat(auto-fill, minmax(100%, 1fr));
         grid-template-columns: repeat(auto-fill, minmax(50%, 1fr));
+    }
+    .faq-container {
+        margin: 0 18%;
     }
 }
 @media only screen and (max-width: 810px){

@@ -48,8 +48,8 @@
     <div id="myapp">
         <header>
             <router-link to="/">CBT</router-link>
-            <router-link to="/report-tenant">
-                <button class="waves-effect waves-light btn">Report tenant</button>
+            <router-link to="/report-tenant" v-if="!$route.path.includes('report-tenant')">
+                <button class="waves-effect waves-light btn animated fadeIn">Report tenant</button>
             </router-link>
         </header>
         <router-view></router-view>
@@ -57,7 +57,7 @@
             <router-link to="/about">About us</router-link>
             <a href="mailto:info@cannotbetrusted.com">Contact us</a>
             <router-link to="/faq">FAQ</router-link>
-            <router-link to="/terms">Terms & Conditions</router-link>
+            <!-- <router-link to="/terms">Terms & Conditions</router-link> -->
         </footer>
     </div>
 <script type="text/x-template" id="landing">
@@ -153,7 +153,7 @@
 <script type="text/x-template" id="rent-info">
     <div>
         <h3>Rental Location</h3>
-        <validation-observer ref="form" class="wow">
+        <validation-observer ref="form" class="wow form-incident">
             <validation-provider name="Street Address" v-slot="{ errors,valid,invalid,validated }" slim>
                 <div class="input-field">
                     <i class="material-icons prefix">place</i>
@@ -217,7 +217,7 @@
                 </div>
             </validation-provider>
         </validation-observer>
-        <div class="navigate-alone">
+        <div class="navigate navigate-alone">
             <button class="btn middle" @click="submit">next</button>
         </div>
     </div>
@@ -422,6 +422,89 @@
 </script>
 <script type="text/x-template" id="terms"> 
     <h1 style="margin-top:1000px">Terms and conditions</h1>
+</script>
+<script type="text/x-template" id="about-us">
+    <div class="animated fadeIn">
+        <h4 class="center">About Us</h4>
+        <p class="card-panel about-us center">
+            Our mission is to <b>identify problematic tenants</b> in the rental marketplace to landlords,
+            so that prospective <b>good tenants don't suffer</b> overbearing rental application requirements
+            and onboarding requirements.
+        </p>
+    </div>    
+</script>
+<script type="text/x-template" id="faq">
+    <div class="faq-container animated fadeIn">
+        <h4 class="center">FAQ</h4>
+        <ul class="collapsible popout" ref="collapse">
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>Do I have to be a Landlord to see reports
+                </div>
+                <div class="collapsible-body">
+                    <span>No, anyone can see reports made on any address within a rental start date & end date.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>Is a tenants personal information needed to make a report
+                </div>
+                <div class="collapsible-body">
+                    <span>No, the only information needed to report a tenant is the rental address, date of Incident & other incident related information.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>How do I show proof a tenant did not pay rent
+                </div>
+                <div class="collapsible-body">
+                    <span>Take screenshots/pictures of failed attempts to collect payment from the tenant with date/time stamps.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>How do i show proof of property damage
+                </div>
+                <div class="collapsible-body">
+                    <span>Take pictures of the damage if visible and send it along with a quote from a service technician. 
+                        Full name of the Landlord or the address of the rental unit should be on the quote.
+                        The service technician's contact information should be on the service quote.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>Can a tenant challenge a report made by the landlord
+                </div>
+                <div class="collapsible-body">
+                    <span>Yes, previous/existing tenants can appeal that a report is not factual. They must provide supporting documents to counter the supporting documents in the report.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>How do I challenge a report as a previous/existing tenant
+                </div>
+                <div class="collapsible-body">
+                    <span>Contact us directly with the report details you wish to challenge/appeal.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>My report was rejected, what do I do next
+                </div>
+                <div class="collapsible-body">
+                    <span>Create a new report with the appropriate supporting documents.</span>
+                </div>
+            </li>
+            <li>
+                <div class="collapsible-header">
+                    <i class="material-icons grey-text">help_outline</i>I paid my rent in full after a report was made. Can the report be removed
+                </div>
+                <div class="collapsible-body">
+                    <span>No, robbing a bank and then returning all the stolen money doesn't change the fact the bank was robbed.</span>
+                </div>
+            </li>
+        </ul>
+    </div>    
 </script>
 <template id="progress">
     <style>
