@@ -13,8 +13,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <!-- <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" /> -->
     <title>Cannot Be Trusted</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
     <script src="https://unpkg.com/vue-router@3.x"></script>
     <script src="https://unpkg.com/vuex@3.x"></script>
     <script src="https://unpkg.com/vee-validate@3.x/dist/vee-validate.full.min.js"></script>
@@ -57,6 +57,7 @@
             <router-link to="/about">About us</router-link>
             <a href="mailto:info@cannotbetrusted.com">Contact us</a>
             <router-link to="/faq">FAQ</router-link>
+            <router-link to="/" v-if="$route.path !== '/'">Home</router-link>
             <!-- <router-link to="/terms">Terms & Conditions</router-link> -->
         </footer>
     </div>
@@ -140,7 +141,8 @@
         <keep-alive>
             <component 
                 class="animated fadeIn report-form-container"
-                :is="formStep" 
+                :is="formStep"
+                :navigation-progress="stepNaviagtionProgress"
                 @back="goBackward" 
                 @next="goForward"
                 @paySuccess="paySuccess"
@@ -315,7 +317,10 @@
 <script type="text/x-template" id="incident">
     <div>
         <h3>Incident <i class="material-icons tooltipped" data-position="top" :data-tooltip="tooltip">help</i></h3>
-        <validation-observer ref="form" class="form-incident">
+        <div class="spinner-container" style="margin-top:50px;">
+            <spinner v-show="navigationProgress" size="150" color-class="default"></spinner>
+        </div>
+        <validation-observer ref="form" class="form-incident" v-show="!navigationProgress">
             <validation-provider name="incident type" v-slot="{ errors,valid,invalid,validated }" rules="required|is_not:0" slim>
                 <div class="input-field" :class="{'invalid': invalid & submitted}">
                     <i class="material-icons prefix">description</i>
@@ -407,7 +412,7 @@
                 </div>
             </validation-provider> -->
         </validation-observer>
-        <div class="navigate">
+        <div class="navigate" v-show="!navigationProgress">
             <button  class="btn" @click="$emit('back')">back</button>
             <button  class="btn" @click="submit">next</button>
         </div>
@@ -416,8 +421,8 @@
 <script type="text/x-template" id="pay-success"> 
     <div class="pay-success">
         <i class="material-icons">check_circle_outline</i>
-        <p>Your tenant report has been submitted for review.</p>
-        <p>We will email <span>{{reportFiled.landlord.email}}</span> with an approval/rejection based on the information provided.</p>
+        <h4>Your tenant report has been submitted for review.</h4>
+        <h6>We will email <span class="primary-text-color">{{reportFiled.landlord.email}}</span> with an approval/rejection based on the information provided.</h6>
     </div>
 </script>
 <script type="text/x-template" id="terms"> 
