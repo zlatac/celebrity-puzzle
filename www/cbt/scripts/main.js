@@ -471,6 +471,7 @@ const landlordInfo = {
 const incident = {
     template:'#incident',
     mixins: [serviceProvider],
+    props: ['navigation-progress'],
     data: function(){
         return {
             summary: '',
@@ -531,6 +532,7 @@ const incident = {
             this.submitted =  false
             const valid = await this.$refs.form.validate()
             if (valid) {
+                this.submitted = true
                 this.getAllFiles()
                 this.$emit('next', {incident: this.incident})
             } else {
@@ -682,7 +684,7 @@ const reportTenant = Vue.component('report-tenant', {
     data: function(){
         return {
             step: 1,
-            steps: [
+            stepList: [
                 'rent-info',
                 'landlord-info',
                 'incident',
@@ -690,8 +692,14 @@ const reportTenant = Vue.component('report-tenant', {
             ],
             showProgressStep: true,
             showPaySuccess: false,
+            stepNaviagtionProgress: false,
             animateForward: false, 
-            animateBackward: false, 
+            animateBackward: false,
+            payDate: moment('21-06-2024','dd-mm-YYYY'),
+            toastOptions: {
+                html: '🥺 Something went wrong. Please try again later',
+                classes: 'red darken-1'
+            },
             reportFiled: {
                 // Must be in order of steps data property
                 rentInfo: {},
@@ -706,15 +714,39 @@ const reportTenant = Vue.component('report-tenant', {
                 return 'pay-success'
             }
             return this.steps[this.step - 1]
+        },
+        todayIsBeforePayDate(){
+            return moment().isBefore(this.payDate)
+        },
+        steps(){
+            if (this.todayIsBeforePayDate) {
+                return this.stepList.slice(0, this.stepList.length - 1)
+            }
+            return this.stepList
         }
     },
     methods: {
-       goForward(payload){
+       async goForward(payload){
            this.updateReportFilled(payload)
+           if (!this.stepNaviagtionProgress && this.step === 3 && this.todayIsBeforePayDate) {
+               try {
+                this.stepNaviagtionProgress = true
+                await this.submitReportFilled(this.reportFiled.landlord.email)
+                this.paySuccess()
+               } catch (error) {
+                   console.error(new Error(error))
+                   M.toast(this.toastOptions)
+               } finally {
+                    this.stepNaviagtionProgress = false
+                    return
+               }
+           }
            if (this.step !== this.steps.length) {
+               this.stepNaviagtionProgress = true
                this.step++
                this.animateBackward = false
                this.animateForward = true
+               this.stepNaviagtionProgress = false
            }
        },
        goBackward(){
@@ -758,8 +790,6 @@ const reportTenant = Vue.component('report-tenant', {
            if (resp.status === 200 && data) {
             return Promise.resolve(data)
            }
-           
-           console.log(data)
        },
        paySuccess(){
            this.step = 5
@@ -821,9 +851,9 @@ Vue.component('champion',{
     `
 });
 Vue.component('spinner',{
-    props:['colorClass'],
+    props:['colorClass', 'size'],
     template:`
-        <div class="preloader-wrapper small active">
+        <div class="preloader-wrapper small active" :style="sizeStyle">
             <div class="spinner-layer" :class="{'spinner-white-only': colorClass === 'white', 'spinner-celeb': colorClass === 'default'}">
             <div class="circle-clipper left">
                 <div class="circle"></div>
@@ -834,7 +864,12 @@ Vue.component('spinner',{
             </div>
             </div>
         </div>
-    `
+    `,
+    computed: {
+        sizeStyle(){
+            return `width:${this.size}px; height:${this.size}px`
+        }
+    }
 });
 Vue.directive('inputHighlight', {
     bind: function(el,binding,vnode){
