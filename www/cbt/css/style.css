@@ -336,7 +336,7 @@ h3 {
     text-transform: capitalize;
 }
 .collapsible-table {
-    font-size: min(2.3vw, 22px);
+    font-size: min(3.7vw, 22px);
 }
 .bold {
     font-weight: bold;

@@ -317,7 +317,7 @@ const landing = Vue.component('landing', {
                 slices: pieChartColorList,
                 titleTextStyle: {
                     color: 'rgba(0, 0, 0, 0.87)',
-                    fontSize: 12,
+                    fontSize: 15,
                 }          
             }
             const formatData = google.visualization.arrayToDataTable(this.incidentReport)
@@ -338,7 +338,7 @@ const landing = Vue.component('landing', {
                 },
                 titleTextStyle: {
                     color: 'rgba(0, 0, 0, 0.87)',
-                    fontSize: 12,
+                    fontSize: 15,
                 },
             }
             const formatData = google.visualization.arrayToDataTable(this.monetaryLossReport)
@@ -884,15 +884,20 @@ const terms = Vue.component('terms', {
 
 Vue.component('collapse', {
     template: `
-    <ul class="collapsible popout" ref="collapseComponent">
+    <ul class="collapsible" :class="classes" ref="collapseComponent">
       <slot></slot>
     </ul>
     `,
+    props: ['classes', 'accordion'],
     data: function(){
         return {
             collapsibleInstance: undefined,
-            collapsibleOptions: {
-                accordion: true
+        }
+    },
+    computed: {
+        collapsibleOptions(){
+            return {
+                accordion: this.accordion || false
             }
         }
     },
@@ -902,12 +907,12 @@ Vue.component('collapse', {
 });
 
 Vue.component('collapse-item', {
-    props: ['header-class', 'more-icon'],
+    props: ['header-class', 'more-icon', 'classes'],
     template: `
-    <li>
+    <li :class="classes">
         <div class="collapsible-header" :class="headerClass">
             <slot name="header"></slot>
-            <i v-show="moreIcon" class="grey-text text-lighten-1 material-icons" style="position: absolute;right: -7px;bottom: 0;margin: 0;">unfold_more</i>
+            <i v-show="moreIcon" class="grey-text text-lighten-1 material-icons" style="position: absolute;right: -7px;top: 0;margin: 0;">expand_more</i>
         </div>
         <div class="collapsible-body">
             <slot name="body"></slot>

@@ -128,7 +128,7 @@
                 <h5 v-if="isMobileOrTablet()" class="capitalize" style="margin-top: 0;">No reports found</h5>
                 <span class="underline" @click="showSampleReport">**{{sampleReport ? 'Showing' : 'See'}} sample report**</span>
                 <div v-show="sampleReport">
-                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isPie}" @click="view('pie')">pie_chart</i>
+                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;">pie_chart</i>
                     <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isList}" @click="view('list')">list</i>
                 </div>
                 <collapse class="collapsible-table" v-show="isList">
@@ -137,24 +137,24 @@
                             <div class="header-table bold">
                                 <span>Date</span>
                                 <span>Incident</span>
-                                <span>Reporter</span>
+                                <span>Impact</span>
                                 <span>Lease Term</span>
                             </div>
                         </template>
                     </collapse-item>
-                    <collapse-item v-for="(incident, index) in incidentTable" :key="index" :more-icon="true">
+                    <collapse-item v-for="(incident, index) in incidentTable" :key="index" :more-icon="true" :classes="index < 1 ? 'active' : ''">
                         <template slot="header">
                             <div class="header-table">
                                 <span>{{incident.date}}</span>
                                 <span>{{incident.type | incidentType}}</span>
-                                <span>{{incident.reporter}}</span>
+                                <span>{{incident.damages | damages}}</span>
                                 <span>{{incident.leaseDuration}}</span>
                             </div>
                         </template>
                         <template slot="body">
                             <div class="body-table">
-                                <span><b>damages:</b> {{incident.damages | damages}}</span>
                                 <span><b>summary:</b> {{incident.summary}}</span>
+                                <span><b>Landlord:</b> {{incident.reporter}}</span>
                                 <span><b>date reported:</b> {{incident.dateReported}}</span>
                             </div>
                         </template>
