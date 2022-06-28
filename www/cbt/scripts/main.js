@@ -1,6 +1,8 @@
 import progress from './components/progress';
 import incidents from './utils/incidents'
+import damages from './utils/damages'
 import pieChartColorList from './utils/pieChartColorList'
+
 const serviceProvider = {
     data: function(){
         return{
@@ -190,6 +192,7 @@ const landing = Vue.component('landing', {
             submitted: false,
             errorShake: false,
             sampleReport: false,
+            chartType: 'pie',
             incidentReport: [
                 ['Incident Type', 'amount',],
                 ['No Payment',     4], //$500 - 750 - $999 | 2000 - 3000 - 3996
@@ -203,6 +206,19 @@ const landing = Vue.component('landing', {
                 ['Property Damage', 1250],
                 ['Contract Breach', 750],
                 ['Other', 0],
+            ],
+            incidentTable: [ 
+                {type: 'no_payment', damages: 999, date: '2/1/2021', summary: '', reporter: 'John doe', dateReported: '7/1/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'property_damage', damages: 1499, date: '25/2/2021', summary: 'Shooting fireworks indoors caused fire damage', reporter: 'John doe', dateReported: '12/3/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'other', damages: 0, date: '7/4/2021', summary: 'Noise complaints from neighbours at 3am on a monday', reporter: 'John doe', dateReported: '8/4/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'no_payment', damages: 999, date: '2/5/2021', summary: '', reporter: 'John doe', dateReported: '7/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'contract_breach', damages: 499, date: '14/5/2021', summary: 'pets not allowed', reporter: 'John doe', dateReported: '16/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'other', damages: 0, date: '19/6/2021', summary: 'domestic violence that put other tenants at risk', reporter: 'John doe', dateReported: '21/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'contract_breach', damages: 499, date: '1/6/2021', summary: 'pets not allowed', reporter: 'John doe', dateReported: '2/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'contract_breach', damages: 499, date: '20/6/2021', summary: 'pets not allowed', reporter: 'John doe', dateReported: '22/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'no_payment', damages: 999, date: '2/7/2021', summary: '', reporter: 'John doe', dateReported: '8 /7/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'no_payment', damages: 999, date: '2/10/2021', summary: '', reporter: 'John doe', dateReported: '7/10/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                // {type: '', damages: '', date: '', summary: '', reporter: '', dateReported: ''},
             ],
             pieChartIncidentInstance: undefined,
             pieChartMonterayLossInstance: undefined,
@@ -338,8 +354,52 @@ const landing = Vue.component('landing', {
             this.sampleReport = false
         },
         showSampleReport(){
-            this.sampleReport = true
-            this.initiateChartReport()
+            if (!this.showModal) {
+                this.showModal = true
+            }
+            if (!this.sampleReport) {
+                this.sampleReport = true
+                this.initiateChartReport()
+            }    
+        },
+        shortCutReport(){
+            this.chartType = 'pie'
+            this.showModal = true
+        },
+        view(chartType){
+            switch(chartType){
+                case 'pie':
+                    this.chartType = 'pie'
+                    break
+                case 'list':
+                    this.chartType = 'list'
+                    break
+                default:
+            }
+        }
+    },
+    computed: {
+       isPie() {
+           return this.chartType === 'pie'
+       }, 
+       isList() {
+           return this.chartType === 'list'
+       }
+    },
+    filters: {
+        incidentType(value) {
+            const map = new Map()
+            incidents.map((i) => {
+                map.set(i.value, i.name)
+            })
+            return map.get(value)
+        },
+        damages(value) {
+            const map = new Map()
+            damages.map((i) => {
+                map.set(i.value, i.name)
+            })
+            return map.get(value)
         }
     }
 });
@@ -820,6 +880,40 @@ const faq = {
 
 const terms = Vue.component('terms', {
     template:'#terms',
+});
+
+Vue.component('collapse', {
+    template: `
+    <ul class="collapsible popout" ref="collapseComponent">
+      <slot></slot>
+    </ul>
+    `,
+    data: function(){
+        return {
+            collapsibleInstance: undefined,
+            collapsibleOptions: {
+                accordion: true
+            }
+        }
+    },
+    mounted(){
+        this.collapsibleInstance = M.Collapsible.init(this.$refs.collapseComponent, this.collapsibleOptions)
+    }
+});
+
+Vue.component('collapse-item', {
+    props: ['header-class', 'more-icon'],
+    template: `
+    <li>
+        <div class="collapsible-header" :class="headerClass">
+            <slot name="header"></slot>
+            <i v-show="moreIcon" class="grey-text text-lighten-1 material-icons" style="position: absolute;right: -7px;bottom: 0;margin: 0;">unfold_more</i>
+        </div>
+        <div class="collapsible-body">
+            <slot name="body"></slot>
+        </div>
+    </li>
+    `,
 });
 
 Vue.component('modal',{

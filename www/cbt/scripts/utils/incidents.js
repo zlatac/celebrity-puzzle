@@ -6,5 +6,4 @@ export default [
     {name: 'health safety hazard', value: 'health_safety_hazard', landlord: true, tenant: true},
     {name: 'false information', value: 'false_information', landlord: true, tenant: true},
     {name: 'other', value: 'other', landlord: true, tenant: true},
-    
 ];

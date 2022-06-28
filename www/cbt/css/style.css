@@ -305,6 +305,7 @@ h3 {
     text-transform: capitalize;
     min-height: 60px;
     letter-spacing: .04em;
+    position: relative;
 }
 .collapsible-body {
     background-color: var(--secondar-color);
@@ -319,6 +320,32 @@ h3 {
     justify-content: center;
     width: 100%;
     height: 100%;
+}
+.collapsible-header .header-table {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, 1fr);
+    text-align: left;
+}
+.collapsible-body .body-table {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+.collapsible-body .body-table span b {
+    text-transform: capitalize;
+}
+.collapsible-table {
+    font-size: min(2.3vw, 22px);
+}
+.bold {
+    font-weight: bold;
+}
+.main-background {
+    background-color: var(--main);
+}
+.cursor-ponter {
+    cursor: pointer;
 }
 @media only screen and (min-width: 810px){
     .report-found {
@@ -476,6 +503,7 @@ img{
     display: inline-flex;
     flex-direction: column;
     align-items: center;
+    overflow-y: scroll;
 }
 .close-body {
     flex-grow: 1;
