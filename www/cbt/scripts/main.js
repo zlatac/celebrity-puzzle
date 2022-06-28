@@ -277,6 +277,7 @@ const landing = Vue.component('landing', {
         },
         async searchFreeReport(){
             this.submitted = false
+            this.sampleReport = false
             const valid = await this.$refs.form.validate()
             if (valid) {
                 // const correctDateFormat = /[0-9]{2}-[0-9]{2}-[0-9]{4}/.test(dateOfBirth)
@@ -357,14 +358,15 @@ const landing = Vue.component('landing', {
             if (!this.showModal) {
                 this.showModal = true
             }
-            if (!this.sampleReport) {
-                this.sampleReport = true
+            if (this.sampleReport) {
                 this.initiateChartReport()
             }    
         },
         shortCutReport(){
             this.chartType = 'pie'
+            this.sampleReport = true
             this.showModal = true
+
         },
         view(chartType){
             switch(chartType){
