@@ -111,7 +111,7 @@
                     </div>
                 </validation-provider>
             </validation-observer>
-            <div class="underline" style="text-align: center;margin-top: 16px;" @click="shortCutReport">**{{sampleReport ? 'Showing' : 'See'}} sample report**</div>
+            <div class="underline" style="text-align: center;margin-top: 16px;" @click="shortCutReport">**{{sampleReport ? 'Showing' : 'See'}} Sample Report**</div>
         </div>
         <slide-modal  v-if="showModal" show="true" @close="closeReportModal" @slideMounted="showSampleReport">
             <div class="score-found hide">
@@ -128,8 +128,8 @@
                 <h5 v-if="isMobileOrTablet()" class="capitalize" style="margin-top: 0;">{{sampleReport ? '**Sample Report**' : 'No reports found'}}</h5>
                 <!-- <span class="underline" @click="showSampleReport">**{{sampleReport ? 'Showing' : 'See'}} sample report**</span> -->
                 <div v-show="sampleReport">
-                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;">pie_chart</i>
-                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isList}" @click="view('list')">list</i>
+                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;" title="Pie chart">pie_chart</i>
+                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isList}" @click="view('list')" title="Table list">list</i>
                 </div>
                 <collapse class="collapsible-table" v-show="sampleReport && isList">
                     <collapse-item header-class="main-background white-text">
@@ -139,6 +139,14 @@
                                 <span>Incident</span>
                                 <span>Impact</span>
                                 <span>Lease Term</span>
+                            </div>
+                        </template>
+                        <template slot="body">
+                            <div class="body-table">
+                                <span><b>date:</b> Date incident occured</span>
+                                <span><b>Incident:</b> Type of incident</span>
+                                <span><b>Impact:</b> Monetary loss to the LandLord</span>
+                                <span><b>Lease Term:</b> Duration of the tenants lease</span>
                             </div>
                         </template>
                     </collapse-item>
@@ -154,7 +162,7 @@
                         <template slot="body">
                             <div class="body-table">
                                 <span><b>summary:</b> {{incident.summary}}</span>
-                                <span><b>Landlord:</b> {{incident.reporter}}</span>
+                                <span><b>LandLord:</b> {{incident.reporter}}</span>
                                 <span><b>date reported:</b> {{incident.dateReported}}</span>
                             </div>
                         </template>

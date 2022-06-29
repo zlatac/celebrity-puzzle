@@ -914,7 +914,7 @@ Vue.component('collapse-item', {
     <li :class="classes">
         <div class="collapsible-header" :class="headerClass">
             <slot name="header"></slot>
-            <i v-show="moreIcon" class="grey-text text-lighten-1 material-icons" style="position: absolute;right: -7px;top: 0;margin: 0;">expand_more</i>
+            <i v-show="moreIcon" class="grey-text text-lighten-1 material-icons" style="position: absolute;right: -7px;top: 0;margin: 0;"></i>
         </div>
         <div class="collapsible-body">
             <slot name="body"></slot>
