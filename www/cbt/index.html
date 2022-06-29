@@ -55,7 +55,7 @@
         <router-view></router-view>
         <footer>
             <router-link to="/about">About us</router-link>
-            <a href="mailto:info@cannotbetrusted.com">Contact us</a>
+            <a :href="`mailto:${$APP_EMAIL}`">Contact us</a>
             <router-link to="/faq">FAQ</router-link>
             <router-link to="/" v-if="$route.path !== '/'">Home</router-link>
             <!-- <router-link to="/terms">Terms & Conditions</router-link> -->

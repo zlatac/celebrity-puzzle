@@ -1191,6 +1191,7 @@ const router = new VueRouter({
 
 // Global variables
 Vue.prototype.$APP_NAME = window.location.origin.includes('reporttenant') ? 'RT' : 'CBT'
+Vue.prototype.$APP_EMAIL = `info@${window.location.hostname}`
 
 var app = new Vue({
     router:router,
