@@ -327,10 +327,10 @@ h3 {
     grid-template-columns: repeat(4, 1fr);
     text-align: left;
 }
-li .collapsible-header i::before {
+li .collapsible-header i.more-icon::before {
     content: 'expand_more';
 }
-li.active .collapsible-header i::before {
+li.active .collapsible-header i.more-icon::before {
     content: 'expand_less';
 }
 .collapsible-body .body-table {
