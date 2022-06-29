@@ -26,7 +26,7 @@ app.get('/', function (req, res) {
         res.sendFile(__dirname + '/www/index.html');
     }else if(req.hostname.includes('blessmyrequest')){
         res.sendFile(__dirname + '/www/bmr/index.html');
-    }else if(req.hostname.includes('betrusted')){
+    }else if(req.hostname.includes('betrusted') || req.hostname.includes('reporttenant')){
         res.sendFile(__dirname + '/www/cbt/index.html');
     }else{
         // default is celebrity puzzle app
