@@ -47,7 +47,7 @@
 <body>
     <div id="myapp">
         <header>
-            <router-link to="/">CBT</router-link>
+            <router-link to="/">{{$APP_NAME}}</router-link>
             <router-link to="/report-tenant" v-if="!$route.path.includes('report-tenant')">
                 <button class="waves-effect waves-light btn animated fadeIn">Report tenant</button>
             </router-link>

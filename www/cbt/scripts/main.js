@@ -249,7 +249,7 @@ const landing = Vue.component('landing', {
         }
         this.startDatePickerInstance = M.Datepicker.init(this.$refs.startDate, options(today, currentYear, this.setDateInput.bind(this, 'startDate')))
         this.endDatePickerInstance = M.Datepicker.init(this.$refs.endDate, options(endMaxDate, currentYear + 1, this.setDateInput.bind(this, 'endDate')))
-        google.charts.load('current', {'packages':['corechart']}); 
+        google.charts.load('current', {'packages':['corechart']});
     },
     methods: {
         setDateInput(dateType){
@@ -1188,6 +1188,9 @@ const routes = [
 const router = new VueRouter({
   routes // short for `routes: routes`
 });
+
+// Global variables
+Vue.prototype.$APP_NAME = window.location.origin.includes('reporttenant') ? 'RT' : 'CBT'
 
 var app = new Vue({
     router:router,
