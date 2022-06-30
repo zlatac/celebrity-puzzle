@@ -128,8 +128,8 @@
                 <h5 v-if="isMobileOrTablet()" class="capitalize" style="margin-top: 0;">{{sampleReport ? '**Sample Report**' : 'No reports found'}}</h5>
                 <!-- <span class="underline" @click="showSampleReport">**{{sampleReport ? 'Showing' : 'See'}} sample report**</span> -->
                 <div v-show="sampleReport">
-                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;" title="Pie chart">pie_chart</i>
-                    <i class="material-icons small cursor-ponter" :class="{'primary-text-color': isList}" @click="view('list')" title="Table list">list</i>
+                    <i class="material-icons small cursor-pointer" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;" title="Pie chart">pie_chart</i>
+                    <i class="material-icons small cursor-pointer" :class="{'primary-text-color': isList}" @click="view('list')" title="Table list">list</i>
                 </div>
                 <collapse class="collapsible-table" v-show="sampleReport && isList">
                     <collapse-item header-class="main-background white-text">
