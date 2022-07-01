@@ -418,7 +418,7 @@
                 <label for="tenant-dob">Date of incident (Day-Month-Year)</label>
                 <span class="helper-text" data-error="Date of incident is required"></span>
             </div>
-            <validation-provider name="image(s)" v-slot="{ errors,validate,invalid }" rules="required|image|file_max:5|size:3000" slim ref="proofImages">
+            <validation-provider name="image(s)" v-slot="{ errors,validate,invalid }" rules="required|image|file_max:5|size:30000" slim ref="proofImages">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                         <span>Images</span>
@@ -426,11 +426,11 @@
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Proof of incident">
-                        <span class="helper-text" :data-error="errors[0]">Upload 1-5 images (Max size 3MB)</span>
+                        <span class="helper-text" :data-error="errors[0]">Upload 1-5 images (Max size 30MB)</span>
                     </div>
                 </div>
             </validation-provider>
-            <validation-provider name="lease agreement" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:3000" slim ref="leaseAgreement">
+            <validation-provider name="lease agreement" v-slot="{ errors,validate,invalid }" rules="required|ext:pdf|size:30000" slim ref="leaseAgreement">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>PDF</span>
@@ -438,11 +438,11 @@
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Lease agreement with tenant">
-                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
+                        <span class="helper-text" :data-error="errors[0]">Max size 30MB</span>
                     </div>
                 </div>
             </validation-provider>
-            <!-- <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="ext:pdf|size:3000" slim ref="propertyTaxBill">
+            <!-- <validation-provider name="property tax bill" v-slot="{ errors,validate,invalid }" rules="ext:pdf|size:30000" slim ref="propertyTaxBill">
                 <div class="file-field input-field">
                     <div class="btn file-upload">
                     <span>PDF</span>
@@ -450,7 +450,7 @@
                     </div>
                     <div class="file-path-wrapper">
                         <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Latest property tax bill (optional)">
-                        <span class="helper-text" :data-error="errors[0]">Max size 3MB</span>
+                        <span class="helper-text" :data-error="errors[0]">Max size 30MB</span>
                     </div>
                 </div>
             </validation-provider> -->
