@@ -263,7 +263,7 @@
             </validation-provider>
         </validation-observer>
         <div class="navigate navigate-alone">
-            <button class="btn middle" @click="submit">next</button>
+            <button class="btn middle" :class="{'animated shake': errorShake}" @click="submit">next</button>
         </div>
     </div>
 </script>
@@ -303,7 +303,7 @@
             </validation-provider>
         </validation-observer>
         <div class="navigate-alone">
-            <button class="btn middle" @click="submit">next</button>
+            <button class="btn middle" :class="{'animated shake': errorShake}" @click="submit">next</button>
         </div>
     </div>
 </script>
@@ -353,7 +353,7 @@
         </validation-observer>
         <div class="navigate">
             <button class="btn"  @click="$emit('back')">back</button>
-            <button  class="btn" @click="submit">next</button>
+            <button  class="btn" :class="{'animated shake': errorShake}" @click="submit">next</button>
         </div>
     </div>
 </script>
@@ -457,7 +457,7 @@
         </validation-observer>
         <div class="navigate" v-show="!navigationProgress">
             <button  class="btn" @click="$emit('back')">back</button>
-            <button  class="btn" @click="submit">next</button>
+            <button  class="btn" :class="{'animated shake': errorShake}" @click="submit">next</button>
         </div>
     </div>
 </script>
