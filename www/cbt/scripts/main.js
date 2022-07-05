@@ -459,11 +459,13 @@ const tenantInfo = {
     data: function(){
         return {
             name: '',
-            dateOfBirth: '',
-            rentAddress: '',
-            rentunitNumber: '',
-            rentCountry: '',
-            rentPostalCode: '',
+            email: '',
+            confirmEmail: '',
+            // dateOfBirth: '',
+            // rentAddress: '',
+            // rentunitNumber: '',
+            // rentCountry: '',
+            // rentPostalCode: '',
             submitted: false,
         }
     },
@@ -488,8 +490,9 @@ const tenantInfo = {
     computed: {
         tenant(){
             const name = this.name
-            const dateOfBirth = this.dateOfBirth
-            return {name, dateOfBirth}
+            const email = this.email
+            // const dateOfBirth = this.dateOfBirth
+            return {name, email}
         }
     },
     methods: {
@@ -536,6 +539,7 @@ const landlordInfo = {
         }
     }
 };
+
 const incident = {
     template:'#incident',
     mixins: [serviceProvider],
@@ -565,8 +569,8 @@ const incident = {
             const files = this.files
             return {summary, amount, incidentType, dateOfIncident, files}
         },
-        landlordIncidents(){
-            return this.incidentList.filter(i => i.landlord)
+        displayIncidents(){
+            return this.incidentList.filter(i => i[this.$APP_TARGET])
                 .sort((a,b) => {
                     if (a.name > b.name) return 1
                     if (a.name < b.name) return -1
@@ -736,6 +740,15 @@ const pay = {
 const paySuccess = {
     template: '#pay-success',
     props: ['report-filed'],
+    computed: {
+        displayEmail(){
+            if (this.$APP_LANDLORD) {
+                return this.reportFiled.landlord.email
+            }
+
+            return this.reportFiled.tenant.email
+        }
+    }
 
 }
 
@@ -759,6 +772,13 @@ const reportTenant = Vue.component('report-tenant', {
                 'incident',
                 'pay',
             ],
+            stepsConstants: {
+                'rent-info': 'rentInfo',
+                'tenant-info': 'tenant',
+                'landlord-info': 'landlord',
+                'incident': 'incident',
+                'pay': 'pay',
+            },
             showProgressStep: true,
             showPaySuccess: false,
             stepNaviagtionProgress: false,
@@ -770,8 +790,8 @@ const reportTenant = Vue.component('report-tenant', {
                 classes: 'red darken-1'
             },
             reportFiled: {
-                // Must be in order of steps data property
                 rentInfo: {},
+                tenant: {},
                 landlord: {},
                 incident: {}
             }
@@ -788,19 +808,26 @@ const reportTenant = Vue.component('report-tenant', {
             return moment().isBefore(this.payDate)
         },
         steps(){
+            let stepList = this.stepList
             if (this.todayIsBeforePayDate) {
-                return this.stepList.slice(0, this.stepList.length - 1)
+                stepList = stepList.slice(0, this.stepList.length - 1)
             }
-            return this.stepList
+            if (this.$APP_TENANT) {
+                const [firstItem, ...otherItems] = stepList
+                stepList =  Array.of(firstItem, 'tenant-info', ...otherItems)
+            }
+            
+            return stepList
         }
     },
     methods: {
        async goForward(payload){
            this.updateReportFilled(payload)
-           if (!this.stepNaviagtionProgress && this.step === 3 && this.todayIsBeforePayDate) {
+           if (!this.stepNaviagtionProgress && this.step === this.steps.length && this.todayIsBeforePayDate) {
                try {
                 this.stepNaviagtionProgress = true
-                await this.submitReportFilled(this.reportFiled.landlord.email)
+                const email = this.$APP_LANDLORD ? this.reportFiled.landlord.email : this.reportFiled.tenant.email
+                await this.submitReportFilled(email)
                 this.paySuccess()
                } catch (error) {
                    console.error(new Error(error))
@@ -826,7 +853,7 @@ const reportTenant = Vue.component('report-tenant', {
             }
        },
        updateReportFilled(payload){
-           const key = Object.keys(this.reportFiled)[this.step - 1]
+           const key = this.stepsConstants[this.$refs.currentComponent.$vnode.componentOptions.tag]
             if (key in payload) {
                 this.reportFiled[key] = payload[key]
             }
@@ -836,7 +863,7 @@ const reportTenant = Vue.component('report-tenant', {
            const formData = new FormData()
            let incident, files
            ({files, ...incident} = this.reportFiled.incident)
-        //    formData.append('tenant', JSON.stringify(this.reportFiled.tenant))
+           formData.append('tenant', JSON.stringify(this.reportFiled.tenant))
            formData.append('rentInfo', JSON.stringify(this.reportFiled.rentInfo))
            formData.append('landlord', JSON.stringify(this.reportFiled.landlord))
            formData.append('incident', JSON.stringify(incident))
@@ -848,6 +875,7 @@ const reportTenant = Vue.component('report-tenant', {
             formData.append('proofImages[]', item)
            })
            formData.append('transactionId', transactionId)
+           formData.append('reporter', this.$APP_TARGET)
            //formData.append('proofImages[]', files.proofImages)
 
            const resp = await fetch(`${this.postUrl}/cbt`, {
@@ -1190,15 +1218,23 @@ const routes = [
   { path: '/about', component: aboutUs },
   { path: '/faq', component: faq },
   { path: '/report-tenant', component: reportTenant },
+  { path: '/report-landlord', component: reportTenant },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({
   routes // short for `routes: routes`
 });
 
+const origin = window.location.origin
+const pathname = window.location.pathname
+
 // Global variables
-Vue.prototype.$APP_NAME = window.location.origin.includes('reporttenant') ? 'RT' : 'CBT'
+Vue.prototype.$APP_NAME = origin.includes('reporttenant') ? 'RT' : origin.includes('reportlandlord') ? 'RL' : 'CBT'
 Vue.prototype.$APP_EMAIL = `info@${window.location.hostname}`
+Vue.prototype.$APP_TENANT = origin.includes('reportlandlord') || (origin.includes('localhost') && pathname.includes('reportlandlord'))
+Vue.prototype.$APP_LANDLORD = !Vue.prototype.$APP_TENANT
+Vue.prototype.$APP_TARGET = Vue.prototype.$APP_TENANT ? 'tenant' : 'landlord'
+Vue.prototype.$APP_TARGET_OPPOSITION = Vue.prototype.$APP_TARGET === 'tenant' ? 'landlord' : 'tenant'
 
 var app = new Vue({
     router:router,

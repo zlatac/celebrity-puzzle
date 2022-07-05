@@ -5,5 +5,6 @@ export default [
     {name: 'contract breach', value: 'contract_breach', landlord: true, tenant: true},
     {name: 'health safety hazard', value: 'health_safety_hazard', landlord: true, tenant: true},
     {name: 'false information', value: 'false_information', landlord: true, tenant: true},
+    {name: 'illegal action', value: 'illegal_action', landlord: true, tenant: true},
     {name: 'other', value: 'other', landlord: true, tenant: true},
 ];

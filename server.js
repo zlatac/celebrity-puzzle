@@ -26,7 +26,7 @@ app.get('/', function (req, res) {
         res.sendFile(__dirname + '/www/index.html');
     }else if(req.hostname.includes('blessmyrequest')){
         res.sendFile(__dirname + '/www/bmr/index.html');
-    }else if(req.hostname.includes('betrusted') || req.hostname.includes('reporttenant')){
+    }else if(req.hostname.includes('betrusted') || req.hostname.includes('report')){
         res.sendFile(__dirname + '/www/cbt/index.html');
     }else{
         // default is celebrity puzzle app
@@ -40,6 +40,10 @@ app.get('/dj', function(req,res){
 })
 
 app.get('/cbt', function(req,res){
+    res.sendFile(__dirname + '/www/cbt/index.html');
+})
+
+app.get('/reportlandlord', function(req,res){
     res.sendFile(__dirname + '/www/cbt/index.html');
 })
 

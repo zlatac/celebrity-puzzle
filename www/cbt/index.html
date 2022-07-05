@@ -48,15 +48,15 @@
     <div id="myapp">
         <header>
             <router-link to="/">{{$APP_NAME}}</router-link>
-            <router-link to="/report-tenant" v-if="!$route.path.includes('report-tenant')">
-                <button class="waves-effect waves-light btn animated fadeIn" style="height: max(5.2vh,36px);">Report tenant</button>
+            <router-link :to="`/report-${$APP_TARGET_OPPOSITION}`" v-if="!$route.path.includes(`report-${$APP_TARGET_OPPOSITION}`)">
+                <button class="waves-effect waves-light btn animated fadeIn" style="height: max(5.2vh,36px);">Report {{$APP_TARGET_OPPOSITION}}</button>
             </router-link>
         </header>
         <router-view></router-view>
         <footer>
             <router-link to="/about">About us</router-link>
             <a :href="`mailto:${$APP_EMAIL}`">Contact us</a>
-            <router-link to="/faq">FAQ</router-link>
+            <router-link to="/faq" v-if="$APP_LANDLORD">FAQ</router-link>
             <router-link to="/" v-if="$route.path !== '/'">Home</router-link>
             <!-- <router-link to="/terms">Terms & Conditions</router-link> -->
         </footer>
@@ -182,7 +182,8 @@
     <div class="report-tenant-container">
         <cbt-progress :current="step" :max="steps.length" v-show="showProgressStep"></cbt-progress>
         <keep-alive>
-            <component 
+            <component
+                ref="currentComponent"
                 class="animated fadeIn report-form-container"
                 :is="formStep"
                 :navigation-progress="stepNaviagtionProgress"
@@ -284,7 +285,33 @@
                     <span class="helper-text" :data-error="errors[0]"></span>
                 </div>
             </validation-provider>
-            <validation-provider name="Tenant date of birth" v-slot="{ errors,invalid }" slim>
+            <validation-provider name="Tenant email" v-slot="{ errors,valid,invalid,validated }" vid="tenantEmail" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">email</i>
+                        <input 
+                            id="icon_email" 
+                            type="email"
+                            required 
+                            v-model="email"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_email">Email</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <validation-provider name="confirm email" rules="confirmed:tenantEmail" v-slot="{ errors,invalid }" slim>
+                <div class="input-field">
+                    <i class="material-icons prefix">email</i>
+                        <input 
+                            id="icon_confirm" 
+                            type="email"
+                            required 
+                            v-model="confirmEmail"
+                            :class="{'invalid': invalid & submitted}">
+                    <label for="icon_confirm">Confrim Email</label>
+                    <span class="helper-text" :data-error="errors[0]"></span>
+                </div>
+            </validation-provider>
+            <!-- <validation-provider name="Tenant date of birth" v-slot="{ errors,invalid }" slim>
                 <div class="input-field">
                     <i class="material-icons prefix">today</i>
                         <input
@@ -300,10 +327,11 @@
                     <label for="tenant-dob">Date of birth (Day-Month-Year)</label>
                     <span class="helper-text" :data-error="errors[0]"></span>
                 </div>
-            </validation-provider>
+            </validation-provider> -->
         </validation-observer>
-        <div class="navigate-alone">
-            <button class="btn middle" :class="{'animated shake': errorShake}" @click="submit">next</button>
+        <div class="navigate">
+            <button class="btn"  @click="$emit('back')">back</button>
+            <button  class="btn" :class="{'animated shake': errorShake}" @click="submit">next</button>
         </div>
     </div>
 </script>
@@ -369,7 +397,7 @@
                     <i class="material-icons prefix">description</i>
                     <select v-model="incidentType" required>
                         <option value="" disabled selected>Select</option>
-                        <option v-for="(incident, index) in landlordIncidents" :key="index" :value="incident.value">{{incident.name}}</option>
+                        <option v-for="(incident, index) in displayIncidents" :key="index" :value="incident.value">{{incident.name}}</option>
                     </select>
                     <label>Type of incident</label>
                     <span class="helper-text" :data-error="errors[0]"></span>
@@ -437,7 +465,7 @@
                         <input type="file" @change="validate" accept=".pdf">
                     </div>
                     <div class="file-path-wrapper">
-                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" placeholder="Lease agreement with tenant">
+                        <input class="file-path" type="text" :class="{'invalid': invalid & submitted}" :placeholder="`Lease agreement with ${$APP_TARGET_OPPOSITION}`">
                         <span class="helper-text" :data-error="errors[0]">Max size 30MB</span>
                     </div>
                 </div>
@@ -461,11 +489,11 @@
         </div>
     </div>
 </script>
-<script type="text/x-template" id="pay-success"> 
+<script type="text/x-template" id="pay-success">
     <div class="pay-success">
         <i class="material-icons">check_circle_outline</i>
-        <h4>Your tenant report has been submitted for review.</h4>
-        <h6>We will email <span class="primary-text-color">{{reportFiled.landlord.email}}</span> with an approval/rejection based on the information provided.</h6>
+        <h4>Your {{$APP_TARGET_OPPOSITION}} report has been submitted for review.</h4>
+        <h6>We will email <span class="primary-text-color">{{displayEmail}}</span> with an approval/rejection based on the information provided.</h6>
     </div>
 </script>
 <script type="text/x-template" id="terms"> 
@@ -474,10 +502,14 @@
 <script type="text/x-template" id="about-us">
     <div class="animated fadeIn">
         <h4 class="center">About Us</h4>
-        <p class="card-panel about-us center">
+        <p class="card-panel about-us center" v-if="$APP_LANDLORD">
             Our mission is to <b>identify problematic tenants</b> in the rental marketplace to landlords,
             so that prospective <b>good tenants don't suffer</b> overbearing rental application requirements
             and onboarding requirements.
+        </p>
+        <p class="card-panel about-us center" v-if="$APP_TENANT">
+            Our mission is to <b>identify problematic landlords</b> in the rental marketplace to prospective tenants,
+            so that prospective <b>tenants don't suffer</b> poor business practices.
         </p>
     </div>    
 </script>
