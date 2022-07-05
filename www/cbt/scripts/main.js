@@ -201,14 +201,14 @@ const landing = Vue.component('landing', {
             chartType: 'pie',
             incidentReport: [
                 ['Incident Type', 'amount',],
-                ['No Payment',     4], //$500 - 750 - $999 | 2000 - 3000 - 3996
+                [this.$APP_TENANT ? 'Illegal Action' : 'No Payment',     4], //$500 - 750 - $999 | 2000 - 3000 - 3996
                 ['Property Damage', 1], //$1000 - 1250 - $1499 | 1000 - 1250 - 1499
                 ['Contract Breach',  3], // $1 - 250 - $499 | 3 - 750 - 1497 
                 ['Other', 2], // $0                     | 3003 - 5000 - 6992
             ],
             monetaryLossReport: [
                 ['monetary loss', 'amount'],
-                ['No Payment',     3000],
+                [this.$APP_TENANT ? 'Illegal Action' : 'No Payment',     3000],
                 ['Property Damage', 1250],
                 ['Contract Breach', 750],
                 ['Other', 0],
