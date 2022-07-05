@@ -213,7 +213,7 @@ const landing = Vue.component('landing', {
                 ['Contract Breach', 750],
                 ['Other', 0],
             ],
-            incidentTable: [ 
+            incidentLandlordTable: [ 
                 {type: 'no_payment', damages: 999, date: '2/1/2021', summary: '', reporter: 'John Doe', dateReported: '7/1/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
                 {type: 'property_damage', damages: 1499, date: '25/2/2021', summary: 'Shooting fireworks indoors caused fire damage', reporter: 'John Doe', dateReported: '12/3/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
                 {type: 'other', damages: 0, date: '7/4/2021', summary: 'Noise complaints from neighbours at 3am on a monday', reporter: 'John Doe', dateReported: '8/4/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
@@ -224,6 +224,19 @@ const landing = Vue.component('landing', {
                 {type: 'contract_breach', damages: 499, date: '20/6/2021', summary: 'pets not allowed', reporter: 'John Doe', dateReported: '22/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
                 {type: 'no_payment', damages: 999, date: '2/7/2021', summary: '', reporter: 'John Doe', dateReported: '8 /7/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
                 {type: 'no_payment', damages: 999, date: '2/10/2021', summary: '', reporter: 'John Doe', dateReported: '7/10/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                // {type: '', damages: '', date: '', summary: '', reporter: '', dateReported: ''},
+            ],
+            incidentTenantTable: [ 
+                {type: 'illegal_action', damages: 999, date: '2/1/2021', summary: '', reporter: 'John Doe', dateReported: '7/1/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'property_damage', damages: 1499, date: '25/2/2021', summary: 'Water damage to personal property due to ignored maintenance', reporter: 'John Doe', dateReported: '12/3/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'other', damages: 0, date: '7/4/2021', summary: '', reporter: 'John Doe', dateReported: '8/4/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'illegal_action', damages: 999, date: '2/5/2021', summary: '', reporter: 'John Doe', dateReported: '7/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'contract_breach', damages: 499, date: '14/5/2021', summary: '', reporter: 'John Doe', dateReported: '16/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'other', damages: 0, date: '19/6/2021', summary: '', reporter: 'John Doe', dateReported: '21/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'contract_breach', damages: 499, date: '1/6/2021', summary: '', reporter: 'John Doe', dateReported: '2/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'contract_breach', damages: 499, date: '20/6/2021', summary: '', reporter: 'John Doe', dateReported: '22/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'illegal_action', damages: 999, date: '2/7/2021', summary: '', reporter: 'John Doe', dateReported: '8 /7/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
+                {type: 'illegal_action', damages: 999, date: '2/10/2021', summary: '', reporter: 'John Doe', dateReported: '7/10/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
                 // {type: '', damages: '', date: '', summary: '', reporter: '', dateReported: ''},
             ],
             pieChartIncidentInstance: undefined,
@@ -389,6 +402,13 @@ const landing = Vue.component('landing', {
        }, 
        isList() {
            return this.chartType === 'list'
+       },
+       incidentTable() {
+           if (this.$APP_TENANT) {
+            return this.incidentTenantTable
+           }
+
+           return this.incidentLandlordTable
        }
     },
     filters: {
