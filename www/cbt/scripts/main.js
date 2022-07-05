@@ -177,6 +177,10 @@ const serviceProvider = {
             setTimeout(() => {
                 this.errorShake = false
             }, 1000)
+        },
+        updateHtmlTitle(text) {
+            const titleElement = document.querySelector('title')
+            titleElement.innerHTML = text
         }
     }
 }
@@ -1258,5 +1262,10 @@ Vue.prototype.$APP_TARGET_OPPOSITION = Vue.prototype.$APP_TARGET === 'tenant' ? 
 
 var app = new Vue({
     router:router,
-    store:store
+    store:store,
+    created() {
+        if (this.$APP_TENANT) {
+            serviceProvider.methods.updateHtmlTitle(`Search/Report ${this.$APP_TARGET_OPPOSITION}`)
+        }
+    }
 }).$mount('#myapp');
