@@ -356,7 +356,7 @@
                     <span class="helper-text" :data-error="errors[0]"></span>
                 </div>
             </validation-provider>
-            <validation-provider name="Landlord email" v-slot="{ errors,valid,invalid,validated }" vid="landlordEmail" slim>
+            <validation-provider name="Landlord email" v-slot="{ errors,valid,invalid,validated }" vid="landlordEmail" slim v-if="$APP_LANDLORD">
                 <div class="input-field">
                     <i class="material-icons prefix">email</i>
                         <input 
@@ -369,7 +369,7 @@
                     <span class="helper-text" :data-error="errors[0]"></span>
                 </div>
             </validation-provider>
-            <validation-provider name="confirm email" rules="confirmed:landlordEmail" v-slot="{ errors,invalid }" slim>
+            <validation-provider name="confirm email" rules="confirmed:landlordEmail" v-slot="{ errors,invalid }" slim v-if="$APP_LANDLORD">
                 <div class="input-field">
                     <i class="material-icons prefix">email</i>
                         <input 
