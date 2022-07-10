@@ -45,9 +45,11 @@
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.11.0/NoSleep.min.js" integrity="sha512-z2nddjNLcxjIKYaNqKfpwgl+8mFVU4gTL8afldQukUIOKYgFbD2TyDCyAFlCKuWoLhEJ49zpEnzLDiPMXKJ1kQ==" crossorigin="anonymous"></script> -->
 </head>
 <body>
-    <div id="myapp">
+    <div id="app"></div>
+<script type="tex/x-template" id="main-app">
+    <div id="myapp" :class="{'app-landlord': $APP_LANDLORD, 'app-tenant': $APP_TENANT}">
         <header>
-            <router-link to="/">{{$APP_NAME}}</router-link>
+            <router-link to="/" class="main-text">{{$APP_NAME}}</router-link>
             <router-link :to="`/report-${$APP_TARGET_OPPOSITION}`" v-if="!$route.path.includes(`report-${$APP_TARGET_OPPOSITION}`)">
                 <button class="waves-effect waves-light btn animated fadeIn" style="height: max(5.2vh,36px);">Report {{$APP_TARGET_OPPOSITION}}</button>
             </router-link>
@@ -57,10 +59,12 @@
             <router-link to="/about">About us</router-link>
             <a :href="`mailto:${$APP_EMAIL}`">Contact us</a>
             <router-link to="/faq" v-if="$APP_LANDLORD">FAQ</router-link>
+            <!-- <a :href="$APP_URL[$APP_TARGET_OPPOSITION]" target="_blank" rel="noopener noreferrer">Report {{$APP_TARGET}}</a> -->
             <router-link to="/" v-if="$route.path !== '/'">Home</router-link>
             <!-- <router-link to="/terms">Terms & Conditions</router-link> -->
         </footer>
     </div>
+</script>
 <script type="text/x-template" id="landing">
     <div class="landing">
         <div class="landing-container">

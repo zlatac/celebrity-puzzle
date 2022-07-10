@@ -1,5 +1,5 @@
 :root {
-    --main: rgb(22, 82, 240);
+    --main: #1652f0;
     --border-grey: #dfe1e5;
     --secondar-color: #f2f2f2;
     --main-opaque: linear-gradient(120deg, #92fe9dab 0%, #00c9ffd9 107%);
@@ -9,6 +9,9 @@
     --default-main:linear-gradient(120deg, #92fe9d 0%, #00c9ff 107%);
     --gold-border:#b49850;
     --real-gold:radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8a6e2f 40%, transparent 80%), radial-gradient(ellipse farthest-corner at left top, #FFFFFF 0%, #ffffac 8%, #d1b464 25%, #5d4a1f 62.5%, #5d4a1f 100%);
+}
+.app-landlord {
+    --main: #2750b0;
 }
 html { 
     background-color: var(--light-theme); 
@@ -93,18 +96,18 @@ header button {
     content: "";
     position: absolute;
     height: 44px;
-    border-left: 1px solid #1652f0;
+    border-left: 1px solid var(--main);
     bottom: 0;
     left: 21%;
     top: -20px;
-    border-bottom: 1px solid #1652f0;
+    border-bottom: 1px solid var(--main);
     width: 4%;
 }
 .input-container:last-of-type::before {
     content: "";
     position: absolute;
     height: 44px;
-    border-left: 1px solid #1652f0;
+    border-left: 1px solid var(--main);
     bottom: 0;
     left: 21%;
     top: -60px;
@@ -353,6 +356,9 @@ li.active .collapsible-header i.more-icon::before {
 }
 .main-background {
     background-color: var(--main);
+}
+.main-text {
+    color: var(--main);
 }
 .cursor-pointer {
     cursor: pointer;

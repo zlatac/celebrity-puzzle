@@ -1259,8 +1259,13 @@ Vue.prototype.$APP_TENANT = origin.includes('reportlandlord') || (origin.include
 Vue.prototype.$APP_LANDLORD = !Vue.prototype.$APP_TENANT
 Vue.prototype.$APP_TARGET = Vue.prototype.$APP_TENANT ? 'tenant' : 'landlord'
 Vue.prototype.$APP_TARGET_OPPOSITION = Vue.prototype.$APP_TARGET === 'tenant' ? 'landlord' : 'tenant'
+Vue.prototype.$APP_URL = {
+    tenant: 'https://reportlandlord.app',
+    landlord: 'https://reporttenant.com'
+}
 
 var app = new Vue({
+    template: '#main-app',
     router:router,
     store:store,
     created() {
@@ -1268,4 +1273,4 @@ var app = new Vue({
             serviceProvider.methods.updateHtmlTitle(`Search/Report ${this.$APP_TARGET_OPPOSITION}`)
         }
     }
-}).$mount('#myapp');
+}).$mount('#app');
