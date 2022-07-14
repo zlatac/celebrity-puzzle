@@ -37,6 +37,7 @@ header button {
     background-blend-mode: lighten;
     background-repeat: repeat-x;
     background-color: transparent;
+    background-size: cover;
 }
 .landing .dj-modal-body {
     padding: 5% 5% 0;
