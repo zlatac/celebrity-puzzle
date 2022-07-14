@@ -32,6 +32,12 @@ html, body, #myapp {
 header button {
     height: max(5.2vh,36px);
 }
+.landing {
+    background-image: url('../assets/img/map.png'),linear-gradient(#fff,#f0f0f0,#fff);
+    background-blend-mode: lighten;
+    background-repeat: repeat-x;
+    background-color: transparent;
+}
 .landing .dj-modal-body {
     padding: 5% 5% 0;
     text-align: center;
@@ -213,6 +219,9 @@ td.is-today[aria-selected="false"],
 @media only screen and (max-width: 768px){
     .form-incident .input-field {
         flex-grow: 0.7
+    }
+    .landing {
+        background-position: 42%;
     }
 }
 @media only screen and (min-width: 1024px){
