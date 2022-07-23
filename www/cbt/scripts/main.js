@@ -203,6 +203,7 @@ const landing = Vue.component('landing', {
             submitted: false,
             sampleReport: false,
             chartType: 'pie',
+            autocompleteInstance: undefined,
             incidentReport: [
                 ['Incident Type', 'amount',],
                 [this.$APP_TENANT ? 'Illegal Action' : 'No Payment',     4], //$500 - 750 - $999 | 2000 - 3000 - 3996
@@ -273,6 +274,12 @@ const landing = Vue.component('landing', {
         this.startDatePickerInstance = M.Datepicker.init(this.$refs.startDate, options(today, currentYear, this.setDateInput.bind(this, 'startDate')))
         this.endDatePickerInstance = M.Datepicker.init(this.$refs.endDate, options(endMaxDate, currentYear + 1, this.setDateInput.bind(this, 'endDate')))
         google.charts.load('current', {'packages':['corechart']});
+        this.autocompleteInstance = M.Autocomplete.init(this.$refs.addressSearch, {
+            data: {
+                mooose: null
+            },
+            onAutocomplete: (val) => {this.searchInput = val}
+        })
     },
     methods: {
         setDateInput(dateType){
@@ -398,6 +405,34 @@ const landing = Vue.component('landing', {
                     break
                 default:
             }
+        },
+        async autoCompleteSearch(){
+            const oldSearchValue = this.searchInput
+            if (this.isSearchingForAutocomplete) {
+                return
+            }
+            try {
+                this.isSearchingForAutocomplete = true
+                
+                // const res = await fetch('/cbt/autosearch/query')
+                // const data = await res.json()
+                const data = ['45 drake street', '68 moncton avenue', '79 monctons drive', '1602-23 barrel yards blvd waterloo ON N2L 0E3']
+                if (Array.isArray(data) && data.length > 0) {
+                    const map = new Map()
+                    data.forEach(i => {
+                        map.set(i, 'https://freesvg.org/storage/img/thumb/jp-draws-US-Flag.png')
+                    })
+                    this.autocompleteInstance.updateData(Object.fromEntries(map))
+                }
+            } catch (error) {
+                
+            } finally {
+                this.isSearchingForAutocomplete = false
+                if (oldSearchValue !== this.searchInput) {
+                    this.autoCompleteSearch()
+                }
+            }
+            
         }
     },
     computed: {

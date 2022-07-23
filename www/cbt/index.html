@@ -18,7 +18,7 @@
     <script src="https://unpkg.com/vue-router@3.x"></script>
     <script src="https://unpkg.com/vuex@3.x"></script>
     <script src="https://unpkg.com/vee-validate@3.x/dist/vee-validate.full.min.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
+    <!-- <script src="https://js.stripe.com/v3/"></script> -->
     <!-- Compiled and minified CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
     <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet">
@@ -46,7 +46,7 @@
 </head>
 <body>
     <div id="app"></div>
-<script type="tex/x-template" id="main-app">
+<script type="text/x-template" id="main-app">
     <div id="myapp" :class="{'app-landlord': $APP_LANDLORD, 'app-tenant': $APP_TENANT}">
         <header>
             <router-link to="/" class="main-text">{{$APP_NAME}}</router-link>
@@ -70,7 +70,7 @@
         <div class="landing-container">
             <validation-observer ref="form">
                 <validation-provider name="Street Address" v-slot="{ errors,valid,invalid,validated }" slim>
-                    <div class="name-search">
+                    <div class="name-search input-field">
                         <input 
                             class="browser-default search-box animated z-depth-2"
                             :class="{'error': submitted && invalid, 'shake': invalid && errorShake}"
@@ -79,6 +79,8 @@
                             required
                             aria-label="Enter full address with zip or postal code"
                             title="Example: Unit# - Address, City, Zip/Postal code"
+                            ref="addressSearch"
+                            @keyup="autoCompleteSearch"
                             placeholder="search Address"/>
                         <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
                             <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
