@@ -11,6 +11,10 @@ const serviceProvider = {
             loader: false,
             errorShake: false,
             toastInstance: null,
+            errorToastOptions: {
+                html: '🥺 Something went wrong. Please try again later',
+                classes: 'red darken-1'
+            },
             noProfileUrl:'data:image/png;base64,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',
             logo:"https://drive.google.com/uc?id=1ctizeSjjAuaEKuOWPgIjau7A5LNcMA7Q",
             appLogoImage: 'data:image/jpeg;base64,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'
@@ -218,35 +222,53 @@ const landing = Vue.component('landing', {
                 ['Contract Breach', 750],
                 ['Other', 0],
             ],
-            incidentLandlordTable: [ 
-                {type: 'no_payment', damages: 999, date: '2/1/2021', summary: '', reporter: 'John Doe', dateReported: '7/1/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'property_damage', damages: 1499, date: '25/2/2021', summary: 'Shooting fireworks indoors caused fire damage', reporter: 'John Doe', dateReported: '12/3/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'other', damages: 0, date: '7/4/2021', summary: 'Noise complaints from neighbours at 3am on a monday', reporter: 'John Doe', dateReported: '8/4/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'no_payment', damages: 999, date: '2/5/2021', summary: '', reporter: 'John Doe', dateReported: '7/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'contract_breach', damages: 499, date: '14/5/2021', summary: 'pets not allowed', reporter: 'John Doe', dateReported: '16/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'other', damages: 0, date: '19/6/2021', summary: 'domestic violence that put other tenants at risk', reporter: 'John Doe', dateReported: '21/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'contract_breach', damages: 499, date: '1/6/2021', summary: 'pets not allowed', reporter: 'John Doe', dateReported: '2/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'contract_breach', damages: 499, date: '20/6/2021', summary: 'pets not allowed', reporter: 'John Doe', dateReported: '22/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'no_payment', damages: 999, date: '2/7/2021', summary: '', reporter: 'John Doe', dateReported: '8 /7/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'no_payment', damages: 999, date: '2/10/2021', summary: '', reporter: 'John Doe', dateReported: '7/10/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                // {type: '', damages: '', date: '', summary: '', reporter: '', dateReported: ''},
+            incidentSearchTable: [],
+            incidentLandlordExampleTable: [ 
+                {report:{incident:{incidentType: 'no_payment', amount: 999, dateOfIncident: '2-1-2021', summary: ''},landlord:{fullname: 'John Doe'},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '7-1-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'property_damage', amount: 1499, dateOfIncident: '25-2-2021',summary: 'Shooting fireworks indoors caused fire damage'},landlord:{ fullname: 'John Doe'},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '12-3-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'other', amount: 0, dateOfIncident: '7-4-2021', summary: 'Noise complaints from neighbours at 3am on a monday'},landlord:{fullname: 'John Doe'},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '8-4-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'no_payment', amount: 999, dateOfIncident: '2-5-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{ leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '7-5-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'contract_breach', amount: 499, dateOfIncident: '14-5-2021', summary: 'pets not allowed',},landlord:{ fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}}, reportedAt: '16-5-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'other', amount: 0, dateOfIncident: '19-6-2021', summary: 'domestic violence that put other tenants at risk',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '21-6-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'contract_breach', amount: 499, dateOfIncident: '1-6-2021', summary: 'pets not allowed',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}}, reportedAt: '2-6-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'contract_breach', amount: 499, dateOfIncident: '20-6-2021', summary: 'pets not allowed',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}}, reportedAt: '22-6-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'no_payment', amount: 999, dateOfIncident: '2-7-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}}, reportedAt: '8 -7-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'no_payment', amount: 999, dateOfIncident: '2-10-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}}, reportedAt: '7-10-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                // {incidentType: '', amount: '', dateOfIncident: '', summary: '', fullname: '', reportedAt: ''},
             ],
-            incidentTenantTable: [ 
-                {type: 'illegal_action', damages: 999, date: '2/1/2021', summary: '', reporter: 'John Doe', dateReported: '7/1/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'property_damage', damages: 1499, date: '25/2/2021', summary: 'Water damage to personal property due to ignored maintenance', reporter: 'John Doe', dateReported: '12/3/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'other', damages: 0, date: '7/4/2021', summary: '', reporter: 'John Doe', dateReported: '8/4/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'illegal_action', damages: 999, date: '2/5/2021', summary: '', reporter: 'John Doe', dateReported: '7/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'contract_breach', damages: 499, date: '14/5/2021', summary: '', reporter: 'John Doe', dateReported: '16/5/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'other', damages: 0, date: '19/6/2021', summary: '', reporter: 'John Doe', dateReported: '21/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'contract_breach', damages: 499, date: '1/6/2021', summary: '', reporter: 'John Doe', dateReported: '2/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'contract_breach', damages: 499, date: '20/6/2021', summary: '', reporter: 'John Doe', dateReported: '22/6/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'illegal_action', damages: 999, date: '2/7/2021', summary: '', reporter: 'John Doe', dateReported: '8 /7/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                {type: 'illegal_action', damages: 999, date: '2/10/2021', summary: '', reporter: 'John Doe', dateReported: '7/10/2021', leaseDuration: '1/1/2021 - 31/12/2021'},
-                // {type: '', damages: '', date: '', summary: '', reporter: '', dateReported: ''},
+            incidentTenantExampleTable: [ 
+                {report:{incident:{incidentType: 'illegal_action', amount: 999, dateOfIncident: '2-1-2021', summary: ''},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}}, reportedAt: '7-1-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'property_damage', amount: 1499, dateOfIncident: '25-2-2021', summary: 'Water damage to personal property due to ignored maintenance',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '12-3-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'other', amount: 0, dateOfIncident: '7-4-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '8-4-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'illegal_action', amount: 999, dateOfIncident: '2-5-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '7-5-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'contract_breach', amount: 499, dateOfIncident: '14-5-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '16-5-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'other', amount: 0, dateOfIncident: '19-6-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '21-6-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'contract_breach', amount: 499, dateOfIncident: '1-6-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '2-6-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'contract_breach', amount: 499, dateOfIncident: '20-6-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '22-6-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'illegal_action', amount: 999, dateOfIncident: '2-7-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1/1/2021 - 31/12/2021'}},  reportedAt: '8 -7-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                {report:{incident:{incidentType: 'illegal_action', amount: 999, dateOfIncident: '2-10-2021', summary: '',},landlord:{fullname: 'John Doe',},rentInfo:{leaseDuration: '1-1-2021 - 31-12-2021'}},  reportedAt: '7-10-2021', address:' 11 Wall St, New York, NY 10005, United States'},
+                // {type: '', amount: '', dateOfIncident: '', summary: '', fullname: '', reportedAt: ''},
             ],
             pieChartIncidentInstance: undefined,
             pieChartMonterayLossInstance: undefined,
         }
+    },
+    created: function(){
+        const correctDateFormat = /^[0-9]{2}-[0-9]{2}-[0-9]{4}$/
+        const address = this.$route.params.address
+        const startDate = this.$route.params.startDate
+        const endDate = this.$route.params.endDate
+        if (this.safe(address)) {
+            this.searchInput = address
+
+            if (this.safe(startDate) && correctDateFormat.test(startDate)) {
+                this.searchStartDate = startDate
+            }
+            if (this.safe(endDate) && correctDateFormat.test(endDate)) {
+                this.searchEndDate = endDate
+            }
+        } 
+
     },
     mounted: function(){
         const today = new Date()
@@ -309,18 +331,39 @@ const landing = Vue.component('landing', {
             this.submitted = false
             this.sampleReport = false
             const valid = await this.$refs.form.validate()
-            if (valid) {
+            if (valid && !this.loading) {
                 // const correctDateFormat = /[0-9]{2}-[0-9]{2}-[0-9]{4}/.test(dateOfBirth)
                 try {
                     this.loading = true
+                    const startDate = moment(this.searchStartDate, 'DD-MM-YYYY').format('YYYY-MM-DD')
+                    const endDate = moment(this.searchEndDate, 'DD-MM-YYYY').format('YYYY-MM-DD')
+                    const url = new URL(`${this.postUrl}/cbt/search/${this.$APP_TARGET}/${this.searchInput}/${startDate}/${endDate}`)
+                    const res = await fetch(url.href, {
+                        method: 'GET',
+                    })
+                    const data = await res.json()
+                    data.forEach((i) => {
+                        try {
+                            i.report = JSON.parse(i.report)
+                        } catch (error) {
+                            //report is probably not parseable to JSON
+                            i.report = {}
+                        }
+                        
+                        return
+                    })
+                    this.incidentSearchTable = data.filter((i) => Object.keys(i.report).length > 0)
                     // make http request to find individual
-                    setTimeout(()=>{
-                        this.loading = false
-                        this.showModal = true
-                    }, 1500)
-                    //this.showModal = true
+                    // setTimeout(()=>{
+                    //     this.loading = false
+                    //     this.showModal = true
+                    // }, 1500)
+                    this.loading = false
+                    this.showModal = true
                 } catch (error) {
                     console.error(new Error(error))
+                    M.toast(this.errorToastOptions)
+                    this.loading = false
                 } finally {
                     //this.loading = false
                 }
@@ -335,12 +378,12 @@ const landing = Vue.component('landing', {
         getPaidReport() {
             // use invoice id to retrieve report 
         },
-        generateIncidentReport() {
+        generateIncidentReport(reportList) {
             const options = {
-                title: 'Number Of Incidents: 10',
+                title: `Number Of Incidents: ${reportList.length}`,
                 pieHole: 0.4,
                 pieSliceTextStyle: {
-                    color: this.incidentReport.length == 2 ? 'black' : undefined,
+                    color: reportList.length == 1 ? 'black' : undefined,
                 },
                 slices: pieChartColorList,
                 titleTextStyle: {
@@ -348,17 +391,19 @@ const landing = Vue.component('landing', {
                     fontSize: 15,
                 }          
             }
-            const formatData = google.visualization.arrayToDataTable(this.incidentReport)
+            const reportData = this.getAggregateIncidentType(reportList)
+            const formatData = google.visualization.arrayToDataTable(reportData)
             this.pieChartIncidentInstance = new google.visualization.PieChart(this.$refs.incidentReport);
             this.pieChartIncidentInstance.draw(formatData, options)
         },
-        generateMonetaryLossReport() {
+        generateMonetaryLossReport(reportList) {
+            const reportData = this.getAggregateMonetaryLoss(reportList)
             const options = {
                 // title: 'Monetary Loss: $3,003 - $6,992',
-                title: 'Monetary Loss: ~$5,000',
+                title: `Monetary Loss: ~$${reportData.totalSum}`,
                 pieHole: 0.4,
                 pieSliceTextStyle: {
-                    color: this.monetaryLossReport.length == 2 ? 'black' : undefined,
+                    color: reportList.length == 1 ? 'black' : undefined,
                 },
                 slices: pieChartColorList,
                 tooltip: {
@@ -369,28 +414,29 @@ const landing = Vue.component('landing', {
                     fontSize: 15,
                 },
             }
-            const formatData = google.visualization.arrayToDataTable(this.monetaryLossReport)
+            const formatData = google.visualization.arrayToDataTable(reportData.listOfSums)
             this.pieChartMonterayLossInstance = new google.visualization.PieChart(this.$refs.monetaryLossReport);
             this.pieChartMonterayLossInstance.draw(formatData, options)
         },
-        initiateChartReport(){
-            this.generateIncidentReport()
-            this.generateMonetaryLossReport()
+        initiateChartReport(reportList = this.incidentTable){
+            if (reportList.length < 1) {
+                return
+            }
+            this.generateIncidentReport(reportList)
+            this.generateMonetaryLossReport(reportList)
         },
         closeReportModal(){
             this.showModal = false
             this.sampleReport = false
+            this.chartType = 'pie'
         },
         showSampleReport(){
             if (!this.showModal) {
                 this.showModal = true
             }
-            if (this.sampleReport) {
-                this.initiateChartReport()
-            }    
+            this.initiateChartReport()
         },
         shortCutReport(){
-            this.chartType = 'pie'
             this.sampleReport = true
             this.showModal = true
 
@@ -408,19 +454,21 @@ const landing = Vue.component('landing', {
         },
         async autoCompleteSearch(){
             const oldSearchValue = this.searchInput
-            if (this.isSearchingForAutocomplete) {
+            if (this.isSearchingForAutocomplete || this.searchInput.trim().length < 4) {
                 return
             }
             try {
                 this.isSearchingForAutocomplete = true
-                
-                // const res = await fetch('/cbt/autosearch/query')
-                // const data = await res.json()
-                const data = ['45 drake street', '68 moncton avenue', '79 monctons drive', '1602-23 barrel yards blvd waterloo ON N2L 0E3']
+                const url = new URL(`${this.postUrl}/cbt/address/${this.searchInput}`)
+                const res = await fetch(url.href, {
+                    method: 'GET',
+                })
+                const data = await res.json()
+                // const data = ['45 drake street', '68 moncton avenue', '79 monctons drive', '1602-23 barrel yards blvd waterloo ON N2L 0E3']
                 if (Array.isArray(data) && data.length > 0) {
                     const map = new Map()
                     data.forEach(i => {
-                        map.set(i, 'https://freesvg.org/storage/img/thumb/jp-draws-US-Flag.png')
+                        map.set(i.address, '')
                     })
                     this.autocompleteInstance.updateData(Object.fromEntries(map))
                 }
@@ -433,6 +481,44 @@ const landing = Vue.component('landing', {
                 }
             }
             
+        },
+        getAggregateIncidentType(reports){
+            const totals = reports.reduce((allIncidents, incident) => {
+                const incidentTypeDisplayName = this.$options.filters.incidentType(incident.report.incident.incidentType)
+                if (!(incidentTypeDisplayName in allIncidents)) {
+                    allIncidents[incidentTypeDisplayName] = 1
+                    return allIncidents
+                }
+                allIncidents[incidentTypeDisplayName]++
+
+                return allIncidents
+
+            }, {})
+
+            return [['Incident Type', 'amount']].concat(Object.entries(totals))
+        },
+        getAggregateMonetaryLoss(reports){
+            const damagesMap = this.$options.filters.damages(undefined, true)
+            let sumOfEverything = 0
+            const totals = reports.reduce((allIncidents, incident) => {
+                const incidentTypeDisplayName = this.$options.filters.incidentType(incident.report.incident.incidentType)
+                const reportValue = damagesMap.get(Number(incident.report.incident.amount)).reportValue
+                if (!(incidentTypeDisplayName in allIncidents)) {
+                    allIncidents[incidentTypeDisplayName] = reportValue
+                    sumOfEverything += reportValue 
+                    return allIncidents
+                }
+                allIncidents[incidentTypeDisplayName] += reportValue
+                sumOfEverything += reportValue
+
+                return allIncidents
+
+            }, {})
+
+            return {
+                totalSum: sumOfEverything,
+                listOfSums: [['monetary loss', 'amount']].concat(Object.entries(totals))
+            }
         }
     },
     computed: {
@@ -443,11 +529,21 @@ const landing = Vue.component('landing', {
            return this.chartType === 'list'
        },
        incidentTable() {
-           if (this.$APP_TENANT) {
-            return this.incidentTenantTable
-           }
+           if (this.sampleReport) {
+                if (this.$APP_TENANT) {
+                    return this.incidentTenantExampleTable
+                }
 
-           return this.incidentLandlordTable
+                return this.incidentLandlordExampleTable
+           }
+           
+           return this.incidentSearchTable
+       },
+       noReportsFound(){
+           return this.incidentTable.length < 1
+       },
+       incidentReportTitle(){
+           return this.noReportsFound ? 'No Reports Found' :'Reports Found'
        }
     },
     filters: {
@@ -458,12 +554,26 @@ const landing = Vue.component('landing', {
             })
             return map.get(value)
         },
-        damages(value) {
+        damages(value, returnMapOnly = false) {
             const map = new Map()
             damages.map((i) => {
-                map.set(i.value, i.name)
+                map.set(i.value, !returnMapOnly ? i.name : i)
             })
-            return map.get(value)
+            if (returnMapOnly) {
+                return map
+            }
+
+            return map.get(Number(value))
+        },
+        formatReportDate(value){
+            try {
+                const dateSplited = value.split('-')
+                dateSplited[2] = dateSplited[2].substr(2,2)
+                return dateSplited.join('/')
+            } catch (error) {
+                return value
+            }
+            
         }
     }
 });
@@ -844,10 +954,6 @@ const reportTenant = Vue.component('report-tenant', {
             animateForward: false, 
             animateBackward: false,
             payDate: moment('21-06-2024','dd-mm-YYYY'),
-            toastOptions: {
-                html: '🥺 Something went wrong. Please try again later',
-                classes: 'red darken-1'
-            },
             reportFiled: {
                 rentInfo: {},
                 tenant: {},
@@ -890,7 +996,7 @@ const reportTenant = Vue.component('report-tenant', {
                 this.paySuccess()
                } catch (error) {
                    console.error(new Error(error))
-                   M.toast(this.toastOptions)
+                   M.toast(this.errorToastOptions)
                } finally {
                     this.stepNaviagtionProgress = false
                     return
@@ -1273,6 +1379,7 @@ Vue.component('ValidationProvider', VeeValidate.ValidationProvider);
 
 const routes = [
   { path: '/', component: landing },
+  { path: '/report/:address/:startDate?/:endDate?', component: landing },
 //   { path: '/terms', component: terms },
   { path: '/about', component: aboutUs },
   { path: '/faq', component: faq },

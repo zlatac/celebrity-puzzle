@@ -80,7 +80,7 @@
                             aria-label="Enter full address with zip or postal code"
                             title="Example: Unit# - Address, City, Zip/Postal code"
                             ref="addressSearch"
-                            @keyup="autoCompleteSearch"
+                            @input="autoCompleteSearch"
                             placeholder="search Address"/>
                         <button class="waves-effect btn" :class="{'btn-loading': loading}" @click="searchFreeReport">
                             <i v-show="!loading" class="material-icons" style="font-size: 1.6rem;">search</i>
@@ -130,14 +130,14 @@
                 </button>
             </div>
             <div class="not-found">
-                <h4 v-if="!isMobileOrTablet()" class="capitalize" style="margin-top: 0;">{{sampleReport ? '**Sample Report**' : 'No reports found'}}</h4>
-                <h5 v-if="isMobileOrTablet()" class="capitalize" style="margin-top: 0;">{{sampleReport ? '**Sample Report**' : 'No reports found'}}</h5>
+                <h4 v-if="!isMobileOrTablet()" class="capitalize" style="margin-top: 0;">{{sampleReport ? '**Sample Report**' : incidentReportTitle}}</h4>
+                <h5 v-if="isMobileOrTablet()" class="capitalize" style="margin-top: 0;">{{sampleReport ? '**Sample Report**' : incidentReportTitle}}</h5>
                 <!-- <span class="underline" @click="showSampleReport">**{{sampleReport ? 'Showing' : 'See'}} sample report**</span> -->
-                <div v-show="sampleReport">
+                <div v-show="!noReportsFound">
                     <i class="material-icons small cursor-pointer" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;" title="Pie chart">pie_chart</i>
                     <i class="material-icons small cursor-pointer" :class="{'primary-text-color': isList}" @click="view('list')" title="Table list">list</i>
                 </div>
-                <collapse class="collapsible-table" v-show="sampleReport && isList">
+                <collapse class="collapsible-table" v-show="isList">
                     <collapse-item header-class="main-background white-text">
                         <template slot="header">
                             <div class="header-table bold">
@@ -156,21 +156,22 @@
                             </div>
                         </template>
                     </collapse-item>
-                    <collapse-item v-for="(incident, index) in incidentTable" :key="index" :more-icon="true" :classes="index < 1 ? 'active' : ''">
+                    <collapse-item v-for="(item, index) in incidentTable" :key="index" :more-icon="true" :classes="index < 1 ? 'active' : ''">
                         <template slot="header">
                             <div class="header-table">
-                                <span>{{incident.date}}</span>
-                                <span>{{incident.type | incidentType}}</span>
-                                <span>{{incident.damages | damages}}</span>
-                                <span>{{incident.leaseDuration}}</span>
+                                <span>{{item.report.incident.dateOfIncident | formatReportDate}}</span>
+                                <span>{{item.report.incident.incidentType | incidentType}}</span>
+                                <span>{{item.report.incident.amount | damages}}</span>
+                                <!-- <span>1/1/2021 - 31/12/2021</span> -->
+                                <span :class="{'blur': !item.report.rentInfo.leaseDuration}">{{item.report.rentInfo.leaseDuration ? item.report.rentInfo.leaseDuration : '**/**/**** - **/**/****'}}</span>
                             </div>
                         </template>
                         <template slot="body">
                             <div class="body-table">
-                                <span><b>LandLord:</b> {{incident.reporter}}</span>
-                                <span><b>Address:</b> 11 Wall St, New York, NY 10005, United States</span>
-                                <span><b>date reported:</b> {{incident.dateReported}}</span>
-                                <span><b>summary:</b> {{incident.summary}}</span>
+                                <span><b>LandLord:</b> {{item.report.landlord.fullname}}</span>
+                                <span><b>Address:</b> {{item.address}}</span>
+                                <span><b>date reported:</b> {{item.reportedAt}}</span>
+                                <span><b>summary:</b> {{item.report.incident.summary}}</span>
                             </div>
                         </template>
                     </collapse-item>
