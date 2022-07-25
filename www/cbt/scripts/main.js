@@ -400,7 +400,7 @@ const landing = Vue.component('landing', {
             const reportData = this.getAggregateMonetaryLoss(reportList)
             const options = {
                 // title: 'Monetary Loss: $3,003 - $6,992',
-                title: `Monetary Loss: ~$${reportData.totalSum}`,
+                title: `Monetary Loss: ~$${reportData.totalSum.toLocaleString()}`,
                 pieHole: 0.4,
                 pieSliceTextStyle: {
                     color: reportList.length == 1 ? 'black' : undefined,
@@ -568,7 +568,7 @@ const landing = Vue.component('landing', {
         formatReportDate(value){
             try {
                 const dateSplited = value.split('-')
-                dateSplited[2] = dateSplited[2].substr(2,2)
+                dateSplited[2] = dateSplited[2].substring(2)
                 return dateSplited.join('/')
             } catch (error) {
                 return value
