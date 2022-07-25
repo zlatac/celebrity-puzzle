@@ -373,6 +373,15 @@ li.active .collapsible-header i.more-icon::before {
 .cursor-pointer {
     cursor: pointer;
 }
+.us-flag {
+    background-size: 60px 188%;
+    background-repeat: no-repeat;
+    background-blend-mode: overlay;
+    background-color: #ececec;
+    background-position: center;
+    background-image: url(https://freesvg.org/storage/img/thumb/jp-draws-US-Flag.png);
+    background-image: url(https://freesvg.org/storage/img/thumb/Flag_of_Canada.png);
+}
 @media only screen and (min-width: 810px){
     .report-found {
         grid-template-rows: repeat(auto-fill, minmax(100%, 1fr));
