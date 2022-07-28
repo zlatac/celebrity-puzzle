@@ -1350,6 +1350,7 @@ VeeValidate.extend('zip_code', {
         const sanitizedValue = value.trim().replace(' ', '')
         const postalcode = /^[a-zA-Z][0-9][a-zA-Z][0-9][a-zA-Z][0-9]$/
         const zipcode = /^[0-9]{5}(-[0-9]{4})?$/
+        const ukPostalCode = /^[A-z0-9]{2,4}[0-9][A-z][A-z]$/ //https://ideal-postcodes.co.uk/guides/uk-postcode-format
         const countryCode = args.country
         switch(countryCode){
             case 'US':
@@ -1364,10 +1365,17 @@ VeeValidate.extend('zip_code', {
                 }
                 return 'Postal code is invalid' 
                 break
+            case 'UK':
+                if (ukPostalCode.test(sanitizedValue)) {
+                    return true
+                }
+                return 'Postal code is invalid' 
+                break
             default:
                 return (
                     (zipcode.test(sanitizedValue)) ||
-                    (postalcode.test(sanitizedValue))
+                    (postalcode.test(sanitizedValue)) ||
+                    (ukPostalCode.test(sanitizedValue))
                 )
         }
     },
