@@ -519,6 +519,18 @@ const landing = Vue.component('landing', {
                 totalSum: sumOfEverything,
                 listOfSums: [['monetary loss', 'amount']].concat(Object.entries(totals))
             }
+        },
+        shareReport(){
+            if ('share' in navigator) {
+                navigator.share({
+                    title: this.$APP_LANDLORD ? 'Tenant Report' : 'Landlord Report',
+                    text: `See this ${this.$APP_TARGET_OPPOSITION} report now`,
+                    url: this.shareReportLink
+                })
+                .catch((error) => {
+                    console.error(new Error(error))
+                })
+            }
         }
     },
     computed: {
@@ -544,6 +556,11 @@ const landing = Vue.component('landing', {
        },
        incidentReportTitle(){
            return this.noReportsFound ? 'No Reports Found' :'Reports Found'
+       },
+       shareReportLink(){
+        const origin = window.location.origin
+        const route = `/#/report/${this.searchInput}/${this.searchStartDate}/${this.searchEndDate}`
+        return `${origin}${route}`
        }
     },
     filters: {

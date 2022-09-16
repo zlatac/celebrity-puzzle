@@ -136,6 +136,7 @@
                 <div v-show="!noReportsFound">
                     <i class="material-icons small cursor-pointer" :class="{'primary-text-color': isPie}" @click="view('pie')" style="margin-right: 25px;" title="Pie chart">pie_chart</i>
                     <i class="material-icons small cursor-pointer" :class="{'primary-text-color': isList}" @click="view('list')" title="Table list">list</i>
+                    <i class="material-icons small cursor-pointer" v-if="!sampleReport" @click="shareReport" title="Share this report with a friend" style="margin-left: 25px;">share</i>
                 </div>
                 <collapse class="collapsible-table" v-show="isList">
                     <collapse-item header-class="main-background white-text">
