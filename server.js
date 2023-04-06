@@ -287,19 +287,33 @@ app.get('/profile', function(req,res){
     const insta = req.query.insta;
     //console.log(req)
     if(insta !== undefined){
-        axios.get(`https://www.instagram.com/${insta}/?__a=1`,{
+        console.log(process.env.INSTASESSION)
+        axios.get(`https://www.instagram.com/${insta}/`,{
             withCredentials: true,
             headers: {
-                'Content-Type' : 'application/json',
+                // 'Content-Type' : 'application/json',
                 'Cookie': `sessionid=${process.env.INSTASESSION};`
             }
         })
         .then((data)=>{
-            res.send(data.data)
+            // console.log(data)
+            const template = data.data
+            const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
+            const extractObject = filterJavascriptSource[0].match(/({.*})</)
+            const parseObject = JSON.parse(extractObject[1])
+            const responsePayload = {
+                graphql: {
+                    user: {
+                        full_name: parseObject.author.name,
+                        profile_pic_url: parseObject.author.image
+                    }
+                }
+            }
+            res.send(responsePayload)
             res.status(200)
         })
         .catch((error)=>{
-            res.send(error.data)
+            res.send(error.toString())
             res.status(404)
         });
     }else{
