@@ -287,7 +287,6 @@ app.get('/profile', function(req,res){
     const insta = req.query.insta;
     //console.log(req)
     if(insta !== undefined){
-        console.log(process.env.INSTASESSION)
         axios.get(`https://www.instagram.com/${insta}/`,{
             withCredentials: true,
             headers: {
