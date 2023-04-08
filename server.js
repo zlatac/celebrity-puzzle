@@ -291,7 +291,7 @@ app.get('/profile', function(req,res){
             withCredentials: true,
             headers: {
                 // 'Content-Type' : 'application/json',
-                'Cookie': `sessionid=${process.env.INSTASESSION};`
+                // 'Cookie': `sessionid=${process.env.INSTASESSION};`
             }
         })
         .then((data)=>{
