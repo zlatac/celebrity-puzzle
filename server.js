@@ -285,6 +285,7 @@ io.on('connection', function(client) {
 
 app.get('/profile', function(req,res){
     const insta = req.query.insta;
+    let template;
     //console.log(req)
     if(insta !== undefined){
         axios.get(`https://www.instagram.com/${insta}/`,{
@@ -296,7 +297,7 @@ app.get('/profile', function(req,res){
         })
         .then((data)=>{
             // console.log(data)
-            const template = data.data
+            template = data.data
             const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
             const extractObject = filterJavascriptSource[0].match(/({.*})</)
             const parseObject = JSON.parse(extractObject[1])
@@ -312,7 +313,7 @@ app.get('/profile', function(req,res){
             res.status(200)
         })
         .catch((error)=>{
-            res.send(error.toString())
+            res.send(`${error.toString()} ${template}`)
             res.status(404)
         });
     }else{
@@ -323,6 +324,7 @@ app.get('/profile', function(req,res){
 
 app.get('/insta-feed', function(req,res){
     const feedId = req.query.id;
+    let template;
     // const moo = encodeURIComponent(`https://www.instagram.com/p/${id}/?utm_source=ig_web_copy_link`)
     //console.log(req)
     if(feedId !== undefined){
@@ -334,8 +336,8 @@ app.get('/insta-feed', function(req,res){
             }
         })
         .then((data)=>{
-            console.log(data)
-            const template = data.data
+            // console.log(data)
+            template = data.data
             const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
             const extractObject = filterJavascriptSource[0].match(/({.*})</)
             const parseObject = JSON.parse(extractObject[1])
@@ -343,7 +345,7 @@ app.get('/insta-feed', function(req,res){
             res.status(200)
         })
         .catch((error)=>{
-            res.send(error.toString())
+            res.send(`${error.toString()} ${template}`)
             res.status(404)
         });
     }else{
