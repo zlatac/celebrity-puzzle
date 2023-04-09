@@ -321,6 +321,37 @@ app.get('/profile', function(req,res){
     }
 });
 
+app.get('/insta-feed', function(req,res){
+    const feedId = req.query.id;
+    // const moo = encodeURIComponent(`https://www.instagram.com/p/${id}/?utm_source=ig_web_copy_link`)
+    //console.log(req)
+    if(feedId !== undefined){
+        axios.get(`https://www.instagram.com/p/${feedId}/?utm_source=ig_web_copy_link`,{
+            withCredentials: true,
+            headers: {
+                // 'Content-Type' : 'application/json',
+                // 'Cookie': `sessionid=${process.env.INSTASESSION};`
+            }
+        })
+        .then((data)=>{
+            console.log(data)
+            const template = data.data
+            const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
+            const extractObject = filterJavascriptSource[0].match(/({.*})</)
+            const parseObject = JSON.parse(extractObject[1])
+            res.send(parseObject)
+            res.status(200)
+        })
+        .catch((error)=>{
+            res.send(error.toString())
+            res.status(404)
+        });
+    }else{
+        res.status(400)
+        res.send(feedId)
+    }
+});
+
 app.post('/startParty', function(req,res){
     const partyName = req.query.name.trim();
     if(partyName !== undefined && partyName !== '' && partyName.length <= 26){
