@@ -304,7 +304,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="row animated bounceInLeft" v-for="(x, index) in category" :key="index" style="margin-bottom:0px;">
+                <div class="row animated bounceInLeft" v-for="(x, index) in availableCategory" :key="index" style="margin-bottom:0px;">
                     <div class="col s12">
                         <div class="card card-side z-depth-2" v-bind:style="{borderLeftColor: x.color}">
                             <div class="card-content" style="padding:15px">
@@ -320,6 +320,6 @@
         </div>
 </script>
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<script src="scripts/main.es5.js"></script>
+<script src="dist/bundle.js"></script>
 </body>
 </html>

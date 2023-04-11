@@ -76,5 +76,23 @@ module.exports = [
                 'process.env.STRIPE_PUBLIC_KEY': JSON.stringify(process.env.STRIPE_PUBLIC_KEY)
             })
         ]
+    },
+    {
+        name: 'puzzle',
+        entry: './www/scripts/main.js',
+        mode: production ? 'production': 'development',
+        devtool: production ? 'none' : 'inline-source-map',
+        devServer: {
+            contentBase: './www/dist',
+            port: 8080,
+        },
+        output: {
+            filename: "bundle.js",
+            path: path.resolve(__dirname, 'www/dist')
+        },
+        module: {},
+        node: {
+            Buffer: false
+        }
     }
 ];

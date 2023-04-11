@@ -12,9 +12,11 @@
     "build:engine": "webpack --config-name bmr-engine",
     "build:bmr": "webpack --config-name bmr",
     "build:cbt": "webpack --config-name cbt",
+    "build:puzzle": "webpack --config-name puzzle",
     "dev:engine": "webpack-dev-server --open",
     "dev:bmr": "webpack --config-name bmr --watch",
-    "dev:cbt": "webpack --config-name cbt --watch"
+    "dev:cbt": "webpack --config-name cbt --watch",
+    "dev:puzzle": "webpack --config-name puzzle --watch"
   },
   "author": "zlatac",
   "license": "UNLICENSED",

@@ -70,6 +70,11 @@ const serviceProvider = {
             }else{
                 return 'empty'
             }
+        },
+        availableCategory(){
+            return this.category.filter(
+                item => this.$store.state.celebList.some(celeb => celeb.category === item.name)
+            )
         }
 
     },
@@ -89,17 +94,25 @@ const serviceProvider = {
         
     },
     beforeCreate: function(){
-        if(this.$route.path.includes('game') && this.$store.state.celebList === null){
+        if(this.$route.path.includes('game') && this.$store.state.celebList.length === 0){
             return router.push('/');
         }
-        if(this.$store.state.celebList === null){
+        if(this.$store.state.celebList.length === 0){
             let location = (window.location.port === '5500')? '/www/scripts/celebs.json' : '/scripts/celebs.json'
             fetch(location).then((res)=>{
                 //get celebrity list
                 return  res.json()   
             })
             .then((data)=>{
-                this.$store.commit('celebList',data);
+                const listCleanUp = 
+                    data
+                        .filter(item => !item.list.every(i => i === ''))
+                        .map((j) => {
+                            const cleanList = j.list.filter(listItem => listItem !== '')
+                            j.list = cleanList
+                            return j
+                        })
+                this.$store.commit('celebList',listCleanUp);
                            
             });
         }
@@ -171,6 +184,8 @@ const serviceProvider = {
             this.resumeAudioContext()
         },
         modalAdsense:function(){
+            return 'adsense-pause'
+            
             if(this.adsenseServed === false){
                 //No need to call for the same ad unit 
                 this.adsenseServed = true
@@ -196,7 +211,10 @@ const serviceProvider = {
             }
         },
         instaLink(handle){
-            return `https://www.instagram.com/${handle}/`
+            return `/profile?insta=${handle}`
+        },
+        instaGameImageLink(imageCode){
+            return `/insta-feed?id=${imageCode}`
         },
         getProfile:function(){
             this.modalPage.imageacquired = false // remove submit button while typing
@@ -215,7 +233,7 @@ const serviceProvider = {
             fetch(this.instaLink(profile))
             .then((res)=>{
                 if(res.status === 200){
-                    return  res.text();
+                    return  res.json();
                 }else{
                     this.modalPage.fail = true
                     return 'failed'
@@ -223,7 +241,7 @@ const serviceProvider = {
             })
             .then((data)=>{
                 if(data !== 'failed'){
-                    let sift = data.match(/og:image.+(http.+)"/i)[1];
+                    let sift = data.graphql.user.profile_pic_url
                     this.$store.commit('url',sift);
                     this.modalPage.fail = false
                     this.modalPage.loader = false
@@ -440,7 +458,7 @@ const game = Vue.component('game',{
                 </div>                
                 <spinner class="animated fadeIn" :colorClass="'default'" v-show="loader"></spinner>
             </div>
-            <div id="svg" style="background-color:white; width:100%; height:80%;">
+            <div id="svg" style="background-color:white; width:100%; height:80%; user-select:none;">
                 <div class="btn list-me animated shake" v-bind:class="{'hide': prog !== 100}">
                         Completed!!  
                         <span v-show="test.start_time !== null">
@@ -516,7 +534,7 @@ const game = Vue.component('game',{
     mounted: function(){
         if(this.isWindowBig === true) return router.push('/')
 
-        if(this.$store.state.celebList !== null){
+        if(this.$store.state.celebList.length !== 0){
             this.svgSpace = document.getElementById('svg')
             this.setUp(this.svgSpace.clientWidth,this.svgSpace.clientHeight);
         }
@@ -642,7 +660,7 @@ const game = Vue.component('game',{
             if(inputProfile !== 'regular'){
                 //submit to the leaderboard for sure
                 name = inputProfile.replace('@','').toLowerCase()
-                picurl = this.url
+                picurl = encodeURIComponent(this.url)
                 leaderboard = 1
                 localStorage.instahandle = name
             }
@@ -703,60 +721,52 @@ const game = Vue.component('game',{
             let category = this.$route.params.category
             let categoryList = []
             let randomIndex = null
+            let randomPictureFromCelebrityIndex = null
+            let instaShortCode = '';
             let handle = ''
             if(this.category.findIndex((item)=>item.name === category) === -1) this.fixedChallenge = true
             if(!this.fixedChallenge){
                 // normal gameplay to run a random game
                 categoryList = this.$store.state.celebList.filter(item => item.category === category)
                 randomIndex = Math.floor(Math.random()*(categoryList.length));
+                randomPictureFromCelebrityIndex = Math.floor(Math.random()*(categoryList[randomIndex].list.length));
+
                 handle = categoryList[randomIndex].handle
+                instaShortCode = categoryList[randomIndex].list[randomPictureFromCelebrityIndex]
+                instaShortCode = instaShortCode.match(/https:\/\/www\.instagram\.com\/p\/(.+)\//)[1]
             }else{
                 //this is a challenge and should get specific image played by the challenger
-                handle = `p/${category}`
+                instaShortCode = category
             }
             
             return new Promise((resolve,reject)=>{
-                fetch(this.instaLink(handle))
+                fetch(this.instaGameImageLink(instaShortCode))
                 .then((res)=>{
                     if(res.status === 200){
-                        return  res.text();
+                        return  res.json();
                     }else{
                         //this.getImage();
                         reject('there was an error retreiving data from instagram')
                     }       
                 })
                 .then((data)=>{
-                    if(this.safe(data) && !this.fixedChallenge){
-                        let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
-                        let user = sift.entry_data.ProfilePage["0"].graphql.user
-                        let instaList = sift.entry_data.ProfilePage["0"].graphql.user.edge_owner_to_timeline_media.edges
+                    if(this.safe(data)){
                         //filter for only images with 3:4 and 1:1 dimensions
-                        let imageList = instaList.filter(item => item.node.is_video === false && item.node.dimensions.width <= item.node.dimensions.height)
+                        let imageList = data.image.filter(item => item.width <= item.height)
                         if(imageList.length < 1){
                             this.retry()
                         }else{
                             let index = Math.floor(Math.random()*(imageList.length));
                             this.profile = {
-                                fullname:user.full_name,
-                                url:user.profile_pic_url,
+                                fullname:data.author.name,
+                                url:data.author.image,
                                 fallback:categoryList[randomIndex],
                                 imageList: imageList,
-                                imageShortcode:imageList[index].node.shortcode
+                                imageShortcode:instaShortCode
                             }
-                            resolve(imageList[index].node.display_url);
+                            resolve(imageList[index].url);
                         }
                     }
-                    if(this.safe(data) && this.fixedChallenge){
-                        let sift = JSON.parse(data.match(/window._sharedData = ({.+);/i)[1]);
-                        let user = sift.entry_data.PostPage["0"].graphql.shortcode_media
-                        this.profile = {
-                            fullname:user.owner.full_name,
-                            url:user.owner.profile_pic_url,
-                            imageShortcode:user.shortcode
-                        }
-                        resolve(user.display_url);
-                    }
-                    
                 });
             })
         },
@@ -1079,7 +1089,7 @@ Vue.component('spinner',{
         </div>
     `
 });
-Vue.component('adsense',{
+Vue.component('adsense-pause',{
     template:`
     <div style="margin-top:30px">
         <!-- footer ad  data-adtest="on"-->
@@ -1147,13 +1157,13 @@ Vue.filter('endsIn', function (value) {
 const store = new Vuex.Store({
     //state management in VUE
     state:{
-        instaName:'',
-        celebList:null,
+        instaName: '',
+        celebList: [],
         previousChamps: null,
         url: 'https://www.chaarat.com/wp-content/uploads/2017/08/placeholder-user-300x300.png',
-        challenge:null,
-        socialChallenge:null,
-        accessToken:null
+        challenge: null,
+        socialChallenge: null,
+        accessToken: null
     },
     mutations:{
         insertName(state, data){
