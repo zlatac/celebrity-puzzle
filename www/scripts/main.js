@@ -20,9 +20,11 @@ const serviceProvider = {
                 {name:'champagnepapi', profile_url:'https://scontent-iad3-1.cdninstagram.com/v/t51.2885-19/s150x150/91255903_2638479089705085_4943092648538800128_n.jpg?_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=6F65w415ac8AX-mtxz2&oh=9100806278f74e7cd9385361c984272a&oe=5F61CFF7'},
             ],
             category:[
-                {name:'fashion',color:'#e68213',text:'fashion'},
+                {name:'art',color:'#e61313',text:'art'},
+                {name:'kids',color:'#b9499f',text:'kids'},
                 {name:'music',color:'#136ee6',text:'music'},
                 {name:'movie',color:'#b9499f',text:'movies'},
+                {name:'fashion',color:'#e68213',text:'fashion'},
                 {name:'sexy',color:'#e61313',text:'sexy girls'},
                 {name:'sport',color:'#136ee6',text:'sports'},
                 {name:'youtube',color:'#e61313',text:'youtube', logoClass:'fab fa-youtube red-text'},
