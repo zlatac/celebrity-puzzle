@@ -63,8 +63,9 @@
                     </div>
                     <div class="row" style="margin-bottom: 0px;">
                         <div class="col s12">
-                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('allTime')" :class="{'chip-selected':!todayChip}">All time</div>
-                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('thisWeek')" :class="{'chip-selected':todayChip}">This week</div>
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('allTime')" :class="{'chip-selected':rankPeriodChip === 'allTime'}">All time</div>
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('thisMonth')" :class="{'chip-selected':rankPeriodChip === 'thisMonth'}">All month</div>
+                            <div class="chip z-depth-1 waves-effect" @click="selectedTime('thisWeek')" :class="{'chip-selected':rankPeriodChip === 'thisWeek'}">This week</div>
                         </div>
                     </div>
                 </div>

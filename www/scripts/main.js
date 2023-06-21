@@ -953,7 +953,7 @@ const leaderboard = Vue.component('leaderboard',{
         return{
             movingHearts:[],
             leaderboardList:[],
-            todayChip: true,
+            rankPeriodChip: 'thisMonth',
             viewChallengeList:{}
         }
     },
@@ -976,24 +976,41 @@ const leaderboard = Vue.component('leaderboard',{
             },c * 1200)
         },
         getLeaderboard(){
+            if(this.loader === true) {
+                return
+            }
             this.loader = true
-            let today = (this.todayChip === true) ? this.currentGameWeek : this.allTimeGame
+            const startPeriod = this.rankPeriodChip
+            let today
+            switch(startPeriod){
+                case 'thisWeek':
+                    today = this.currentGameWeek;
+                    break;
+                case 'thisMonth':
+                    today = this.currentGameMonth;
+                    break;
+                case 'allTime':
+                    today = this.allTimeGame;
+                    break;
+                default:
+                    today = this.allTimeGame;
+            }
             axios.get(`https://styleminions.co/api/puzzlechamps?today=${today}`)
             .then((res)=>{
                 //console.log(res)
                 this.leaderboardList = res.data;
                 this.loader = false
             })
+            .catch(() => {
+                this.loader = false
+            })
         },
         selectedTime(time){
-            if(time === 'allTime' && this.todayChip === true){
-                this.todayChip = false
-                this.getLeaderboard()
-            } 
-            if(time === 'thisWeek' && this.todayChip === false){
-                this.todayChip = true 
-                this.getLeaderboard()
-            } 
+            if (this.rankPeriodChip === time) {
+                return
+            }
+            this.rankPeriodChip = time
+            this.getLeaderboard()
         },
         scrollToMe(){
             let elem = document.querySelector('.myprofile')
