@@ -54,6 +54,9 @@ const serviceProvider = {
         previousGameDay(){
             return moment().subtract(1, 'days').startOf('day').toISOString();
         },
+        previousGameMonth(){
+            return moment().subtract(1, 'month').startOf('month').toISOString();
+        },
         currentGameMonth(){
             return moment().startOf('month').toISOString();
         },
@@ -988,6 +991,9 @@ const leaderboard = Vue.component('leaderboard',{
                     break;
                 case 'thisMonth':
                     today = this.currentGameMonth;
+                    break;
+                case 'lastMonth':
+                    today = this.previousGameMonth;
                     break;
                 case 'allTime':
                     today = this.allTimeGame;
