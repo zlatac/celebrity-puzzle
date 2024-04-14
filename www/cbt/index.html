@@ -51,21 +51,78 @@
         <header>
             <router-link to="/" class="main-text">{{$APP_NAME}}</router-link>
             <router-link :to="`/report-${$APP_TARGET_OPPOSITION}`" v-if="!$route.path.includes(`report-${$APP_TARGET_OPPOSITION}`)">
-                <button class="waves-effect waves-light btn animated fadeIn" style="height: max(5.2vh,36px);">Report {{$APP_TARGET_OPPOSITION}}</button>
+                <button class="waves-effect waves-light btn animated fadeIn" style="height: max(5.2vh,36px);padding: 0 max(3vw, 18px);">Report {{$APP_TARGET_OPPOSITION}}</button>
             </router-link>
         </header>
-        <router-view></router-view>
+        <router-view class="router-view"></router-view>
         <footer>
             <router-link to="/about">About us</router-link>
             <a :href="`mailto:${$APP_EMAIL}`">Contact us</a>
+            <router-link to="/search">Search {{$APP_TARGET_OPPOSITION}}</router-link>
             <router-link to="/faq" v-if="$APP_LANDLORD">FAQ</router-link>
             <!-- <a :href="$APP_URL[$APP_TARGET_OPPOSITION]" target="_blank" rel="noopener noreferrer">Report {{$APP_TARGET}}</a> -->
             <router-link to="/" v-if="$route.path !== '/'">Home</router-link>
             <!-- <router-link to="/terms">Terms & Conditions</router-link> -->
+            <span class="white-text">© 2022-present Report {{$APP_TARGET_OPPOSITION}}. All rights reserved.</span>
         </footer>
     </div>
 </script>
-<script type="text/x-template" id="landing">
+<script type="text/x-template" id="home">
+    <div>
+        <section>
+            <div class="section to-report-search">
+                <p v-if="$APP_LANDLORD">Document & search tenant incidents without any tenant personal information today.</p>
+                <p v-if="$APP_TENANT">Document & search landlord incidents today.</p>
+                <div>
+                    <router-link :to="`/report-${$APP_TARGET_OPPOSITION}`">
+                        <button class="btn">Report {{$APP_TARGET_OPPOSITION}}</button>
+                    </router-link>
+                    <router-link to="/search">
+                        <button class="btn">Search {{$APP_TARGET_OPPOSITION}}</button>
+                    </router-link>
+                </div>
+            </div>
+        </section>
+        <section>
+            <div class="section incidents-to-report">
+                <div>Incidents to report</div>
+                <ul>
+                    <span v-for="incident in incidentList" :key="incident">
+                    <li v-if="incident[$APP_TARGET] === true" >{{incident.name}}</li>
+                    </span>
+                </ul>
+            </div>
+        </section>
+        <section>
+            <div class="section countries">
+                <p>Canada</p>
+                <p>USA</p>
+                <p>UK</p>
+            </div>
+        </section>
+        <section>
+            <div class="section to-report-search second-version">
+                <p >Document. Search. Reference. Share.</p>
+                <div>
+                    <router-link :to="`/report-${$APP_TARGET_OPPOSITION}`">
+                        <button class="btn">Report {{$APP_TARGET_OPPOSITION}}</button>
+                    </router-link>
+                    <router-link to="/search">
+                        <button class="btn">Search {{$APP_TARGET_OPPOSITION}}</button>
+                    </router-link>
+                </div>
+            </div>
+        </section>
+        <section>
+            <div class="section pricing">
+                <span class="small">price/report</span>
+                <span class="big">Free</span>
+            </div>
+        </section>
+        
+    </div>
+</script>
+<script type="text/x-template" id="search">
     <div class="landing">
         <div class="landing-container">
             <validation-observer ref="form">
@@ -510,7 +567,7 @@
 </script>
 <script type="text/x-template" id="about-us">
     <div class="animated fadeIn">
-        <h4 class="center">About Us</h4>
+        <h4 class="center">Mission</h4>
         <p class="card-panel about-us center" v-if="$APP_LANDLORD">
             Our mission is to <b>identify problematic tenants</b> in the rental marketplace to landlords,
             so that prospective <b>good tenants don't suffer</b> overbearing rental application requirements
@@ -519,6 +576,10 @@
         <p class="card-panel about-us center" v-if="$APP_TENANT">
             Our mission is to <b>identify problematic landlords</b> in the rental marketplace to prospective tenants,
             so that prospective <b>tenants don't suffer</b> poor business practices.
+        </p>
+        <h4 class="center">Vision</h4>
+        <p class="card-panel about-us center" v-if="$APP_LANDLORD">
+            Pioneer a <b>proof based</b> network of <b>tenant reports</b> by rental investors as they deliver value in todays global rental marketplace.
         </p>
     </div>    
 </script>
@@ -608,7 +669,7 @@
         .item {
             height: 100%;
             width: 100%;
-            background-color: lime;
+            background-color: #10931099;
             border-radius: 10px;
             box-shadow: 5px 8px 9px #d5d5d5, -5px -2px 9px #fff;
         }

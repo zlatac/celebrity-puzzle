@@ -189,11 +189,11 @@ const serviceProvider = {
     }
 }
 
-const landing = Vue.component('landing', {
+const search = Vue.component('search', {
     // dark theme: #101010
     // dark blue: #070b19
     // dark experiment:#252525
-    template:'#landing',
+    template:'#search',
     mixins: [serviceProvider],
     data: function(){
         return {
@@ -595,6 +595,8 @@ const landing = Vue.component('landing', {
     }
 });
 
+
+
 const rentInfo = {
     template:'#rent-info',
     mixins: [serviceProvider],
@@ -970,7 +972,7 @@ const reportTenant = Vue.component('report-tenant', {
             stepNaviagtionProgress: false,
             animateForward: false, 
             animateBackward: false,
-            payDate: moment('21-06-2024','dd-mm-YYYY'),
+            payDate: moment('21-06-2026','dd-mm-YYYY'),
             reportFiled: {
                 rentInfo: {},
                 tenant: {},
@@ -1080,6 +1082,15 @@ const reportTenant = Vue.component('report-tenant', {
 
 const aboutUs = {
     template: '#about-us',
+}
+
+const home = {
+    template: '#home',
+    data: function(){
+        return {
+            incidentList: incidents,
+        }
+    }
 }
 
 const faq = {
@@ -1403,17 +1414,25 @@ Vue.component('ValidationObserver', VeeValidate.ValidationObserver);
 Vue.component('ValidationProvider', VeeValidate.ValidationProvider);
 
 const routes = [
-  { path: '/', component: landing },
-  { path: '/report/:address/:startDate?/:endDate?', component: landing },
+  { path: '/', component: home },
+  { path: '/report/:address/:startDate?/:endDate?', component: search },
 //   { path: '/terms', component: terms },
   { path: '/about', component: aboutUs },
   { path: '/faq', component: faq },
+  { path: '/search', component: search },
   { path: '/report-tenant', component: reportTenant },
   { path: '/report-landlord', component: reportTenant },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({
-  routes // short for `routes: routes`
+  routes, // short for `routes: routes`
+  scrollBehavior: (to, from, savedPosition) => {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { x: 0, y: 0 }
+    }
+  }
 });
 
 const origin = window.location.origin

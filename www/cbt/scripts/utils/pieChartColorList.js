@@ -1,11 +1,11 @@
 // https://learnui.design/tools/data-color-picker.html#palette
 export default [
-    {color: '#03a9f4'},
-    {color: '#01579b'},
-    {color: '#f44336'},
-    {color: '#b71c1c'},
-    {color: '#d45087'},
-    {color: '#f95d6a'},
-    {color: '#ff7c43'},
-    {color: '#ffa600'},
+    {color: '#2750b0'},
+    {color: '#6370bc'},
+    {color: '#8f93c7'},
+    {color: '#b6b7d2'},
+    {color: '#dddddd'},
+    {color: '#e2b8b7'},
+    {color: '#e19394'},
+    {color: '#de425b'},
 ]
