@@ -29,7 +29,7 @@ html, body, #myapp {
 #myapp {
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: 10vh max-content 100px;
+    grid-template-rows: 10vh max-content max-content;
     /* grid-template-rows: 8% auto 12%; */
     position: relative;
     height: auto
@@ -165,6 +165,9 @@ footer {
     flex-wrap: wrap;
     border-top: 6px solid var(--main);
     column-gap: 30px;
+    padding: var(--default-section-padding);
+    row-gap: 19px;
+    min-height: 100px;
 }
 footer a {
     color: #70757a;
@@ -421,6 +424,7 @@ h3 {
 .collapsible-body {
     background-color: var(--secondary-color);
     text-align: center;
+    border-top: 3px solid var(--main);
 }
 .primary-text-color {
     color: var(--main);

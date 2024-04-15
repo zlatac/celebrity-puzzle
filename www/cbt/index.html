@@ -63,7 +63,7 @@
             <!-- <a :href="$APP_URL[$APP_TARGET_OPPOSITION]" target="_blank" rel="noopener noreferrer">Report {{$APP_TARGET}}</a> -->
             <router-link to="/" v-if="$route.path !== '/'">Home</router-link>
             <!-- <router-link to="/terms">Terms & Conditions</router-link> -->
-            <span class="white-text">© 2022-present Report {{$APP_TARGET_OPPOSITION}}. All rights reserved.</span>
+            <span class="white-text">© 2022-present Report {{$APP_TARGET_OPPOSITION | capitalize}}. All rights reserved.</span>
         </footer>
     </div>
 </script>

@@ -1321,6 +1321,13 @@ Vue.filter('truncate', function (value) {
     return value
 });
 
+Vue.filter('capitalize', function (value) { 
+    if(value && typeof value === 'string'){
+        return `${value[0].toUpperCase()}${value.substring(1)}`
+    }
+    return value
+});
+
 const store = new Vuex.Store({
     //state management in VUE
     state:{
