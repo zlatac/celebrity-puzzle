@@ -210,10 +210,12 @@ section, .section {
 .section.to-report-search.second-version {
     background-color: var(--main-light-color);
 }
-.section.to-report-search p {
+.section.to-report-search p, 
+.section.incident-impact p {
     font-size: max(2.7rem, 3vw);
 }
-.section.to-report-search button {
+.section.to-report-search button,
+.section.incident-impact button {
     padding: 0 max(3vw, 18px);
     border-radius: 25px;
     background-color: white;
@@ -245,6 +247,17 @@ section, .section {
     margin: 20px 0;
     text-transform: uppercase;
     letter-spacing: 3px;
+}
+.section.incident-impact {
+    background-color: white;
+    color: black;
+    padding-right: var(--default-section-padding);
+    padding-left: var(--default-section-padding);
+    text-align: center;
+}
+.section.incident-impact button {
+    color: white;
+    background-color: black;
 }
 .pricing .small {
     font-size: max(2rem, 3.6vw);

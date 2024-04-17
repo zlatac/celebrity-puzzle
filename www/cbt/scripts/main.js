@@ -302,6 +302,10 @@ const search = Vue.component('search', {
             },
             onAutocomplete: (val) => {this.searchInput = val}
         })
+        if (this.$route.path.includes('sample-report')) {
+            // on first load dependency is not fully ready
+            google.charts.setOnLoadCallback(this.shortCutReport)
+        }
     },
     methods: {
         setDateInput(dateType){
@@ -400,7 +404,7 @@ const search = Vue.component('search', {
             const reportData = this.getAggregateMonetaryLoss(reportList)
             const options = {
                 // title: 'Monetary Loss: $3,003 - $6,992',
-                title: `Monetary Loss: ~$${reportData.totalSum.toLocaleString()}`,
+                title: `Financial Impact: ~$${reportData.totalSum.toLocaleString()}`,
                 pieHole: 0.4,
                 pieSliceTextStyle: {
                     color: reportList.length == 1 ? 'black' : undefined,
@@ -1427,6 +1431,7 @@ const routes = [
   { path: '/about', component: aboutUs },
   { path: '/faq', component: faq },
   { path: '/search', component: search },
+  { path: '/sample-report', component: search },
   { path: '/report-tenant', component: reportTenant },
   { path: '/report-landlord', component: reportTenant },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
