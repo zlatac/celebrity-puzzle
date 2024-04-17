@@ -55,7 +55,7 @@
             </router-link>
         </header>
         <router-view class="router-view"></router-view>
-        <footer>
+        <footer v-if="$store.state.footerDispaly">
             <router-link to="/about">About us</router-link>
             <a :href="`mailto:${$APP_EMAIL}`">Contact us</a>
             <router-link to="/search">Search {{$APP_TARGET_OPPOSITION}}</router-link>

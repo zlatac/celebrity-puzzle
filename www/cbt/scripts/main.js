@@ -441,6 +441,7 @@ const search = Vue.component('search', {
             this.initiateChartReport()
         },
         shortCutReport(){
+            this.$store.commit('SET_FOOTER_DISPLAY', false)
             this.sampleReport = true
             this.showModal = true
 
@@ -1286,7 +1287,7 @@ Vue.component('badge', {
 Vue.component('slide-modal', {
     template: `
     <div class="dj-modal-container" v-if="show">
-        <div class="close-body cursor-pointer" @click="$emit('close')">
+        <div class="close-body cursor-pointer" @click="closeSlideModal">
             <i class="material-icons animated fadeInUp">cancel</i>
         </div>
         <div class="dj-modal-body animated slideInUp">
@@ -1295,8 +1296,17 @@ Vue.component('slide-modal', {
     </div>
     `,
     props:['show'],
+    beforeCreated(){
+        // this.$store.commit('SET_FOOTER_DISPLAY', false)
+    },
     mounted(){
         this.$emit('slideMounted')
+    },
+    methods: {
+        closeSlideModal() {
+            this.$emit('close')
+            this.$store.commit('SET_FOOTER_DISPLAY', true)
+        }
     }
 
 });
@@ -1336,10 +1346,14 @@ const store = new Vuex.Store({
     //state management in VUE
     state:{
         url: serviceProvider.data().noProfileUrl,
+        footerDispaly: true,
     },
     mutations:{
         url(state, data){
             state.url = data;
+        },
+        SET_FOOTER_DISPLAY(state, data){
+            state.footerDispaly = data;
         }
     }
 })
