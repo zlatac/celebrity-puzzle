@@ -234,9 +234,9 @@ section, .section {
 }
 .section.incidents-to-report ul {
     display: inline-flex;
-    column-gap: max(2.6rem, 8vw);
+    column-gap: max(2.3rem, 8vw);
     flex-wrap: wrap;
-    font-size: max(.93rem, 2.7vw);
+    font-size: max(.95rem, 2.7vw);
     justify-content: space-evenly;
     row-gap: 7vh;
 }

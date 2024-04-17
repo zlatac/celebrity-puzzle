@@ -1296,9 +1296,6 @@ Vue.component('slide-modal', {
     </div>
     `,
     props:['show'],
-    beforeCreated(){
-        // this.$store.commit('SET_FOOTER_DISPLAY', false)
-    },
     mounted(){
         this.$emit('slideMounted')
     },
