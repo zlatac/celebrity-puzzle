@@ -12,7 +12,7 @@
     <meta property="og:description" content="Tenant screening platform">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <!-- <meta name="google-site-verification" content="0F8PQEVqUilxTtYXcL5KDsUJQ6PVUoTBFppF6RMpBaQ" /> -->
-    <title>Search/Report Bad Rental Behaviour</title>
+    <title>Document/Search Bad Rental Behaviour</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script> -->
     <script src="https://unpkg.com/vue-router@3.5.x"></script>
@@ -102,7 +102,7 @@
         </section>
         <section>
             <div class="section incident-impact">
-                <p >Clear financial impact of prospective tenant incidents on previous rental investors</p>
+                <p >Clear financial impact of prospective {{$APP_TARGET_OPPOSITION}} incidents on previous {{$APP_TARGET_FANCY_NAME}}s</p>
                 <div>
                     <router-link to="/sample-report">
                         <button class="btn">See sample report</button>
@@ -219,7 +219,7 @@
                             <div class="body-table">
                                 <span><b>date:</b> Date incident occured</span>
                                 <span><b>Incident:</b> Type of incident</span>
-                                <span><b>Impact:</b> Monetary loss to the {{$APP_TARGET}}</span>
+                                <span><b>Impact:</b> Financial impact to the {{$APP_TARGET}}</span>
                                 <span><b>Lease Term:</b> Duration of the tenants lease</span>
                             </div>
                         </template>
@@ -587,7 +587,7 @@
             Our mission is to <b>identify problematic landlords</b> in the rental marketplace to prospective tenants,
             so that prospective <b>tenants don't suffer</b> poor business practices.
         </p>
-        <h4 class="center">Vision</h4>
+        <h4 class="center" v-if="$APP_LANDLORD">Vision</h4>
         <p class="card-panel about-us center" v-if="$APP_LANDLORD">
             Pioneer a <b>proof based</b> network of <b>tenant reports</b> by rental investors as they deliver value in todays global rental marketplace.
         </p>

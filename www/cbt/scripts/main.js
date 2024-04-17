@@ -1457,6 +1457,7 @@ Vue.prototype.$APP_TENANT = origin.includes('reportlandlord') || (origin.include
 Vue.prototype.$APP_LANDLORD = !Vue.prototype.$APP_TENANT
 Vue.prototype.$APP_TARGET = Vue.prototype.$APP_TENANT ? 'tenant' : 'landlord'
 Vue.prototype.$APP_TARGET_OPPOSITION = Vue.prototype.$APP_TARGET === 'tenant' ? 'landlord' : 'tenant'
+Vue.prototype.$APP_TARGET_FANCY_NAME =  Vue.prototype.$APP_TENANT ? 'tenant' : 'rental investor'
 Vue.prototype.$APP_URL = {
     tenant: 'https://reportlandlord.app',
     landlord: 'https://reporttenant.com'
