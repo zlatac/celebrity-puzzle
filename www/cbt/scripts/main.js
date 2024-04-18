@@ -298,7 +298,7 @@ const search = Vue.component('search', {
         google.charts.load('current', {'packages':['corechart']});
         this.autocompleteInstance = M.Autocomplete.init(this.$refs.addressSearch, {
             data: {
-                mooose: null
+                // mooose: null
             },
             onAutocomplete: (val) => {this.searchInput = val}
         })
