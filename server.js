@@ -6,6 +6,7 @@ var io = require('socket.io')(server);
 var axios = require('axios');
 var querystring = require('querystring');
 var fs = require('fs').promises;
+var jsdom = require('jsdom');
 if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
@@ -289,23 +290,29 @@ app.get('/profile', function(req,res){
     //console.log(req)
     if(insta !== undefined){
         axios.get(`https://www.instagram.com/${insta}/`,{
-            withCredentials: true,
+            // withCredentials: true,
             headers: {
                 // 'Content-Type' : 'application/json',
-                'Cookie': `sessionid=${process.env.INSTASESSION}`
+                // 'Cookie': `sessionid=${process.env.INSTASESSION}`
             }
         })
-        .then((data)=>{
+        .then(async (data)=>{
             // console.log(data)
+            await fs.writeFile('instahtmloutput.html', data.data)
             template = data.data
-            const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
-            const extractObject = filterJavascriptSource[0].match(/({.*})</)
-            const parseObject = JSON.parse(extractObject[1])
+            // const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
+            // const extractObject = filterJavascriptSource[0].match(/({.*})</)
+            // const parseObject = JSON.parse(extractObject[1])
+            const domDocument = new jsdom.JSDOM(data.data).window.document
+            const profilePic = domDocument.querySelector('meta[property="og:image"]').getAttribute('content')
+            const fullName = domDocument.querySelector('title').innerHTML.split('•')[0].trim().split(' ')
+            // Remove bracket with @instaprofile
+            fullName.pop()
             const responsePayload = {
                 graphql: {
                     user: {
-                        full_name: parseObject.author.name,
-                        profile_pic_url: parseObject.author.image
+                        full_name: (Array.isArray(fullName) && fullName.length > 0) ? fullName.join(' ') : insta,
+                        profile_pic_url: profilePic
                     }
                 }
             }
