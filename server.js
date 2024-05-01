@@ -298,7 +298,7 @@ app.get('/profile', function(req,res){
         })
         .then(async (data)=>{
             // console.log(data)
-            await fs.writeFile('instahtmloutput.html', data.data)
+            // await fs.writeFile('instahtmloutput.html', data.data)
             template = data.data
             // const filterJavascriptSource = template.match(/(<script type="application\/ld\+json").*script><link/g)
             // const extractObject = filterJavascriptSource[0].match(/({.*})</)
@@ -306,7 +306,7 @@ app.get('/profile', function(req,res){
             const domDocument = new jsdom.JSDOM(data.data).window.document
             const profilePic = domDocument.querySelector('meta[property="og:image"]').getAttribute('content')
             const fullName = domDocument.querySelector('title').innerHTML.split('•')[0].trim().split(' ')
-            // Remove bracket with @instaprofile
+            // Remove bracket with @instahandle
             fullName.pop()
             const responsePayload = {
                 graphql: {
