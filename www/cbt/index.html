@@ -738,7 +738,7 @@
                         :id="`share_${index}`" 
                         type="number" 
                         v-model="item.sharePercentage">
-                <label class="active" :for="`share_${index}`">Token/Share %</label>
+                <label class="active" :for="`share_${index}`">Token/Share %<span> - {{totalSharePercentageBalance | numberFormat}}% left</span></label>
             </div>
             <div class="center fa-2x green-text">{{optionValues[index].value | numberFormat}}</div>
         </div>

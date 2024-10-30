@@ -521,6 +521,13 @@ li.active .collapsible-header i.more-icon::before {
     width: 84%;
     align-self: center;
 }
+.token-component .input-field input[type=number] + label span {
+    visibility: hidden;
+}
+.token-component .input-field input[type=number]:focus + label span {
+    visibility: visible;
+    color: #000;
+}
 .main-component {
     display: flex;
     flex-direction: column;

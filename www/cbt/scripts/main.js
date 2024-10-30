@@ -1178,6 +1178,9 @@ const token = {
             urlParams.set('shares', this.shares)
             urlParams.set('plan',  encodeURI(JSON.stringify(this.items)))
             return`${location.href}?${urlParams.toString()}`
+        },
+        totalSharePercentageBalance() {
+            return 100 - this.total.sharePercentage
         }
     },
     methods: {
