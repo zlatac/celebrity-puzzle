@@ -1189,7 +1189,7 @@ const token = {
             return this.items.splice(index, 1);
         },
         prepareToMoveOption(index) {
-            if (this.moveOptionBucket.length === 2 || this.moveOptionBucket.includes(index)) {
+            if (this.items.length === 1 || this.moveOptionBucket.length === 2 || this.moveOptionBucket.includes(index)) {
                 return
             }
             this.moveOptionBucket.push(index)

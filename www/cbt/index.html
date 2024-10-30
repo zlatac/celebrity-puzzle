@@ -700,7 +700,7 @@
                         id="shares" 
                         type="number" 
                         v-model="shares">
-                <label for="shares">Tokens/Shares</label>
+                <label class="active" for="shares">Tokens/Shares</label>
             </div>
             <div class="input-field">
                 <i class="material-icons prefix">monetization_on</i>
@@ -710,12 +710,12 @@
                         :value="total.income | numberFormat"
                         class="green-text"
                         disabled>
-                <label for="income">Total Gains</label>
+                <label class="active" for="income">Total Gains</label>
             </div>
         </div>
         <hr/>
 
-        <div v-for="(item, index) of items" v-key="index" class="token-component z-depth-2 animated fadeInUp">
+        <div v-for="(item, index) of items" v-key="index" class="token-component z-depth-2 animated fadeIn">
             <div style="
                 display: inline-flex;
                 justify-content: space-between;
@@ -738,7 +738,7 @@
                         :id="`share_${index}`" 
                         type="number" 
                         v-model="item.sharePercentage">
-                <label :for="`share_${index}`">Token/Share %</label>
+                <label class="active" :for="`share_${index}`">Token/Share %</label>
             </div>
             <div class="center fa-2x green-text">{{optionValues[index].value | numberFormat}}</div>
         </div>
