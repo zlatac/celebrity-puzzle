@@ -2,6 +2,7 @@ import progress from './components/progress';
 import incidents from './utils/incidents'
 import damages from './utils/damages'
 import pieChartColorList from './utils/pieChartColorList'
+import { mixin } from 'lodash';
 
 const serviceProvider = {
     data: function(){
@@ -1117,6 +1118,110 @@ const terms = Vue.component('terms', {
     template:'#terms',
 });
 
+const token = {
+    template: '#token',
+    mixins: [serviceProvider],
+    data: function(){
+        return {
+           shares: 0,
+           items: [
+            {price: 0, sharePercentage: 100, value: 0}
+           ],
+           moveOptionBucket: [],
+        }
+    },
+    mounted() {
+        this.$store.commit('SET_FOOTER_DISPLAY', false)
+        const header = document.querySelector('header')
+        const [nameLink, buttonLink] = header.children
+        const shareElement = document.createElement('i');
+        const nameElement = document.createElement('a');
+        nameElement.textContent = 'Stock Exit Plan'
+        nameElement.href = location.href
+        nameElement.classList.add('main-text')
+        nameLink.remove()
+        buttonLink.remove()
+        shareElement.classList.add('material-icons','cursor-pointer')
+        shareElement.textContent = 'share'
+        shareElement.addEventListener('click', this.share)
+        header.appendChild(nameElement)
+        header.appendChild(shareElement)
+
+        if('shares' in this.$route.query) {
+            this.shares = this.$route.query.shares
+        }
+
+        if('plan' in this.$route.query) {
+            this.items = JSON.parse(decodeURI(this.$route.query.plan))
+        }
+
+        this.updateHtmlTitle('Stock Exit Plan')
+    },
+    computed: {
+        optionValues() {
+            return this.items.map((i) => ({
+                value: (i.price * (1/100 * i.sharePercentage) * this.shares),
+                sharePercentage: Number(i.sharePercentage),
+            }));
+        },
+        total() {
+            let income = 0
+            let sharePercentage = 0
+            this.optionValues.forEach((i) => {
+                income += Number(i.value)
+                sharePercentage += Number(i.sharePercentage)
+            })
+            return {income, sharePercentage}
+        },
+        shareLink() {
+            const urlParams = new URLSearchParams()
+            urlParams.set('shares', this.shares)
+            urlParams.set('plan',  encodeURI(JSON.stringify(this.items)))
+            return`${location.href}?${urlParams.toString()}`
+        }
+    },
+    methods: {
+        addNewOption() {
+            const lastPrice = this.items[this.items.length - 1].price
+            this.items.push({price: lastPrice, sharePercentage: '', value: 0})
+        },
+        deleteOption(index) {
+            return this.items.splice(index, 1);
+        },
+        prepareToMoveOption(index) {
+            if (this.moveOptionBucket.length === 2 || this.moveOptionBucket.includes(index)) {
+                return
+            }
+            this.moveOptionBucket.push(index)
+            if (this.moveOptionBucket.length === 2) {
+                this.moveOption()
+            }
+        },
+        moveOption() {
+            const removedItem = this.deleteOption(this.moveOptionBucket[0])
+            this.items.splice(this.moveOptionBucket[1], 0, ...removedItem)
+            this.moveOptionBucket = []
+        },
+        share() {
+            if ('share' in navigator) {
+                navigator.share({
+                    title: 'Stock Exit Plan',
+                    text: '',
+                    url: this.shareLink
+                })
+                .catch((error) => {
+                    console.error(new Error(error))
+                })
+            }
+        },
+    },
+    filters: {
+        numberFormat(val) {
+            return new Intl.NumberFormat(undefined, {maximumFractionDigits: 2}).format(Number(val))
+        }
+    }
+}
+
 Vue.component('collapse', {
     template: `
     <ul class="collapsible" :class="classes" ref="collapseComponent">
@@ -1445,6 +1550,7 @@ const routes = [
   { path: '/sample-report', component: search },
   { path: '/report-tenant', component: reportTenant },
   { path: '/report-landlord', component: reportTenant },
+  { path: '/token', component: token },
   { path: '*', redirect: '/' }, // wild card situations since the shared url could be modified by users
 ];
 const router = new VueRouter({

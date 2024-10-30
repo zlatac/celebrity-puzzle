@@ -507,6 +507,43 @@ li.active .collapsible-header i.more-icon::before {
         margin-bottom: 5px;
     }
 }
+/******************************************/
+.token-component {
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    padding: 5%;
+    /* margin-bottom: 10px; */
+    width: 95%;
+    align-self: center;
+}
+.token-component .input-field {
+    width: 84%;
+    align-self: center;
+}
+.main-component {
+    display: flex;
+    flex-direction: column;
+    gap: 10px 30px;
+}
+.main-component hr {
+    margin-bottom: 11vh;
+    width: 100%;
+}
+@media only screen and (min-width: 810px){
+    .main-component {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .token-component {
+        width: 450px;
+        padding: 40px;
+    }
+    .main-component hr {
+        margin-bottom: 14vh;
+        padding: 37px;
+    }
+}
 
 /******************************************/
 
