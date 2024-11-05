@@ -692,7 +692,7 @@
     </div>
 </template>
 <script type="text/x-template" id="token">
-    <div class="main-component">
+    <div class="token-container">
         <slide-modal :show="isModalDisplayed" @close="displayModal(false)">
             <div class="switch" style="margin-top:20px">
                 <label class="fa-2x">
@@ -723,59 +723,59 @@
                 <label class="active" for="income">Total Gains</label>
             </div>
         </div>
-        <hr/>
-
-        <div v-for="(item, index) of items" v-key="index" class="token-component z-depth-2 animated fadeIn">
-            <div style="
-                display: inline-flex;
-                justify-content: space-between;
-                align-items: flex-start;">
-                <span v-if="!moveOptionBucket.includes(index)" class="token-index chip cursor-pointer" @click="prepareToMoveOption(index)">{{index + 1}}</span>
-                <i v-if="moveOptionBucket.includes(index)" class="material-icons">swap_vert</i>
-                <span class="cursor-pointer" @click="displayTitle(item, true)">{{item.title}}</span>
-                <span @click="deleteOption(index)" class="cursor-pointer" :style="items.length === 1 ? 'visibility:hidden' : ''"><i class="material-icons prefix">delete_forever</i></span>
+        <div class="main-component">
+            <div v-for="(item, index) of items" v-key="index" class="token-component z-depth-2 animated fadeIn">
+                <div style="
+                    display: inline-flex;
+                    justify-content: space-between;
+                    align-items: flex-start;">
+                    <span v-if="!moveOptionBucket.includes(index)" class="token-index chip cursor-pointer" @click="prepareToMoveOption(index)">{{index + 1}}</span>
+                    <i v-if="moveOptionBucket.includes(index)" class="material-icons">swap_vert</i>
+                    <span class="cursor-pointer" @click="displayTitle(item, true)">{{item.title}}</span>
+                    <span @click="deleteOption(index)" class="cursor-pointer" :style="items.length === 1 ? 'visibility:hidden' : ''"><i class="material-icons prefix">delete_forever</i></span>
+                </div>
+                <div class="input-field" v-if="item.titleInputDisplay">
+                    <i class="material-icons prefix">edit</i>
+                        <input 
+                            :id="`title_${index}`" 
+                            type="text" 
+                            v-model="item.title"
+                            maxlength="24"
+                            @blur="displayTitle(item, false)"
+                            @keyup.enter="displayTitle(item, false)">
+                    <label class="active" :for="`title_${index}`">Title</label>
+                </div>
+                <div class="input-field" v-if="!isMarketCap">
+                    <i class="material-icons prefix">trending_up</i>
+                        <input 
+                            :id="`price_${index}`" 
+                            type="number" 
+                            v-model="item.price">
+                    <label class="active" :for="`price_${index}`">Price Target</label>
+                </div>
+                <div class="input-field" v-if="isMarketCap">
+                    <img class="circle material-icons prefix" :src="imageUrl" style="width: 30px"/>
+                        <input 
+                            :id="`cap_${index}`" 
+                            type="number" 
+                            v-model="item.marketCap">
+                    <label class="active" :for="`cap_${index}`">Market Cap Target</label>
+                </div>
+                <div class="input-field">
+                    <i class="material-icons prefix">pie_chart</i>
+                        <input 
+                            :id="`share_${index}`" 
+                            type="number" 
+                            v-model="item.sharePercentage">
+                    <label class="active" :for="`share_${index}`">Token/Share %<span> - {{totalSharePercentageBalance | numberFormat}}% left</span></label>
+                </div>
+                <div class="center fa-2x green-text">{{optionValues[index].value | numberFormat}}</div>
             </div>
-            <div class="input-field" v-if="item.titleInputDisplay">
-                <i class="material-icons prefix">edit</i>
-                    <input 
-                        :id="`title_${index}`" 
-                        type="text" 
-                        v-model="item.title"
-                        maxlength="24"
-                        @blur="displayTitle(item, false)"
-                        @keyup.enter="displayTitle(item, false)">
-                <label class="active" :for="`title_${index}`">Title</label>
-            </div>
-            <div class="input-field" v-if="!isMarketCap">
-                <i class="material-icons prefix">trending_up</i>
-                    <input 
-                        :id="`price_${index}`" 
-                        type="number" 
-                        v-model="item.price">
-                <label class="active" :for="`price_${index}`">Price Target</label>
-            </div>
-            <div class="input-field" v-if="isMarketCap">
-                <img class="circle material-icons prefix" :src="imageUrl" style="width: 30px"/>
-                    <input 
-                        :id="`cap_${index}`" 
-                        type="number" 
-                        v-model="item.marketCap">
-                <label class="active" :for="`cap_${index}`">Market Cap Target</label>
-            </div>
-            <div class="input-field">
-                <i class="material-icons prefix">pie_chart</i>
-                    <input 
-                        :id="`share_${index}`" 
-                        type="number" 
-                        v-model="item.sharePercentage">
-                <label class="active" :for="`share_${index}`">Token/Share %<span> - {{totalSharePercentageBalance | numberFormat}}% left</span></label>
-            </div>
-            <div class="center fa-2x green-text">{{optionValues[index].value | numberFormat}}</div>
+            <button style="place-self: center;" @click="addNewOption" class="btn-floating btn-large waves-effect waves-light" :disabled="total.sharePercentage >= 100"><i class="material-icons">add</i></button>
+    
+            
         </div>
-        <button style="place-self: center;" @click="addNewOption" class="btn-floating btn-large waves-effect waves-light" :disabled="total.sharePercentage >= 100"><i class="material-icons">add</i></button>
-
-        
-    </div>    
+    </div> 
 </script>
 <script src="cbt/dist/bundle.js"></script>
 <!-- <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script> -->

@@ -1250,6 +1250,9 @@ const token = {
         },
         displayTitle(item, status) {
             item.titleInputDisplay = status
+            if(status === false && item.title === '') {
+                item.title = 'Tap here to update title'
+            }
         },
         displayModal(status) {
             console.log(status)

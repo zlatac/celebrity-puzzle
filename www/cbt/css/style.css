@@ -532,15 +532,12 @@ li.active .collapsible-header i.more-icon::before {
     display: flex;
     flex-direction: column;
     gap: 10px 30px;
+    margin-top: 135px;
 }
-.main-component hr {
-    margin-bottom: 11vh;
-    width: 100%;
-}
-.main-component .switch label input[type=checkbox]:checked+.lever {
+.token-container .switch label input[type=checkbox]:checked+.lever {
     background-color: rgba(0, 0, 0, 0.38);
 }
-.main-component .switch label input[type=checkbox]:checked+.lever:after {
+.token-container .switch label input[type=checkbox]:checked+.lever:after {
     background-color: white;
 }
 .main-component .input-field img {
@@ -688,7 +685,7 @@ img{
     z-index: 20;
 }
 .dj-modal-container {
-    position: absolute;
+    position: fixed;
     top: 0;
     height: 100%;
     width: 100%;
