@@ -537,6 +537,18 @@ li.active .collapsible-header i.more-icon::before {
     margin-bottom: 11vh;
     width: 100%;
 }
+.main-component .switch label input[type=checkbox]:checked+.lever {
+    background-color: rgba(0, 0, 0, 0.38);
+}
+.main-component .switch label input[type=checkbox]:checked+.lever:after {
+    background-color: white;
+}
+.main-component .input-field img {
+    filter: grayscale(1);
+}
+.main-component .input-field img.active {
+    filter: grayscale(0);
+}
 @media only screen and (min-width: 810px){
     .main-component {
         flex-direction: row;

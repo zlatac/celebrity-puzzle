@@ -692,7 +692,17 @@
     </div>
 </template>
 <script type="text/x-template" id="token">
-    <div class="animated fadeIn main-component">
+    <div class="main-component">
+        <slide-modal :show="isModalDisplayed" @close="displayModal(false)">
+            <div class="switch" style="margin-top:20px">
+                <label class="fa-2x">
+                  Price
+                  <input type="checkbox" v-model="isMarketCap">
+                  <span class="lever"></span>
+                  Market Cap
+                </label>
+            </div>
+        </slide-modal>
         <div style="position: fixed;display: flex;width: 100%;justify-content: space-evenly;background-color: white;z-index: 5;padding-top: 3%;border-bottom: 4px solid var(--main-light-color);">
             <div class="input-field">
                 <i class="material-icons prefix">account_balance_wallet</i>
@@ -700,7 +710,7 @@
                         id="shares" 
                         type="number" 
                         v-model="shares">
-                <label class="active" for="shares">Tokens/Shares</label>
+                <label class="active" for="shares">My Tokens/Shares</label>
             </div>
             <div class="input-field">
                 <i class="material-icons prefix">monetization_on</i>
@@ -719,18 +729,38 @@
             <div style="
                 display: inline-flex;
                 justify-content: space-between;
-                align-items: center;">
+                align-items: flex-start;">
                 <span v-if="!moveOptionBucket.includes(index)" class="token-index chip cursor-pointer" @click="prepareToMoveOption(index)">{{index + 1}}</span>
                 <i v-if="moveOptionBucket.includes(index)" class="material-icons">swap_vert</i>
-                <span v-if="items.length > 1" @click="deleteOption(index)" class="cursor-pointer"><i class="material-icons prefix">delete_forever</i></span>
+                <span class="cursor-pointer" @click="displayTitle(item, true)">{{item.title}}</span>
+                <span @click="deleteOption(index)" class="cursor-pointer" :style="items.length === 1 ? 'visibility:hidden' : ''"><i class="material-icons prefix">delete_forever</i></span>
             </div>
-            <div class="input-field">
+            <div class="input-field" v-if="item.titleInputDisplay">
+                <i class="material-icons prefix">edit</i>
+                    <input 
+                        :id="`title_${index}`" 
+                        type="text" 
+                        v-model="item.title"
+                        maxlength="24"
+                        @blur="displayTitle(item, false)"
+                        @keyup.enter="displayTitle(item, false)">
+                <label class="active" :for="`title_${index}`">Title</label>
+            </div>
+            <div class="input-field" v-if="!isMarketCap">
                 <i class="material-icons prefix">trending_up</i>
                     <input 
                         :id="`price_${index}`" 
                         type="number" 
                         v-model="item.price">
                 <label class="active" :for="`price_${index}`">Price Target</label>
+            </div>
+            <div class="input-field" v-if="isMarketCap">
+                <img class="circle material-icons prefix" :src="imageUrl" style="width: 30px"/>
+                    <input 
+                        :id="`cap_${index}`" 
+                        type="number" 
+                        v-model="item.marketCap">
+                <label class="active" :for="`cap_${index}`">Market Cap Target</label>
             </div>
             <div class="input-field">
                 <i class="material-icons prefix">pie_chart</i>

@@ -1125,28 +1125,19 @@ const token = {
         return {
            shares: 0,
            items: [
-            {price: 0, sharePercentage: 100, value: 0}
+            {price: 0, marketCap: 0, sharePercentage: 100, value: 0, title: 'Tap here to update title', titleInputDisplay: false,}
            ],
            moveOptionBucket: [],
+           isMarketCap: false,
+           tokenSupply: {
+            toby: 420000000000000,
+           },
+           tokenName: 'toby',
+           isModalDisplayed: false,
+           imageUrl: 'https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=98,h=95,fit=crop/Yg25V2x6JviO83we/satoby-YX4P9BvbrBtjDW3Y.png'
         }
     },
     mounted() {
-        this.$store.commit('SET_FOOTER_DISPLAY', false)
-        const header = document.querySelector('header')
-        const [nameLink, buttonLink] = header.children
-        const shareElement = document.createElement('i');
-        const nameElement = document.createElement('a');
-        nameElement.textContent = 'Stock Exit Plan'
-        nameElement.href = location.href
-        nameElement.classList.add('main-text')
-        nameLink.remove()
-        buttonLink.remove()
-        shareElement.classList.add('material-icons','cursor-pointer')
-        shareElement.textContent = 'share'
-        shareElement.addEventListener('click', this.share)
-        header.appendChild(nameElement)
-        header.appendChild(shareElement)
-
         if('shares' in this.$route.query) {
             this.shares = this.$route.query.shares
         }
@@ -1155,12 +1146,50 @@ const token = {
             this.items = JSON.parse(decodeURI(this.$route.query.plan))
         }
 
+        if('mcap' in this.$route.query) {
+            this.isMarketCap = this.$route.query.mcap
+        }
+
+        this.$store.commit('SET_FOOTER_DISPLAY', false)
+        const header = document.querySelector('header')
+        const [nameLink, buttonLink] = header.children
+        const shareElement = document.createElement('i');
+        const settingsElement = document.createElement('i');
+        const nameElement = document.createElement('a');
+        const headerRigthSide = document.createElement('div');
+        nameElement.textContent = 'Stock Exit Plan'
+        nameElement.href = location.href
+        nameElement.classList.add('main-text')
+        nameLink.remove()
+        buttonLink.remove()
+        shareElement.classList.add('material-icons','cursor-pointer')
+        shareElement.style.marginLeft = '16px'
+        shareElement.textContent = 'share'
+        shareElement.addEventListener('click', this.share)
+        settingsElement.classList.add('material-icons','cursor-pointer')
+        settingsElement.textContent = 'settings'
+        settingsElement.addEventListener('click', () => {
+            this.displayModal(true)
+        })
+        headerRigthSide.appendChild(settingsElement)
+        headerRigthSide.appendChild(shareElement)
+        header.appendChild(nameElement)
+        header.appendChild(headerRigthSide)
+
         this.updateHtmlTitle('Stock Exit Plan')
     },
     computed: {
+        marketCapPrice() {
+            return
+        },
+        currentTokenSupply() {
+            return this.tokenSupply[this.tokenName]
+        },
         optionValues() {
             return this.items.map((i) => ({
-                value: (i.price * (1/100 * i.sharePercentage) * this.shares),
+                value: !this.isMarketCap 
+                    ? (i.price * (1/100 * i.sharePercentage) * this.shares) 
+                    : ((i.marketCap/this.currentTokenSupply) * (1/100 * i.sharePercentage) * this.shares),
                 sharePercentage: Number(i.sharePercentage),
             }));
         },
@@ -1176,6 +1205,7 @@ const token = {
         shareLink() {
             const urlParams = new URLSearchParams()
             urlParams.set('shares', this.shares)
+            urlParams.set('mcap', this.isMarketCap)
             urlParams.set('plan',  encodeURI(JSON.stringify(this.items)))
             return`${location.href}?${urlParams.toString()}`
         },
@@ -1186,7 +1216,8 @@ const token = {
     methods: {
         addNewOption() {
             const lastPrice = this.items[this.items.length - 1].price
-            this.items.push({price: lastPrice, sharePercentage: '', value: 0})
+            const lastMarketCap = this.items[this.items.length - 1].marketCap
+            this.items.push({price: lastPrice, marketCap: lastMarketCap, sharePercentage: '', value: 0, title: 'Tap here to update title', titleInputDisplay: false})
         },
         deleteOption(index) {
             return this.items.splice(index, 1);
@@ -1217,6 +1248,18 @@ const token = {
                 })
             }
         },
+        displayTitle(item, status) {
+            item.titleInputDisplay = status
+        },
+        displayModal(status) {
+            console.log(status)
+            this.isModalDisplayed = status
+            if (status === false) {
+                setTimeout(() => {
+                    this.$store.commit('SET_FOOTER_DISPLAY', false)
+                }, 300)
+            }
+        }
     },
     filters: {
         numberFormat(val) {
