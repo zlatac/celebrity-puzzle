@@ -708,7 +708,8 @@
                 <i class="material-icons prefix">account_balance_wallet</i>
                     <input 
                         id="shares" 
-                        type="number" 
+                        type="number"
+                        placeholder="0" 
                         v-model="shares">
                 <label class="active" for="shares">My Tokens/Shares</label>
             </div>
@@ -749,7 +750,8 @@
                     <i class="material-icons prefix">trending_up</i>
                         <input 
                             :id="`price_${index}`" 
-                            type="number" 
+                            type="number"
+                            placeholder="0"
                             v-model="item.price">
                     <label class="active" :for="`price_${index}`">Price Target</label>
                 </div>
@@ -757,7 +759,8 @@
                     <img class="circle material-icons prefix" :src="imageUrl" style="width: 30px"/>
                         <input 
                             :id="`cap_${index}`" 
-                            type="number" 
+                            type="number"
+                            placeholder="0"
                             v-model="item.marketCap">
                     <label class="active" :for="`cap_${index}`">Market Cap Target</label>
                 </div>

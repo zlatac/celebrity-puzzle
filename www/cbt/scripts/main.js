@@ -1123,9 +1123,9 @@ const token = {
     mixins: [serviceProvider],
     data: function(){
         return {
-           shares: 0,
+           shares: '',
            items: [
-            {price: 0, marketCap: 0, sharePercentage: 100, value: 0, title: 'Tap here to update title', titleInputDisplay: false,}
+            {price: '', marketCap: '', sharePercentage: 100, value: 0, title: 'Tap here to update title', titleInputDisplay: false,}
            ],
            moveOptionBucket: [],
            isMarketCap: false,
