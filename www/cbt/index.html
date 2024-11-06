@@ -697,11 +697,12 @@
             <div class="switch" style="margin-top:20px">
                 <label class="fa-2x">
                   Price
-                  <input type="checkbox" v-model="isMarketCap">
+                  <input type="checkbox" v-model="isMarketCap" @change="updateHeaderNameText">
                   <span class="lever"></span>
                   Market Cap
                 </label>
             </div>
+            <p v-if="isMarketCap"><b>Note:</b> In this mode only the <a href="https://toadgod.xyz" target="_blank">toby</a> crypto token is supported for now</p>
         </slide-modal>
         <div style="position: fixed;display: flex;width: 100%;justify-content: space-evenly;background-color: white;z-index: 5;padding-top: 3%;border-bottom: 4px solid var(--main-light-color);">
             <div class="input-field">

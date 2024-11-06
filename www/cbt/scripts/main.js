@@ -1157,7 +1157,7 @@ const token = {
         const settingsElement = document.createElement('i');
         const nameElement = document.createElement('a');
         const headerRigthSide = document.createElement('div');
-        nameElement.textContent = 'Stock Exit Plan'
+        nameElement.textContent = this.isMarketCap ? 'Toby Exit Plan': 'Stock Exit Plan'
         nameElement.href = location.href
         nameElement.classList.add('main-text')
         nameLink.remove()
@@ -1255,13 +1255,17 @@ const token = {
             }
         },
         displayModal(status) {
-            console.log(status)
             this.isModalDisplayed = status
             if (status === false) {
                 setTimeout(() => {
                     this.$store.commit('SET_FOOTER_DISPLAY', false)
                 }, 300)
             }
+        },
+        updateHeaderNameText() {
+            const header = document.querySelector('header')
+            const [nameLink] = header.children
+            nameLink.textContent = this.isMarketCap ? 'Toby Exit Plan': 'Stock Exit Plan'
         }
     },
     filters: {
