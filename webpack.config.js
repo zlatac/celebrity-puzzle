@@ -78,6 +78,29 @@ module.exports = [
         ]
     },
     {
+        name: 'token',
+        entry: './www/token/scripts/main.js',
+        mode: production ? 'production': 'development',
+        devtool: production ? 'none' : 'inline-source-map',
+        devServer: {
+            contentBase: './www/token/dist',
+            port: 8080,
+        },
+        output: {
+            filename: "bundle.js",
+            path: path.resolve(__dirname, 'www/token/dist')
+        },
+        module: {},
+        node: {
+            Buffer: false
+        },
+        plugins: [
+            new webpack.DefinePlugin({
+                'process.env.STRIPE_PUBLIC_KEY': JSON.stringify(process.env.STRIPE_PUBLIC_KEY)
+            })
+        ]
+    },
+    {
         name: 'puzzle',
         entry: './www/scripts/main.js',
         mode: production ? 'production': 'development',

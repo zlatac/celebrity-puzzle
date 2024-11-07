@@ -44,6 +44,10 @@ app.get('/cbt', function(req,res){
     res.sendFile(__dirname + '/www/cbt/index.html');
 })
 
+app.get('/token', function(req,res){
+    res.sendFile(__dirname + '/www/token/index.html');
+})
+
 app.get('/reportlandlord', function(req,res){
     res.sendFile(__dirname + '/www/cbt/index.html');
 })

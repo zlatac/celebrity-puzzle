@@ -20,6 +20,7 @@
     "dev:engine": "webpack-dev-server --open",
     "dev:bmr": "webpack --config-name bmr --watch",
     "dev:cbt": "webpack --config-name cbt --watch",
+    "dev:token": "webpack --config-name token --watch",
     "dev:puzzle": "webpack --config-name puzzle --watch"
   },
   "author": "zlatac",
