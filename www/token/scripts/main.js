@@ -191,7 +191,7 @@ const token = {
         return {
            shares: '',
            items: [
-            {price: '', marketCap: '', sharePercentage: 100, value: 0, title: 'Tap here to update title', titleInputDisplay: false,}
+            {price: '', marketCap: '', sharePercentage: 100, value: 0, title: '', titleInputDisplay: false,}
            ],
            moveOptionBucket: [],
            isMarketCap: false,
@@ -213,7 +213,7 @@ const token = {
         }
 
         if('mcap' in this.$route.query) {
-            this.isMarketCap = this.$route.query.mcap
+            this.isMarketCap = this.$route.query.mcap === 'true'
         }
 
         this.$store.commit('SET_FOOTER_DISPLAY', false)
@@ -243,17 +243,14 @@ const token = {
         header.appendChild(headerRigthSide)
     },
     computed: {
-        marketCapPrice() {
-            return
-        },
         currentTokenSupply() {
             return this.tokenSupply[this.tokenName]
         },
         optionValues() {
             return this.items.map((i) => ({
                 value: !this.isMarketCap 
-                    ? (i.price * (1/100 * i.sharePercentage) * this.shares) 
-                    : ((i.marketCap/this.currentTokenSupply) * (1/100 * i.sharePercentage) * this.shares),
+                    ? (i.price.replace(/,/g, '') * (1/100 * i.sharePercentage) * this.shares) 
+                    : ((i.marketCap.replace(/,/g, '')/this.currentTokenSupply) * (1/100 * i.sharePercentage) * this.shares),
                 sharePercentage: Number(i.sharePercentage),
             }));
         },
@@ -275,13 +272,21 @@ const token = {
         },
         totalSharePercentageBalance() {
             return 100 - this.total.sharePercentage
+        },
+        dynamicShares: {
+            set(val) {
+                this.shares =  val.replace(/,/g, '')
+            },
+            get() {
+                return this.$options.filters.numberFormat(this.shares, 100)
+            }
         }
     },
     methods: {
         addNewOption() {
             const lastPrice = this.items[this.items.length - 1].price
             const lastMarketCap = this.items[this.items.length - 1].marketCap
-            this.items.push({price: lastPrice, marketCap: lastMarketCap, sharePercentage: '', value: 0, title: 'Tap here to update title', titleInputDisplay: false})
+            this.items.push({price: lastPrice, marketCap: lastMarketCap, sharePercentage: '', value: 0, title: '', titleInputDisplay: false})
         },
         deleteOption(index) {
             return this.items.splice(index, 1);
@@ -314,9 +319,6 @@ const token = {
         },
         displayTitle(item, status) {
             item.titleInputDisplay = status
-            if(status === false && item.title === '') {
-                item.title = 'Tap here to update title'
-            }
         },
         displayModal(status) {
             this.isModalDisplayed = status
@@ -330,12 +332,24 @@ const token = {
             const header = document.querySelector('header')
             const [nameLink] = header.children
             nameLink.textContent = this.isMarketCap ? 'Toby Exit Plan': 'Stock Exit Plan'
-        }
+        },
+        setOptionMarketCap($event, item) {
+            const value = $event.target.value.replace(/,/g, '')
+            item.marketCap = this.$options.filters.numberFormat(value, 100)
+        },
+        setOptionPrice($event, item) {
+            const value = $event.target.value.replace(/,/g, '')
+            item.price = this.$options.filters.numberFormat(value, 100)
+        },
     },
     filters: {
-        numberFormat(val) {
-            return new Intl.NumberFormat(undefined, {maximumFractionDigits: 2}).format(Number(val))
-        }
+        numberFormat(val, fractionMax = 2) {
+            const cleansedVal = typeof val === 'string' ? val.replace(/,/g, '') : val
+            return new Intl.NumberFormat('en-US', {maximumFractionDigits: fractionMax}).format(cleansedVal)
+        },
+        cardTitleFormat(val) {
+            return val === '' ? 'Tap here to update title' : val
+        },
     }
 }
 
@@ -537,6 +551,17 @@ Vue.directive('imgfallback', {
             if(el.src !== fallback){
                 el.src = fallback
                 //console.log(vnode)
+            }
+        }
+    }
+});
+
+Vue.directive('numlock', {
+    bind: function(el,binding,vnode){
+        el.onkeydown = function(event){
+            const acceptableKeys = ['1','2','3','4','5','6','7','8','9','0','Backspace','.','ArrowLeft','ArrowRight']
+            if (!acceptableKeys.includes(event.key)) {
+                event.preventDefault()
             }
         }
     }

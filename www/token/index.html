@@ -74,9 +74,11 @@
                 <i class="material-icons prefix">account_balance_wallet</i>
                     <input 
                         id="shares" 
-                        type="number"
-                        placeholder="0" 
-                        v-model="shares">
+                        type="text"
+                        placeholder="0"
+                        inputmode="numeric"
+                        v-numlock
+                        v-model="dynamicShares">
                 <label class="active" for="shares">My Tokens/Shares</label>
             </div>
             <div class="input-field">
@@ -98,7 +100,7 @@
                     align-items: flex-start;">
                     <span v-if="!moveOptionBucket.includes(index)" class="token-index chip cursor-pointer" @click="prepareToMoveOption(index)">{{index + 1}}</span>
                     <i v-if="moveOptionBucket.includes(index)" class="material-icons">swap_vert</i>
-                    <span class="cursor-pointer" @click="displayTitle(item, true)">{{item.title}}</span>
+                    <span class="cursor-pointer" @click="displayTitle(item, true)">{{item.title | cardTitleFormat}}</span>
                     <span @click="deleteOption(index)" class="cursor-pointer" :style="items.length === 1 ? 'visibility:hidden' : ''"><i class="material-icons prefix">delete_forever</i></span>
                 </div>
                 <div class="input-field" v-if="item.titleInputDisplay">
@@ -116,18 +118,24 @@
                     <i class="material-icons prefix">trending_up</i>
                         <input 
                             :id="`price_${index}`" 
-                            type="number"
+                            type="text"
                             placeholder="0"
-                            v-model="item.price">
+                            inputmode="numeric"
+                            v-numlock
+                            :value="item.price"
+                            @keyup="setOptionPrice($event,item)">
                     <label class="active" :for="`price_${index}`">Price Target</label>
                 </div>
                 <div class="input-field" v-if="isMarketCap">
                     <img class="circle material-icons prefix" :src="imageUrl" style="width: 30px"/>
                         <input 
                             :id="`cap_${index}`" 
-                            type="number"
+                            type="text"
                             placeholder="0"
-                            v-model="item.marketCap">
+                            inputmode="numeric"
+                            v-numlock
+                            :value="item.marketCap"
+                            @keyup="setOptionMarketCap($event,item)">
                     <label class="active" :for="`cap_${index}`">Market Cap Target</label>
                 </div>
                 <div class="input-field">
