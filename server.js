@@ -423,3 +423,34 @@ app.get('/paySecret', async function(req,res){
         res.send('ooops something went wrong')
     }
 });
+
+app.post('/trader/notify', async function(req,res){
+    try {
+        const data = await axios.post(`https://styleminions.co/api/trader/notify`,{
+            subject: req.body.subject,
+            message: req.body.message,
+        })
+        data = await fs.readFile('trader.json')
+        res.send(JSON.parse(data))
+        res.status(200)
+    } catch (error) {
+        res.send(`${error.toString()}`)
+        res.status(404)
+    }
+});
+
+app.get('/trader/confirm', async function(req,res){
+    try {
+        const tokenOrStockCode = req.query.tokenOrStockCode
+        const action = req.query.action
+        const data = await fs.readFile('trader.json')
+        const parsedData = JSON.parse(data)
+        data[tokenOrStockCode] = action
+        await fs.writeFile('trader.json', JSON.stringify(parsedData))
+        res.status(200)
+        res.send('confirmed')
+    } catch (error) {
+        res.status(404)
+        res.send('ooops something went wrong')
+    }
+});

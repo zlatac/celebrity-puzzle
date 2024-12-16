@@ -341,6 +341,68 @@ const token = {
             const value = $event.target.value.replace(/,/g, '')
             item.price = this.$options.filters.numberFormat(value, 100)
         },
+        cryptoSwap(swapInPrice, swapOutPrice) {
+            // livecoinwatch.com
+            // ob = new MutationObserver(cryptoSwap(5.6e-8, 6.6e-8))
+            // ob.observe(document.querySelector('.coin-price-large .price'), {subtree: true,characterData: true, characterDataOldValue: true})
+            window.idaCrypto = {
+                swappedIn: false,
+                notificationInProgress: false,
+                lastNotificationSent: undefined,
+
+            }
+            return (mutationArray, observerInstance) => {
+                const decimalConvert = (val) => {
+                    const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
+                    const zeroString = '0'
+                    let numbersAfterZERO = ''
+                    const subEnum = {
+                        '₀': 0,
+                        '₁': 1,
+                        '₂': 2,
+                        '₃': 3,
+                        '₄': 4,
+                        '₅': 5,
+                        '₆': 6,
+                        '₇': 7,
+                        '₈': 8,
+                        '₉': 9,
+                    }
+                    if (subscript === null) {
+                        return Number(val)
+                    }
+                    numbersAfterZERO = String(val).substring(subscript.index + 1)
+                    return Number(`0.${zeroString.repeat(subEnum[subscript[0]])}${numbersAfterZERO}`)
+        
+                }
+                const lastRecord = mutationArray[mutationArray.length - 1]
+                const targetValue = lastRecord.target.nodeValue.replace('$','')
+                const currentPrice =  decimalConvert(targetValue)
+                let color, message
+
+                if (currentPrice < swapInPrice) {
+                    message = `SWAP IN AT ${currentPrice} - ${new Date().toString()}`
+                    color = 'green'
+                    if (window.idaCrypto.swappedIn) {
+                        message = `YOU ARE IN ALREADY ${currentPrice} - ${new Date().toString()}`
+                        color = 'blue'
+                    }
+                }
+                if (currentPrice >= swapOutPrice) {
+                    message = `SWAP OUT AT ${currentPrice} - ${new Date().toString()}`
+                    color = 'orange'
+                    if (!window.idaCrypto.swappedIn) {
+                        message = `YOU ARE OUT ALREADY ${currentPrice} - ${new Date().toString()}`
+                        color = 'blue'
+                    }
+                }
+                if (swapInPrice < currentPrice && swapOutPrice > currentPrice) {
+                    message = `DO NOTHING AT ${currentPrice} - ${new Date().toString()}`
+                    color = 'red'
+                }
+                console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
+            }
+        }
     },
     filters: {
         numberFormat(val, fractionMax = 2) {
@@ -349,6 +411,55 @@ const token = {
         },
         cardTitleFormat(val) {
             return val === '' ? 'Tap here to update title' : val
+        },
+        decimalConvert(val) {
+            const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
+            const zeroString = '0'
+            let numbersAfterZERO = ''
+            const subEnum = {
+                '₀': 0,
+                '₁': 1,
+                '₂': 2,
+                '₃': 3,
+                '₄': 4,
+                '₅': 5,
+                '₆': 6,
+                '₇': 7,
+                '₈': 8,
+                '₉': 9,
+            }
+            if (subscript === null) {
+                return Number(val)
+            }
+            numbersAfterZERO = String(val).substring(subscript.index + 1)
+            return Number(`0.${zeroString.repeat(subEnum[subscript[0]])}${numbersAfterZERO}`)
+
+        },
+        percentageDelta(oldNumber, newNumber) {
+            return Math.abs((newNumber - oldNumber)*100/oldNumber)
+        },
+        async sendNotification(tokenOrStockCode, message, currentPrice, action){
+            const priceDifferencePercentage = window.idaCrypto.lastNotificationSent 
+                ? percentageDelta(window.idaCrypto.lastNotificationSent.currentPrice, currentPrice) 
+                : 0
+            const percentageThreshold = 10
+            const payload = {...arguments}
+            if (window.idaCrypto.notificationInProgress || priceDifferencePercentage < percentageThreshold) {
+                return
+            }
+
+            try {
+                idaCrypto.notificationInProgress = true
+                const resp = await fetch('')
+                const data = await resp.json()
+                if('action' in data) {
+                    window.idaCrypto.swappedIn = data.action === 'in' ? true : false
+                }
+                idaCrypto.lastNotificationSent = payload
+                idaCrypto.notificationInProgress = false
+            } catch (error) {
+                sendNotification(tokenOrStockCode, message, currentPrice, action)
+            }
         },
     }
 }
