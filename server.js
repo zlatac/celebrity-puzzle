@@ -426,31 +426,81 @@ app.get('/paySecret', async function(req,res){
 
 app.post('/trader/notify', async function(req,res){
     try {
-        const data = await axios.post(`https://styleminions.co/api/trader/notify`,{
-            subject: req.body.subject,
-            message: req.body.message,
-        })
-        data = await fs.readFile('trader.json')
-        res.send(JSON.parse(data))
-        res.status(200)
+        const fileExist = await fs.lstat('trader.json')
     } catch (error) {
-        res.send(`${error.toString()}`)
+        // Create file to store trader api data
+        await fs.writeFile('trader.json', JSON.stringify({}))
+    }
+
+    try {
+        const response = await axios.post(`https://styleminions.co/api/trader/notify`,{
+            subject: req.query.subject,
+            message: req.query.message,
+        })
+        const data = await fs.readFile('trader.json')
+        const parsedData = JSON.parse(data)
+        const code = req.query.code.toUpperCase()
+        const codeExists = code && code in parsedData && parsedData[code]
+        // notification optimize by updating notification price and use in client on status setup
+        res.status(202)
+        if (codeExists) {
+            const position = parsedData[code].position
+            if (position === 'in') {
+                res.status(201)
+            }
+            if (position === 'out') {
+                res.status(200)
+            }
+
+        }
+        res.append('Access-Control-Allow-Origin', '*')
+        res.send(parsedData)   
+    } catch (error) {
         res.status(404)
+        res.send(`${error.toString()}`)    
     }
 });
 
 app.get('/trader/confirm', async function(req,res){
     try {
-        const tokenOrStockCode = req.query.tokenOrStockCode
+        const code = req.query.code.toUpperCase()
         const action = req.query.action
         const data = await fs.readFile('trader.json')
         const parsedData = JSON.parse(data)
-        data[tokenOrStockCode] = action
+        code in parsedData 
+            ? parsedData[code].position = action 
+            : parsedData[code] = {position: action}
         await fs.writeFile('trader.json', JSON.stringify(parsedData))
         res.status(200)
         res.send('confirmed')
     } catch (error) {
         res.status(404)
-        res.send('ooops something went wrong')
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.get('/trader/status', async function(req,res){
+    try {
+        const data = await fs.readFile('trader.json')
+        const parsedData = JSON.parse(data)
+        const code = req.query.code.toUpperCase()
+        const codeExists = code && code in parsedData && parsedData[code]
+        res.status(202)
+        if (codeExists) {
+            const position = parsedData[code].position
+            if (position === 'in') {
+                res.status(201)
+            }
+            if (position === 'out') {
+                res.status(200)
+            }
+
+        }
+        res.append('Access-Control-Allow-Origin', '*')
+        res.send(parsedData)
+        console.log(parsedData)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
     }
 });
