@@ -341,12 +341,13 @@ const token = {
             const value = $event.target.value.replace(/,/g, '')
             item.price = this.$options.filters.numberFormat(value, 100)
         },
-        cryptoSwap(codeInput, swapInPrice, swapOutPrice) {
-            // livecoinwatch.com
+        projectStockVision(codeInput, entryPrice, exitPrice, isCrypto = false) {
+            /** livecoinwatch.com */
             // MAKE SURE SITE IS IN $CAD BEFORE OBSERVING 
-            // ob = new MutationObserver(cryptoSwap(5.6e-8, 6.6e-8))
-            // let ob2 = new MutationObserver(cryptoSwap('toby2',5.95e-8, 6.1e-8))
+            // let ob = new MutationObserver(projectStockVision('toby2',5.95e-8, 6.1e-8, true))
             // ob.observe(document.querySelector('.coin-price-large .price'), {subtree: true,characterData: true, characterDataOldValue: true})
+            /** nasdaq.com */
+            // document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice')
             const code = codeInput.toUpperCase()
             const decimalConvert = (val) => {
                 const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
@@ -377,23 +378,27 @@ const token = {
             const traderSetUp = async (code) => {
                 const queryParams = new URLSearchParams()
 
-                if (!('idaCrypto' in window)) {
-                    window.idaCrypto = {
-                        swappedIn: {},
+                if (!('idaStockVision' in window)) {
+                    window.idaStockVision = {
+                        positionIn: {},
                         notificationInProgress: {},
                         lastNotificationSent: {},
                         consoleClearInstance: setInterval(()=>{console.clear()}, 1000*60*20),
+                        tools: {
+                            decimalConvert,
+                            percentageDelta,
+                        }
                     }
                 }
 
-                if (!(code in window.idaCrypto.swappedIn)) {
-                    window.idaCrypto.swappedIn[code] = false
-                    window.idaCrypto.notificationInProgress[code] = false
-                    window.idaCrypto.lastNotificationSent[code] = {}
+                if (!(code in window.idaStockVision.positionIn)) {
+                    window.idaStockVision.positionIn[code] = false
+                    window.idaStockVision.notificationInProgress[code] = false
+                    window.idaStockVision.lastNotificationSent[code] = {}
                 }
     
                 try {
-                    window.idaCrypto.notificationInProgress[code] = true
+                    window.idaStockVision.notificationInProgress[code] = true
                     queryParams.append('code', code)
                     const resp = await fetch(`http://localhost:9000/trader/status?${queryParams.toString()}`, {
                         method: 'GET',
@@ -402,32 +407,32 @@ const token = {
                     const data = await resp.json()
                     switch(resp.status) {
                         case 200:
-                            window.idaCrypto.swappedIn[code] = false
+                            window.idaStockVision.positionIn[code] = false
                             break
                         case 201:
-                            window.idaCrypto.swappedIn[code] = true
+                            window.idaStockVision.positionIn[code] = true
                             break
                         default:
                     }
-                    window.idaCrypto.notificationInProgress[code] = false
+                    window.idaStockVision.notificationInProgress[code] = false
                 } catch (error) {
                     // sendNotification(tokenOrStockCode, message, currentPrice, action)
                     console.log('Ida Trader Bot - STATUS ERROR', error)
                 }
             }
             const sendNotification =  async (tokenOrStockCode, message = 'manual confirmation', currentPrice, action) => {
-                const priceDifferencePercentage = window.idaCrypto.lastNotificationSent[tokenOrStockCode] 
-                    ? percentageDelta(window.idaCrypto.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
+                const priceDifferencePercentage = window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
+                    ? percentageDelta(window.idaStockVision.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
                     : 0
                 const percentageThreshold = 10
                 const notificationSubject = `${tokenOrStockCode} - Get [${action.toUpperCase()}] (${currentPrice})`
                 const queryParams = new URLSearchParams()
-                const sameActionAsLast = 'action' in window.idaCrypto.lastNotificationSent[tokenOrStockCode] 
-                    ? window.idaCrypto.lastNotificationSent[tokenOrStockCode].action === action 
+                const sameActionAsLast = 'action' in window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
+                    ? window.idaStockVision.lastNotificationSent[tokenOrStockCode].action === action 
                     : false
                 const percentageThresholdReached = priceDifferencePercentage >= percentageThreshold
                 // let statusConverted
-                // switch (window.idaCrypto.swappedIn[tokenOrStockCode]) {
+                // switch (window.idaStockVision.positionIn[tokenOrStockCode]) {
                 //     case true:
                 //         statusConverted = 'in'
                 //         break
@@ -435,12 +440,12 @@ const token = {
                 //         statusConverted = 'out'
                 // }
                 // const sameActionAsStatus = statusConverted === action
-                if (window.idaCrypto.notificationInProgress[tokenOrStockCode] || (sameActionAsLast && !percentageThresholdReached)) {
+                if (window.idaStockVision.notificationInProgress[tokenOrStockCode] || (sameActionAsLast && !percentageThresholdReached)) {
                     return
                 }
     
                 try {
-                    window.idaCrypto.notificationInProgress[tokenOrStockCode] = true
+                    window.idaStockVision.notificationInProgress[tokenOrStockCode] = true
                     queryParams.append('message', message)
                     queryParams.append('subject', notificationSubject)
                     queryParams.append('code', tokenOrStockCode)
@@ -451,15 +456,15 @@ const token = {
                     const data = await resp.json()
                     switch(resp.status) {
                         case 200:
-                            window.idaCrypto.swappedIn[tokenOrStockCode] = false
+                            window.idaStockVision.positionIn[tokenOrStockCode] = false
                             break
                         case 201:
-                            window.idaCrypto.swappedIn[tokenOrStockCode] = true
+                            window.idaStockVision.positionIn[tokenOrStockCode] = true
                             break
                         default:
                     }
-                    window.idaCrypto.lastNotificationSent[tokenOrStockCode] = {tokenOrStockCode, message, currentPrice, action}
-                    window.idaCrypto.notificationInProgress[tokenOrStockCode] = false
+                    window.idaStockVision.lastNotificationSent[tokenOrStockCode] = {tokenOrStockCode, message, currentPrice, action}
+                    window.idaStockVision.notificationInProgress[tokenOrStockCode] = false
                 } catch (error) {
                     // sendNotification(tokenOrStockCode, message, currentPrice, action)
                     console.log('Ida Trader Bot - NOTIFY ERROR', error)
@@ -472,29 +477,38 @@ const token = {
                 const lastRecord = mutationArray[mutationArray.length - 1]
                 const targetValue = lastRecord.target.nodeValue.replace('$','')
                 const currentPrice =  decimalConvert(targetValue)
-                let color, message
+                const cryptoDecision = {
+                    // No need for <= to logic since probability of exact match is very low
+                    enter: currentPrice < entryPrice,
+                    exit: currentPrice >= exitPrice,
+                }
+                const stockDecision = {
+                    enter: currentPrice >= entryPrice,
+                    exit: currentPrice <= exitPrice,
+                }
+                const enterDecision = isCrypto ? cryptoDecision.enter : stockDecision.enter
+                const exitDecision = isCrypto ? cryptoDecision.exit : stockDecision.exit
+                let color = 'red'
+                let message = `[${code}] DO NOTHING AT ${currentPrice} - ${new Date().toString()}`
 
-                if (currentPrice < swapInPrice) {
+                if (entryPrice !== undefined && enterDecision) {
+                    // No need for equals to logic since probabiloty of exact match is very low
                     message = `[${code}] SWAP IN AT ${currentPrice} - ${new Date().toString()}`
                     color = 'green'
                     sendNotification(code, undefined, currentPrice, 'in')
-                    if (window.idaCrypto.swappedIn[code]) {
+                    if (window.idaStockVision.positionIn[code]) {
                         message = `[${code}] YOU ARE IN ALREADY ${currentPrice} - ${new Date().toString()}`
                         color = 'blue'
                     }
                 }
-                if (currentPrice >= swapOutPrice) {
+                if (exitPrice !== undefined && exitDecision) {
                     message = `[${code}] SWAP OUT AT ${currentPrice} - ${new Date().toString()}`
                     color = 'orange'
                     sendNotification(code, undefined, currentPrice, 'out')
-                    if (!window.idaCrypto.swappedIn[code]) {
+                    if (!window.idaStockVision.positionIn[code]) {
                         message = `[${code}] YOU ARE OUT ALREADY ${currentPrice} - ${new Date().toString()}`
                         color = 'blue'
                     }
-                }
-                if (swapInPrice < currentPrice && swapOutPrice > currentPrice) {
-                    message = `[${code}] DO NOTHING AT ${currentPrice} - ${new Date().toString()}`
-                    color = 'red'
                 }
                 console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
             }
@@ -507,100 +521,6 @@ const token = {
         },
         cardTitleFormat(val) {
             return val === '' ? 'Tap here to update title' : val
-        },
-        decimalConvert(val) {
-            const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
-            const zeroString = '0'
-            let numbersAfterZERO = ''
-            const subEnum = {
-                '₀': 0,
-                '₁': 1,
-                '₂': 2,
-                '₃': 3,
-                '₄': 4,
-                '₅': 5,
-                '₆': 6,
-                '₇': 7,
-                '₈': 8,
-                '₉': 9,
-            }
-            if (subscript === null) {
-                return Number(val)
-            }
-            numbersAfterZERO = String(val).substring(subscript.index + 1)
-            return Number(`0.${zeroString.repeat(subEnum[subscript[0]])}${numbersAfterZERO}`)
-
-        },
-        percentageDelta(oldNumber, newNumber) {
-            return Math.abs((newNumber - oldNumber)*100/oldNumber)
-        },
-        async sendNotification(tokenOrStockCode, message = 'manual confirmation', currentPrice, action){
-            function percentageDelta(oldNumber, newNumber) {
-                return Math.abs((newNumber - oldNumber)*100/oldNumber)
-            }
-            const priceDifferencePercentage = window.idaCrypto.lastNotificationSent 
-                ? percentageDelta(window.idaCrypto.lastNotificationSent.currentPrice, currentPrice) 
-                : 0
-            const percentageThreshold = 10
-            const notificationSubject = `${tokenOrStockCode} - Get [${action.toUpperCase()}] (${currentPrice})`
-            const queryParams = new URLSearchParams()
-            const sameActionAsLast = 'action' in window.idaCrypto.lastNotificationSent ? window.idaCrypto.lastNotificationSent.action === action : false
-            const percentageThresholdReached = priceDifferencePercentage >= percentageThreshold
-            if (window.idaCrypto.notificationInProgress || (sameActionAsLast && !percentageThresholdReached)) {
-                return
-            }
-
-            try {
-                window.idaCrypto.notificationInProgress = true
-                queryParams.append('message', message)
-                queryParams.append('subject', notificationSubject)
-                queryParams.append('code', tokenOrStockCode)
-                const resp = await fetch(`http://localhost:9000/trader/notify?${queryParams.toString()}`, {
-                    method: 'POST',
-                    mode: 'cors',
-                })
-                const data = await resp.json()
-                switch(resp.status) {
-                    case 200:
-                        window.idaCrypto.swappedIn = false
-                        break
-                    case 201:
-                        window.idaCrypto.swappedIn = true
-                        break
-                    default:
-                }
-                window.idaCrypto.lastNotificationSent = {tokenOrStockCode, message, currentPrice, action}
-                window.idaCrypto.notificationInProgress = false
-            } catch (error) {
-                // sendNotification(tokenOrStockCode, message, currentPrice, action)
-                console.log('Ida Trader Bot - NOTIFY ERROR', error)
-            }
-        },
-        async traderSetUp(code) {
-            const queryParams = new URLSearchParams()
-
-            try {
-                window.idaCrypto.notificationInProgress = true
-                queryParams.append('code', code)
-                const resp = await fetch(`http://localhost:9000/trader/status?${queryParams.toString()}`, {
-                    method: 'GET',
-                    mode: 'cors',
-                })
-                const data = await resp.json()
-                switch(resp.status) {
-                    case 200:
-                        window.idaCrypto.swappedIn = false
-                        break
-                    case 201:
-                        window.idaCrypto.swappedIn = true
-                        break
-                    default:
-                }
-                window.idaCrypto.notificationInProgress = false
-            } catch (error) {
-                // sendNotification(tokenOrStockCode, message, currentPrice, action)
-                console.log('Ida Trader Bot - STATUS ERROR', error)
-            }
         }
     }
 }
