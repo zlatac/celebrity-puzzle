@@ -519,7 +519,11 @@ const token = {
 
                 constructor(history = [], currentPrice, currentPosition) {
                     // this._peakValleyHistory = history
-                    this._peakValleyHistory = [{type: 'peak', date: '2025-01-18T05:11:22.719Z', price: 10,},{type: 'valley', date: '2025-01-19T05:11:22.719Z', price: 7},{type: 'valley', date: '2025-01-01T05:11:22.719Z', price: 2}]
+                    this._peakValleyHistory = [
+                        {type: 'peak', date: '2025-01-18T05:11:22.719Z', price: 10},
+                        {type: 'valley', date: '2025-01-19T05:11:22.719Z', price: 7},
+                        {type: 'valley', date: '2025-01-01T05:11:22.719Z', price: 2}
+                    ]
                     this._currentPrice = {
                         price: currentPrice,
                         epochDate: Date.now()
@@ -528,6 +532,28 @@ const token = {
                     // this._currentPosition = currentPosition
                     this._currentPosition = {date: '2025-01-16T05:11:22.719Z', price: 5, position: PriceAnalysis.IN}
                     this._currentPosition.epochDate = this.transformDateToEpochMiliseconds(this._currentPosition.date)
+                    this.tesla = [
+                        {type: 'valley', date: '2025-01-02T05:11:22.719Z', price: 379.28},
+                        {type: 'peak', date: '2025-01-06T05:11:22.719Z', price: 411.05},
+                        {type: 'valley', date: '2025-01-07T05:11:22.719Z', price: 394.36},
+                        {type: 'peak', date: '2025-01-13T05:11:22.719Z', price: 403.31},
+                        {type: 'valley', date: '2025-01-14T05:11:22.719Z', price: 396.36},
+                        {type: 'peak', date: '2025-01-15T05:11:22.719Z', price: 428.22},
+                        {type: 'valley', date: '2025-01-16T05:11:22.719Z', price: 413.82},
+                        {type: 'peak', date: '2025-01-21T05:16:22.719Z', price: 425.02},
+                    ],
+                    this.toby = [
+                        {type: 'peak', date: '2025-01-17T05:11:22.719Z', price: 4.61834e-8},
+                        {type: 'valley', date: '2025-01-18T05:11:22.719Z', price: 3.96558e-8},
+                        {type: 'peak', date: '2025-01-18T22:11:22.719Z', price: 4.12986e-8},
+                        {type: 'valley', date: '2025-01-19T05:11:22.719Z', price: 3.45323e-8},
+                        {type: 'peak', date: '2025-01-19T10:11:22.719Z', price: 3.97965e-8},
+                        {type: 'valley', date: '2025-01-19T19:11:22.719Z', price: 3.22221e-8},
+                        {type: 'peak', date: '2025-01-20T02:11:22.719Z', price: 3.69633e-8},
+                        {type: 'valley', date: '2025-01-20T21:11:22.719Z', price: 3.30689e-8},
+                        {type: 'currentPrice', date: '2025-01-20T21:11:22.719Z', price: 3.86043e-8},
+                        {type: 'currentPositionPrice', date: '2025-01-19T04:11:22.719Z', price: 3.26043e-8},
+                    ]
 
                 }
 
@@ -583,6 +609,7 @@ const token = {
                 }
 
                 get closestHighestPeak() {
+                    // Have a recent position info to make it very accurate regardless of implementation
                     if ([this.closestPeakToToday, this.highestPeakToday].every((value) => value === undefined)) {
                         return
                     }
@@ -604,8 +631,8 @@ const token = {
                 findAnchorPeak(recentPosition) {
                     // filter peaks between recentPosition & currentPrice dates
                     // search for highest peak
-                    // from highest peak make sure positive slope between peak and current price
-                    // from recentPosition price make sure negative slope between it and current price
+                    // from highest peak make sure negative slope between peak and current price
+                    // from recentPosition price make sure positive slope between it and current price
                     // logic not met do nothing and keep watching
                     if (this._currentPosition === undefined) {
                         return
@@ -629,7 +656,7 @@ const token = {
                 findAnchorValley(recentPosition) {
                     // find closest highest peak
                     // from closest highest peak date search for deepest valley
-                    // from deepest valley make sure negative slope between valley price and current price
+                    // from deepest valley make sure positive slope between valley price and current price
                     // logic not met do nothing and keep watching
                     /**
                     const today = new Date()
@@ -673,7 +700,7 @@ const token = {
                     const lowestPriceIndex = prices.lastIndexOf(lowestPrice)
                     const lowestValley = lowestPriceIndex !== -1 ? valleysFromClosestHighestPeak.at(lowestPriceIndex) : undefined
                     const slope = this.priceSlope(lowestValley, this._currentPrice)
-                    if (slope.positive === true) {
+                    if (slope !== undefined && slope.positive) {
                         return lowestValley.price
                     }
 
@@ -699,12 +726,67 @@ const token = {
                 }
 
                 priceSlope(anchorPrice, currentPrice) {
+                    if ([anchorPrice, currentPrice].some((item) => undefined)) {
+                        return
+                    }
                     const priceDifference = currentPrice.price - anchorPrice.price
                     const dateDifference = currentPrice.epochDate - anchorPrice.epochDate
                     const slope = priceDifference/dateDifference
                     const direction = Math.sign(slope)
 
                     return {value: slope, positive: direction > 0, negative: direction < 0}
+                }
+
+                findOptimalClosestHighestPeak() {
+                    // if recent/current position price exists limit lookback up to that date
+                    // in the case of no recent position price use up to 7 days
+                    // Note: volatile stocks might need lower max days lookback and vice versa
+                    // each max price for each past day range gets a point
+                    // the max price with the highest point we use (in edge case of multiple highest point we use the first one)
+
+                    const today = new Date()
+                    const todayInEpochMiliseconds = this.transformDateToEpochMiliseconds(this.todaysDateMidnight)
+                    const twentyFourHoursInMiliSeconds = 1000*60*60*24
+                    const oneDayAgo = new Date(todayInEpochMiliseconds - (twentyFourHoursInMiliSeconds*1)).toISOString()
+                    const twoDaysAgo = new Date(todayInEpochMiliseconds - (twentyFourHoursInMiliSeconds*2)).toISOString()
+                    const threeDaysAgo = new Date(todayInEpochMiliseconds - (twentyFourHoursInMiliSeconds*3)).toISOString()
+                    const fiveDaysAgo = new Date(todayInEpochMiliseconds - (twentyFourHoursInMiliSeconds*5)).toISOString()
+                    const sevenDaysAgo = new Date(todayInEpochMiliseconds - (twentyFourHoursInMiliSeconds*7)).toISOString()
+                    const peakList = this.peakOnlyProgressionOrder
+                    const daysAsList = [today.toISOString(),oneDayAgo,twoDaysAgo,threeDaysAgo,fiveDaysAgo,sevenDaysAgo]
+                    const daysToProcess = this._currentPosition !== undefined 
+                        ? daysAsList.filter((day) => day > this._currentPosition.date)
+                        : daysAsList
+                    let tracker = new Map()
+                    daysToProcess.forEach((day) => {
+                        let basket = new Map()
+                        peakList.filter((item) => item.date > day)
+                            .forEach((item) => basket.set(item.price, item.date))
+                        if (basket.size === 0) {
+                            return
+                        }
+                        const prices = basket.keys().toArray()
+                        const maxPrice = Math.max(...prices)
+                        const peakDateToTrack = basket.get(maxPrice)
+                        if (tracker.has(peakDateToTrack)) {
+                            let value = tracker.get(peakDateToTrack)
+                            value += 1
+                            tracker.set(peakDateToTrack, value)
+                            return
+                        }
+                        tracker.set(peakDateToTrack, 1)
+                    })
+                    if (tracker.size > 0) {
+                        const trackerDates = tracker.keys().toArray()
+                        const trackerPoints = tracker.values().toArray()
+                        const maxTrackerPoints = Math.max(...trackerPoints)
+                        const maxTrackerPointsIndex = trackerPoints.indexOf(maxTrackerPoints)
+                        const dateToUse = trackerDates.at(maxTrackerPointsIndex)
+                        const peakToUse = peakList.find((peak) => peak.date === dateToUse)
+                        return peakToUse !== -1 ? peakToUse : undefined
+                    }
+
+                    return
                 }
 
 
