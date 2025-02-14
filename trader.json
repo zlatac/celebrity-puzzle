@@ -1,1 +1,372 @@
-{"TSLA":{"position":"out","price":412.88,"date":"2025-01-31T20:32:40.022Z","peakValleyHistory":[{"type":"valley","date":"2025-01-02T05:11:22.719Z","price":379.28},{"type":"peak","date":"2025-01-06T05:11:22.719Z","price":411.05},{"type":"valley","date":"2025-01-07T05:11:22.719Z","price":394.36},{"type":"peak","date":"2025-01-13T05:11:22.719Z","price":403.31},{"type":"valley","date":"2025-01-14T05:11:22.719Z","price":396.36},{"type":"peak","date":"2025-01-15T05:11:22.719Z","price":428.22},{"type":"valley","date":"2025-01-16T05:11:22.719Z","price":413.82},{"type":"peak","date":"2025-01-21T05:16:22.719Z","price":425.02},{"type":"valley","date":"2025-01-23T05:11:22.719Z","price":409},{"type":"peak","date":"2025-01-24T11:54:22.719Z","price":417},{"type":"valley","date":"2025-01-24T13:11:22.719Z","price":408},{"type":"peak","date":"2025-01-24T15:03:22.719Z","price":409},{"date":"2025-01-25T00:59:51.787Z","price":405.4025,"type":"valley"},{"type":"peak","date":"2025-01-24T11:54:22.719Z","price":417},{"type":"peak","date":"2025-01-27T11:13:22.719Z","price":406.39},{"date":"2025-01-27T13:29:51.787Z","price":394.09,"type":"valley"},{"date":"2025-01-27T21:29:51.787Z","price":389.4,"type":"valley"},{"date":"2025-01-29T22:36:14.568Z","price":392.465,"type":"valley","epochDate":1738190174568},{"date":"2025-01-29T23:03:38.581Z","price":413.09,"type":"peak","epochDate":1738191818581},{"date":"2025-01-30T22:28:18.135Z","price":374.5036,"type":"valley","epochDate":1738276098135},{"date":"2025-01-30T22:19:39.034Z","price":411.9387,"type":"peak","epochDate":1738275579034},{"date":"2025-01-31T20:16:43.345Z","price":401.5315,"type":"valley","epochDate":1738354603345},{"date":"2025-01-31T17:18:49.001Z","price":419.98,"type":"peak","epochDate":1738343929001}]},"TOBY":{"position":"out","date":"2025-01-29T22:00:17.514Z","price":4.43076e-8,"peakValleyHistory":[{"type":"peak","date":"2025-01-17T05:11:22.719Z","price":4.61834e-8},{"type":"valley","date":"2025-01-18T05:11:22.719Z","price":3.96558e-8},{"type":"peak","date":"2025-01-18T22:11:22.719Z","price":4.12986e-8},{"type":"valley","date":"2025-01-19T05:11:22.719Z","price":3.45323e-8},{"type":"peak","date":"2025-01-19T10:11:22.719Z","price":3.97965e-8},{"type":"valley","date":"2025-01-19T19:11:22.719Z","price":3.22221e-8},{"type":"peak","date":"2025-01-20T02:11:22.719Z","price":3.69633e-8},{"type":"valley","date":"2025-01-20T21:11:22.719Z","price":3.30689e-8},{"type":"peak","date":"2025-01-21T22:40:22.719Z","price":3.88203e-8},{"type":"valley","date":"2025-01-22T19:05:22.719Z","price":3.270681e-8},{"type":"peak","date":"2025-01-24T07:15:22.719Z","price":3.99639e-8},{"type":"valley","date":"2025-01-25T19:05:22.719Z","price":3.63e-8},{"type":"peak","date":"2025-01-26T07:15:22.719Z","price":5.84e-8},{"type":"valley","date":"2025-01-27T19:05:22.719Z","price":3.45e-8},{"type":"peak","date":"2025-01-28T01:15:22.719Z","price":4.1e-8}]},"TOBY2":{"position":"in","date":"2025-01-30T03:14:08.048Z","price":345},"APPL":{"position":"out","peakValleyHistory":[1,2,3,4,5,6,6,7,8,9,{"date":"2025-01-30T15:40:02.253Z","price":4.6931e-8,"type":"valley","epochDate":1738251602253},{"date":"2025-01-30T16:02:19.598Z","price":5.95335e-8,"type":"peak","epochDate":1738252939598}]}}
+{
+  "TSLA": {
+    "position": "in",
+    "price": 374.4,
+    "date": "2025-02-06T21:04:58.882Z",
+    "peakValleyHistory": [
+      {
+        "type": "valley",
+        "date": "2025-01-02T05:11:22.719Z",
+        "price": 379.28
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-06T05:11:22.719Z",
+        "price": 411.05
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-07T05:11:22.719Z",
+        "price": 394.36
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-13T05:11:22.719Z",
+        "price": 403.31
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-14T05:11:22.719Z",
+        "price": 396.36
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-15T05:11:22.719Z",
+        "price": 428.22
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-16T05:11:22.719Z",
+        "price": 413.82
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-21T05:16:22.719Z",
+        "price": 425.02
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-23T05:11:22.719Z",
+        "price": 409
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-24T11:54:22.719Z",
+        "price": 417
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-24T13:11:22.719Z",
+        "price": 408
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-24T15:03:22.719Z",
+        "price": 409
+      },
+      {
+        "date": "2025-01-25T00:59:51.787Z",
+        "price": 405.4025,
+        "type": "valley"
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-24T11:54:22.719Z",
+        "price": 417
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-27T11:13:22.719Z",
+        "price": 406.39
+      },
+      {
+        "date": "2025-01-27T13:29:51.787Z",
+        "price": 394.09,
+        "type": "valley"
+      },
+      {
+        "date": "2025-01-27T21:29:51.787Z",
+        "price": 389.4,
+        "type": "valley"
+      },
+      {
+        "date": "2025-01-29T22:36:14.568Z",
+        "price": 392.465,
+        "type": "valley",
+        "epochDate": 1738190174568
+      },
+      {
+        "date": "2025-01-29T23:03:38.581Z",
+        "price": 413.09,
+        "type": "peak",
+        "epochDate": 1738191818581
+      },
+      {
+        "date": "2025-01-30T22:28:18.135Z",
+        "price": 374.5036,
+        "type": "valley",
+        "epochDate": 1738276098135
+      },
+      {
+        "date": "2025-01-30T22:19:39.034Z",
+        "price": 411.9387,
+        "type": "peak",
+        "epochDate": 1738275579034
+      },
+      {
+        "date": "2025-01-31T20:16:43.345Z",
+        "price": 401.5315,
+        "type": "valley",
+        "epochDate": 1738354603345
+      },
+      {
+        "date": "2025-01-31T17:18:49.001Z",
+        "price": 419.98,
+        "type": "peak",
+        "epochDate": 1738343929001
+      },
+      {
+        "date": "2025-02-03T15:19:57.414Z",
+        "price": 374.5,
+        "epochDate": 1738595997414,
+        "type": "valley"
+      },
+      {
+        "date": "2025-02-03T22:54:49.794Z",
+        "price": 390.7,
+        "type": "peak",
+        "epochDate": 1738623289794
+      },
+      {
+        "date": "2025-02-04T09:02:38.321Z",
+        "price": 379.02,
+        "type": "valley",
+        "epochDate": 1738659758321
+      },
+      {
+        "date": "2025-02-04T20:55:05.986Z",
+        "price": 393.89,
+        "type": "peak",
+        "epochDate": 1738702505986
+      },
+      {
+        "date": "2025-02-05T22:28:52.847Z",
+        "price": 368.8424,
+        "type": "valley",
+        "epochDate": 1738794532847
+      },
+      {
+        "date": "2025-02-05T13:05:15.630Z",
+        "price": 392.21,
+        "type": "peak",
+        "epochDate": 1738760715630
+      },
+      {
+        "price": 363.37,
+        "type": "valley",
+        "date": "2025-02-06T15:08:24.848Z",
+        "epochDate": 1738854504848
+      },
+      {
+        "price": 374,
+        "type": "peak",
+        "date": "2025-02-06T21:00:00.000Z",
+        "epochDate": 1738875600000
+      },
+      {
+        "date": "2025-02-11T00:45:54.846Z",
+        "price": 347.44,
+        "type": "valley",
+        "epochDate": 1739234754846
+      },
+      {
+        "price": 362.6,
+        "date": "2025-02-10T16:22:00.000Z",
+        "type": "peak",
+        "epochDate": 1739204520000
+      },
+      {
+        "date": "2025-02-11T15:53:00",
+        "price": 326.55,
+        "type": "valley",
+        "epochDate": 1739321960522
+      },
+      {
+        "date": "2025-02-11T14:09:00",
+        "price": 346,
+        "type": "peak",
+        "epochDate": 1739320688504
+      },
+      {
+        "date": "2025-02-12T16:00:00",
+        "price": 335.7,
+        "type": "valley",
+        "epochDate": 1739399433806
+      },
+      {
+        "date": "2025-02-12T15:15:00",
+        "price": 346.4,
+        "type": "peak",
+        "epochDate": 1739398656731
+      },
+      {
+        "date": "2025-02-13T10:48:00",
+        "price": 358.6,
+        "type": "peak",
+        "epochDate": 1739398656731
+      },
+      {
+        "date": "2025-02-13T11:43:00",
+        "price": 349.7,
+        "type": "valley",
+        "epochDate": 1739399433806
+      },
+      {
+        "price": 348.27,
+        "date": "2025-02-13T12:02:00",
+        "type": "valley",
+        "epochDate": 1739466120000
+      },
+      {
+        "date": "2025-02-14T00:40:35.430Z",
+        "price": 357.8799,
+        "type": "peak",
+        "epochDate": 1739493635430
+      }
+    ]
+  },
+  "TOBY": {
+    "position": "in",
+    "date": "2025-01-29T22:00:17.514Z",
+    "price": 4.43076e-8,
+    "peakValleyHistory": [
+      {
+        "type": "peak",
+        "date": "2025-01-17T05:11:22.719Z",
+        "price": 4.61834e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-18T05:11:22.719Z",
+        "price": 3.96558e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-18T22:11:22.719Z",
+        "price": 4.12986e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-19T05:11:22.719Z",
+        "price": 3.45323e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-19T10:11:22.719Z",
+        "price": 3.97965e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-19T19:11:22.719Z",
+        "price": 3.22221e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-20T02:11:22.719Z",
+        "price": 3.69633e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-20T21:11:22.719Z",
+        "price": 3.30689e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-21T22:40:22.719Z",
+        "price": 3.88203e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-22T19:05:22.719Z",
+        "price": 3.270681e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-24T07:15:22.719Z",
+        "price": 3.99639e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-25T19:05:22.719Z",
+        "price": 3.63e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-26T07:15:22.719Z",
+        "price": 5.84e-8
+      },
+      {
+        "type": "valley",
+        "date": "2025-01-27T19:05:22.719Z",
+        "price": 3.45e-8
+      },
+      {
+        "type": "peak",
+        "date": "2025-01-28T01:15:22.719Z",
+        "price": 4.1e-8
+      }
+    ]
+  },
+  "TOBY2": {
+    "position": "in",
+    "date": "2025-01-30T03:14:08.048Z",
+    "price": 345
+  },
+  "APPL": {
+    "position": "out",
+    "peakValleyHistory": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      6,
+      7,
+      8,
+      9,
+      {
+        "date": "2025-01-30T15:40:02.253Z",
+        "price": 4.6931e-8,
+        "type": "valley",
+        "epochDate": 1738251602253
+      },
+      {
+        "date": "2025-01-30T16:02:19.598Z",
+        "price": 5.95335e-8,
+        "type": "peak",
+        "epochDate": 1738252939598
+      }
+    ]
+  },
+  "NVDA": {
+    "position": "out",
+    "peakValleyHistory": [
+      {
+        "date": "2025-02-11T09:30:00",
+        "price": 132.14,
+        "type": "valley"
+      },
+      {
+        "date": "2025-02-10T15:03:00",
+        "price": 135.07,
+        "type": "peak"
+      }
+    ]
+  },
+  "TSLA_2": {
+    "position": "in",
+    "price": 357.67,
+    "date": "2025-02-013T19:45:00"
+  }
+}
