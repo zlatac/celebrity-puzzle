@@ -473,8 +473,8 @@ const token = {
                             const position = data[item].position === 'in' ? true : false
                             window.idaStockVision.positionIn[item] = position
                             window.idaStockVision.priceStore.currentPosition[item].position = position
-                            window.idaStockVision.priceStore.currentPosition[item].date = data[item]?.date
-                            window.idaStockVision.priceStore.currentPosition[item].price = data[item]?.price
+                            window.idaStockVision.priceStore.currentPosition[item].date = data[item].date || undefined
+                            window.idaStockVision.priceStore.currentPosition[item].price = data[item].price || undefined
                         }
                     })
                     if (timeOutSeconds !== undefined) {
@@ -689,8 +689,8 @@ const token = {
                         default:
                     }
                     if (code in data && data[code].date && data[code].price) {
-                        window.idaStockVision.priceStore.currentPosition[code].date = data[code]?.date
-                        window.idaStockVision.priceStore.currentPosition[code].price = data[code]?.price
+                        window.idaStockVision.priceStore.currentPosition[code].date = data[code].date || undefined
+                        window.idaStockVision.priceStore.currentPosition[code].price = data[code].price || undefined
                         if (isCrypto && window.idaStockVision.priceStore.currentPosition[code].position) {
                             window.idaStockVision.priceStore.currentPosition[code].date = undefined
                         }
