@@ -436,24 +436,28 @@ const trader = {
     constants: {
         IN: 'in',
         OUT: 'out'
+    },
+    methods: {
+        checkOrSetupFileStorage: async () => {
+            try {
+                const fileExist = await fs.lstat(process.env.STOCK_VISION_STORAGE_FILE)
+            } catch (error) {
+                // Create file to store trader api data
+                await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify({}))
+            }
+        }
     }
 }
 
 app.post('/trader/notify', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
-    try {
-        const fileExist = await fs.lstat('trader.json')
-    } catch (error) {
-        // Create file to store trader api data
-        await fs.writeFile('trader.json', JSON.stringify({}))
-    }
-
+    await trader.methods.checkOrSetupFileStorage()
     try {
         const response = await axios.post(`https://styleminions.co/api/trader/notify`,{
             subject: req.query.subject,
             message: req.query.message,
         })
-        const data = await fs.readFile('trader.json')
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
         const code = req.query.code.toUpperCase()
         const codeExists = code && code in parsedData && parsedData[code]
@@ -480,6 +484,7 @@ app.get('/trader/confirm', async function(req,res){
     try {
         const code = req.query.code.toUpperCase()
         const position = req.query.position
+        const positionDate = req.query.date
         const price = Number(req.query.price)
         if (![trader.constants.IN,trader.constants.OUT].includes(position)) {
             throw new Error('position not valid')
@@ -487,7 +492,7 @@ app.get('/trader/confirm', async function(req,res){
         if (isNaN(price)) {
             throw new Error('price not valid number')
         }
-        const data = await fs.readFile('trader.json')
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
         if (!(code in parsedData)) {
             parsedData[code] = {position: undefined, price: undefined}
@@ -497,8 +502,11 @@ app.get('/trader/confirm', async function(req,res){
         }
         parsedData[code].position = position
         parsedData[code].date = new Date().toISOString()
+        if (positionDate !== undefined) {
+            parsedData[code].date = positionDate
+        }
         parsedData[code].price = price
-        await fs.writeFile('trader.json', JSON.stringify(parsedData))
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
         res.status(200)
         res.send('confirmed')
     } catch (error) {
@@ -509,8 +517,9 @@ app.get('/trader/confirm', async function(req,res){
 
 app.get('/trader/status', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
     try {
-        const data = await fs.readFile('trader.json')
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
         const code = req.query.code.toUpperCase()
         const codeExists = code && code in parsedData && parsedData[code]
@@ -535,8 +544,9 @@ app.get('/trader/status', async function(req,res){
 
 app.post('/trader/history', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
     try {
-        const data = await fs.readFile('trader.json')
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
         let code = req.body?.code || req.query.code
         let primaryCode = req.body?.primaryCode || req.query.primaryCode
@@ -563,7 +573,7 @@ app.post('/trader/history', async function(req,res){
         }
 
         parsedData[primaryCode].peakValleyHistory.push(...peakValleyToday)
-        await fs.writeFile('trader.json', JSON.stringify(parsedData))
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
         res.send(parsedData)
         console.log(parsedData)
     } catch (error) {
