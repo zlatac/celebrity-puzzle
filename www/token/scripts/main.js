@@ -341,14 +341,18 @@ const token = {
             const value = $event.target.value.replace(/,/g, '')
             item.price = this.$options.filters.numberFormat(value, 100)
         },
-        projectStockVision(codeInput, entryPrice, exitPrice, isCrypto = false) {
+        projectStockVision(codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage) {
+            // Use sessionStorage to separate concern for a stock code browser session
             /** livecoinwatch.com */
             // MAKE SURE SITE IS IN $CAD BEFORE OBSERVING 
             // let ob = new MutationObserver(projectStockVision('toby2',5.95e-8, 6.1e-8, true))
             // ob.observe(document.querySelector('.coin-price-large .price'), {subtree: true,characterData: true, characterDataOldValue: true})
             /** nasdaq.com */
-            // document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice')
+            // let ob = new MutationObserver(projectStockVision('tsla',undefined,undefined,undefined, 0.1, 0.3))
+            // ob.observe(document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'), {subtree: true,characterData: true, characterDataOldValue: true})
+            // idaStockVision.priceStore.currentPosition.TSLA = {price: 396, date: new Date().toISOString(), position: true}; idaStockVision.positionIn.TSLA = true
             const code = codeInput.toUpperCase()
+            const projectParameters = arguments
             const decimalConvert = (val) => {
                 const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
                 const zeroString = '0'
@@ -372,21 +376,281 @@ const token = {
                 return Number(`0.${zeroString.repeat(subEnum[subscript[0]])}${numbersAfterZERO}`)
     
             }
-            const percentageDelta = (oldNumber, newNumber) => {
-                return Math.abs((newNumber - oldNumber)*100/oldNumber)
+            const sanitizePrice = (val) => {
+                if (typeof val === 'string') {
+                    return val.replace('$', '')
+                }
+
+                return val
+            }
+            const percentageDelta = (oldNumber, newNumber, includeSign = false) => {
+                if ([oldNumber, newNumber].every((item) => typeof item !== 'number')){
+                    return
+                }
+                const percentage = (newNumber - oldNumber)*100/oldNumber
+                if (includeSign === true) {
+                    return percentage
+                }
+                
+                return Math.abs(percentage)
+            }
+            const percentageFinalAmount = (startAmount, percentageAmount, negative = false) => {
+                const sign  = negative === true ? -1 : 1
+                return startAmount*(1 + (sign * percentageAmount/100))
+            }
+            const applyEntryExitThresholdToAnchor = (anchor, entryThreshold, exitThreshold) => {
+                if (anchor !== undefined && 'price' in anchor && 'type' in anchor) {
+                    if (anchor.type === PriceAnalysis.PEAK) {
+                        return percentageFinalAmount(anchor.price, exitThreshold, true)
+                    }
+                    if (anchor.type === PriceAnalysis.VALLEY) {
+                        return percentageFinalAmount(anchor.price, entryThreshold)
+                    }
+                }
+
+                return
+            }
+            const uploadTodaysPriceHistory = async (code = window.idaStockVision.code) => {
+                // use setTimeout from within traderSetp to update at 8pm for non crypto and  11:59pm for crypto
+                try {
+                    const primaryCode = code.split('_')[0]
+                    const priceStore = window.idaStockVision.priceStore
+                    if (priceStore.highestPeakAndLowestValleyToday.length === 0) {
+                        return
+                    }
+                    const payload = new URLSearchParams()
+                    payload.append('code', code)
+                    payload.append('primaryCode', primaryCode)
+                    payload.append('peakValleyToday', JSON.stringify(priceStore.highestPeakAndLowestValleyToday))
+                    const resp = await fetch(`${window.idaStockVision.serverUrl}/trader/history?${payload.toString()}`, {
+                        method: 'POST',
+                        mode: 'cors',
+                    })
+                } catch (error) {
+                    console.log('Ida Trader Bot - UPLOAD TODAYS PRICE HISTORY', error)
+                }
+                
+            }
+            const setUploadPricesTimeout = (isCrypto, currentTimeoutDateInMiliseconds, callback) => {
+                let isSameDate = false
+                let currentTiemoutInDateObject
+                const nowInMilliSeconds = Date.now()
+                const nowInDateObject = new Date(nowInMilliSeconds)
+                const uploadTime = isCrypto 
+                    ? new Date(nowInMilliSeconds).setHours(23,59,59,0) 
+                    : new Date(nowInMilliSeconds).setHours(16,59,59,0)
+                const timeDifference = uploadTime - nowInMilliSeconds
+                if (currentTimeoutDateInMiliseconds !== undefined) {
+                    currentTiemoutInDateObject = new Date(currentTimeoutDateInMiliseconds)
+                    isSameDate = nowInDateObject.getDate() === currentTiemoutInDateObject.getDate()
+                }
+                if (!isSameDate && timeDifference > 0) {
+                    setTimeout(callback, timeDifference)
+                    return uploadTime
+                }
+
+            }
+            const statusHTTP = (code) => {
+                const queryParams = new URLSearchParams()
+                queryParams.append('code', code)
+                return fetch(`${window.idaStockVision.serverUrl}/trader/status?${queryParams.toString()}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                })
+            }
+            const positionStatusPolling = async (code = window.idaStockVision.code, restartCounter = false) => {
+                try {
+                    if (restartCounter) {
+                        clearTimeout(window.idaStockVision.statusTimeoutInstance)
+                        window.idaStockVision.statusCounter = 0
+                    }
+                    const resp = await statusHTTP(code)
+                    const data = await resp.json()
+                    const codes = Object.keys(window.idaStockVision.positionIn)
+                    const timeOutSeconds = idaStockVision.statusTimeoutList.at(window.idaStockVision.statusCounter)
+                    codes.forEach((item) => {
+                        if (item in data) {
+                            const position = data[item].position === 'in' ? true : false
+                            window.idaStockVision.positionIn[item] = position
+                            window.idaStockVision.priceStore.currentPosition[item].position = position
+                            window.idaStockVision.priceStore.currentPosition[item].date = data[item]?.date
+                            window.idaStockVision.priceStore.currentPosition[item].price = data[item]?.price
+                        }
+                    })
+                    if (timeOutSeconds !== undefined) {
+                        window.idaStockVision.statusTimeoutInstance = setTimeout(window.idaStockVision.tools.positionStatusPolling, timeOutSeconds)
+                        window.idaStockVision.statusCounter++
+                    }
+                } catch (error) {
+                    console.log('Ida Trader Bot - POSITION STATUS POLLING', error)
+                }
+                
+            }
+            const watch = () => {
+                try {
+                    const origin = location.origin
+                    const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
+                    let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver, lowMutationObserver, highMutationObserver
+                    window.idaStockVision.mutationObservers[code] = new MutationObserver(projectStockVision(...projectParameters))
+                    const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
+                        if (lowElementText !== undefined) {
+                            window.idaStockVision.priceStore.marketHighLowRange.low = decimalConvert(sanitizePrice(lowElementText))
+                        }
+                        if (highElementText !== undefined) {
+                            window.idaStockVision.priceStore.marketHighLowRange.high = decimalConvert(sanitizePrice(highElementText))
+                        }
+                    }
+                    const storeJointHighLowRange = (elementText) => {
+                        const value = elementText.split('-')
+                        window.idaStockVision.priceStore.marketHighLowRange.low = decimalConvert(sanitizePrice(value[0]))                 
+                        window.idaStockVision.priceStore.marketHighLowRange.high = decimalConvert(sanitizePrice(value[1]))
+                    }
+                    const setUpGeneralHighLowRangeMutations = () => {
+                        if (priceLowRangeElement !== null && priceHighRangeElement !== null) {
+                            storeHighLowRangeGeneral(priceLowRangeElement.innerText)
+                            storeHighLowRangeGeneral(undefined, priceHighRangeElement.innerText)
+                            lowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
+                                const lastRecord = mutationArray[mutationArray.length - 1]
+                                const targetValue = lastRecord.target.nodeValue
+                                storeHighLowRangeGeneral(targetValue)                      
+                            })
+                            highMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
+                                const lastRecord = mutationArray[mutationArray.length - 1]
+                                const targetValue = lastRecord.target.nodeValue
+                                storeHighLowRangeGeneral(undefined, targetValue)                      
+                            })
+                            lowMutationObserver.observe(priceLowRangeElement, observeOptions)
+                            highMutationObserver.observe(priceHighRangeElement, observeOptions)
+                        }
+                    }
+                    switch(true) {
+                        case origin.includes('nasdaq'):
+                        case origin.includes('google'):
+                            const websiteName = origin.includes('google') ? 'google' : 'nasdaq'
+                            priceElement = window.idaStockVision.cssSelectors[websiteName].price()
+                            priceHighAndLowRangeElement = window.idaStockVision.cssSelectors[websiteName].highLowRange()
+                           if (priceHighAndLowRangeElement !== null) {
+                               storeJointHighLowRange(priceHighAndLowRangeElement.innerText)
+                               highAndLowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
+                                    const lastRecord = mutationArray[mutationArray.length - 1]
+                                    const targetValue = lastRecord.target.nodeValue
+                                    storeJointHighLowRange(targetValue)                      
+                               })
+                               highAndLowMutationObserver.observe(priceHighAndLowRangeElement, observeOptions)
+                           }
+                           break
+                        case origin.includes('cboe'):
+                            priceElement = window.idaStockVision.cssSelectors.cboe.price()
+                            priceLowRangeElement = window.idaStockVision.cssSelectors.cboe.lowRange()
+                            priceHighRangeElement = window.idaStockVision.cssSelectors.cboe.highRange()
+                            setUpGeneralHighLowRangeMutations()
+                            break
+                        case origin.includes('webull'):
+                            priceElement = window.idaStockVision.cssSelectors.webull.price()
+                            priceLowRangeElement = window.idaStockVision.cssSelectors.webull.lowRange()
+                            priceHighRangeElement = window.idaStockVision.cssSelectors.webull.highRange()
+                            setUpGeneralHighLowRangeMutations()
+                            break
+                        case origin.includes('livecoinwatch'):
+                            priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
+                            break
+                        default:
+                            // add webull, tradingview, google finance
+                            throw new Error('website css selectors do not exist')
+                    }
+
+                    if (priceElement === null || priceElement === undefined) {
+                        throw new Error('can\'t find price')
+                    }
+                    window.idaStockVision.mutationObservers[code].observe(priceElement, observeOptions)
+                } catch (error) {
+                    console.log('Ida Trader Bot - WATCH STOCK', error)
+                }
+            }
+            const destroyCode = (code) => {
+                window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
             }
             const traderSetUp = async (code) => {
-                const queryParams = new URLSearchParams()
-
                 if (!('idaStockVision' in window)) {
                     window.idaStockVision = {
                         positionIn: {},
                         notificationInProgress: {},
                         lastNotificationSent: {},
+                        mutationObservers: {},
                         consoleClearInstance: setInterval(()=>{console.clear()}, 1000*60*20),
+                        // window.idaStockVision is deleted before function fires rendering it usless
+                        windowCloseEventListener: window.addEventListener('beforeunload', uploadTodaysPriceHistory),
+                        code: code,
+                        statusTimeoutList: [60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20],
+                        statusTimeoutInstance: undefined,
+                        statusCounter: 0,
+                        serverUrl: '',
+                        notificationServerUrl: '',
+                        priceStore: {
+                            lastPrice: undefined,
+                            previousLastPrice: undefined,
+                            marketHighLowRange: {
+                                low: undefined,
+                                high: undefined
+                            },
+                            peakValleyHistory: [],
+                            highestPeakAndLowestValleyToday: [],
+                            currentPosition: {},
+                            analysis: {},
+                            uploadTodaysPriceTime: undefined,
+                        },
                         tools: {
                             decimalConvert,
                             percentageDelta,
+                            percentageFinalAmount,
+                            uploadTodaysPriceHistory,
+                            positionStatusPolling,
+                            destroyCode,
+                        },
+                        server: {
+                            development: 'http://localhost:9000',
+                            developmentNotification: 'http://10.0.0.148:9000',
+                            // production: 'https://tobyexitstrategy-d8c8b00cdf74.herokuapp.com'
+                        },
+                        cssSelectors: {
+                            nasdaq: {
+                                price: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'),
+                                highLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-day-range-info'),
+                                fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span')
+                            },
+                            yahoo: {
+                                // csp locked
+                                price: () => document.querySelector("div.price > section > div > div:nth-child(1) > section > div.container > div:nth-child(1) > span"),
+                                preMarketAndAfterHoursPrice: () => document.querySelector("div.price > section > div > div:nth-child(2) > section > div.container > div:nth-child(1) > span"),
+                                highLowRange: () => document.querySelector("fin-streamer[data-field=regularMarketDayRange]"),
+                            },
+                            livecoinwatch: {
+                                price: () => document.querySelector('.coin-price-large .price'),
+                                highLowRange: () => null
+                            },
+                            cboe: {
+                                price: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(1) td:nth-child(2)'),
+                                lowRange: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(11) td:nth-child(2)'),
+                                highRange: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(12) td:nth-child(2)'),
+                            },
+                            webull: {
+                                // https only
+                                price: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div"),
+                                preMarketAndAfterHoursPrice: document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div > span"),
+                                lowRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                highRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            },
+                            tradingview: {
+                                // https only
+                                price: () => document.evaluate('//*[@id="js-category-content"]/div[1]/div[1]/div/div/div/div[3]/div[1]/div/div[1]/span[1]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            },
+                            google: {
+                                // too slow compared to nasdaq
+                                price: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[1]/div[1]/c-wiz/div/div[1]/div/div[1]/div/div[1]/div/span/div/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                preMarketAndAfterHoursPrice: document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[1]/div[1]/c-wiz/div/div[1]/div/div[2]/span[1]/span/div/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                highLowRange: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[2]/div/div[1]/div[3]/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            },
+
                         }
                     }
                 }
@@ -395,88 +659,508 @@ const token = {
                     window.idaStockVision.positionIn[code] = false
                     window.idaStockVision.notificationInProgress[code] = false
                     window.idaStockVision.lastNotificationSent[code] = {}
+                    window.idaStockVision.priceStore.currentPosition[code] = {
+                        position: false,
+                    }
+                    window.idaStockVision.priceStore.analysis[code] = undefined
+                    window.idaStockVision.tools[`watch_${code}`] = watch
                 }
     
                 try {
+                    window.idaStockVision.serverUrl = 'production' in window.idaStockVision.server 
+                        ? window.idaStockVision.server.production
+                        : window.idaStockVision.server.development
+                    window.idaStockVision.notificationServerUrl = 'production' in window.idaStockVision.server 
+                        ? window.idaStockVision.server.production
+                        : window.idaStockVision.server.developmentNotification
                     window.idaStockVision.notificationInProgress[code] = true
-                    queryParams.append('code', code)
-                    const resp = await fetch(`http://localhost:9000/trader/status?${queryParams.toString()}`, {
-                        method: 'GET',
-                        mode: 'cors',
-                    })
+                    const primaryCode = code.split('_')[0]
+                    const resp = await statusHTTP(code)
                     const data = await resp.json()
                     switch(resp.status) {
                         case 200:
                             window.idaStockVision.positionIn[code] = false
+                            window.idaStockVision.priceStore.currentPosition[code].position = false
                             break
                         case 201:
                             window.idaStockVision.positionIn[code] = true
+                            window.idaStockVision.priceStore.currentPosition[code].position = true
                             break
                         default:
                     }
+                    if (code in data && data[code].date && data[code].price) {
+                        window.idaStockVision.priceStore.currentPosition[code].date = data[code]?.date
+                        window.idaStockVision.priceStore.currentPosition[code].price = data[code]?.price
+                        if (isCrypto && window.idaStockVision.priceStore.currentPosition[code].position) {
+                            window.idaStockVision.priceStore.currentPosition[code].date = undefined
+                        }
+                    }
+                    if (
+                        primaryCode in data && 
+                        'peakValleyHistory' in data[primaryCode] && 
+                        window.idaStockVision.priceStore.peakValleyHistory.length === 0
+                    ) {
+                        window.idaStockVision.priceStore.peakValleyHistory.push(...data[primaryCode].peakValleyHistory)
+                    }
                     window.idaStockVision.notificationInProgress[code] = false
                 } catch (error) {
-                    // sendNotification(tokenOrStockCode, message, currentPrice, action)
                     console.log('Ida Trader Bot - STATUS ERROR', error)
                 }
             }
-            const sendNotification =  async (tokenOrStockCode, message = 'manual confirmation', currentPrice, action) => {
+            const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice) => {
                 const priceDifferencePercentage = window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
                     ? percentageDelta(window.idaStockVision.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
                     : 0
-                const percentageThreshold = 10
+                const percentageThreshold = 5
                 const notificationSubject = `${tokenOrStockCode} - Get [${action.toUpperCase()}] (${currentPrice})`
                 const queryParams = new URLSearchParams()
                 const sameActionAsLast = 'action' in window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
                     ? window.idaStockVision.lastNotificationSent[tokenOrStockCode].action === action 
                     : false
                 const percentageThresholdReached = priceDifferencePercentage >= percentageThreshold
-                // let statusConverted
-                // switch (window.idaStockVision.positionIn[tokenOrStockCode]) {
-                //     case true:
-                //         statusConverted = 'in'
-                //         break
-                //     case false:
-                //         statusConverted = 'out'
-                // }
-                // const sameActionAsStatus = statusConverted === action
-                if (window.idaStockVision.notificationInProgress[tokenOrStockCode] || (sameActionAsLast && !percentageThresholdReached)) {
+                const sameAnchorPriceAsLastNotificationAnchorPrice = 'anchorPrice' in window.idaStockVision.lastNotificationSent[tokenOrStockCode]
+                    ? anchorPrice === window.idaStockVision.lastNotificationSent[tokenOrStockCode].anchorPrice
+                    : true
+                let currentStatus
+                switch (window.idaStockVision.positionIn[tokenOrStockCode]) {
+                    case true:
+                        currentStatus = 'in'
+                        break
+                    case false:
+                        currentStatus = 'out'
+                }
+                const sameActionAsCurrentStatus = currentStatus === action
+
+                if (window.idaStockVision.notificationInProgress[tokenOrStockCode] 
+                    || sameActionAsCurrentStatus
+                    || (sameActionAsLast && sameAnchorPriceAsLastNotificationAnchorPrice && !percentageThresholdReached)
+                ) {
                     return
                 }
     
                 try {
                     window.idaStockVision.notificationInProgress[tokenOrStockCode] = true
-                    queryParams.append('message', message)
+                    queryParams.append('message', messageBody)
                     queryParams.append('subject', notificationSubject)
                     queryParams.append('code', tokenOrStockCode)
-                    const resp = await fetch(`http://localhost:9000/trader/notify?${queryParams.toString()}`, {
+                    const resp = await fetch(`${window.idaStockVision.serverUrl}/trader/notify?${queryParams.toString()}`, {
                         method: 'POST',
                         mode: 'cors',
                     })
-                    const data = await resp.json()
-                    switch(resp.status) {
-                        case 200:
-                            window.idaStockVision.positionIn[tokenOrStockCode] = false
-                            break
-                        case 201:
-                            window.idaStockVision.positionIn[tokenOrStockCode] = true
-                            break
-                        default:
+                    // const data = await resp.json()
+                    window.idaStockVision.lastNotificationSent[tokenOrStockCode] = {
+                        tokenOrStockCode, 
+                        message: messageBody,
+                        currentPrice,
+                        action,
+                        anchorPrice
                     }
-                    window.idaStockVision.lastNotificationSent[tokenOrStockCode] = {tokenOrStockCode, message, currentPrice, action}
                     window.idaStockVision.notificationInProgress[tokenOrStockCode] = false
+                    new Notification(notificationSubject, {body: messageBody})
+                    positionStatusPolling(tokenOrStockCode, true)
                 } catch (error) {
-                    // sendNotification(tokenOrStockCode, message, currentPrice, action)
                     console.log('Ida Trader Bot - NOTIFY ERROR', error)
                 }
+            }
+            const updatePrices = (currentPrice, peakValleyDetected) => {
+                try {
+                    const priceStore = window.idaStockVision.priceStore
+                    const {low, high} = priceStore.marketHighLowRange
+                    const isHighLowRangeValid = [low, high].every((item) => typeof item === 'number' && item > 0)
+                    // Reduce market noise from outlier price trades(pre-market & after market hours especially)
+                    const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice >= low && currentPrice <= high) : true
+
+                    if (priceStore.lastPrice !== currentPrice && isCurrentPriceWithinMarketRange) {
+                        priceStore.previousLastPrice = priceStore.lastPrice
+                        priceStore.lastPrice = currentPrice
+                    }
+    
+                    if (peakValleyDetected !== undefined) {
+                        priceStore.peakValleyHistory.push(peakValleyDetected)
+                    }
+                } catch (error) {
+                    console.log('Ida Trader Bot - UPDATE PRICES', error)
+                }
+            }
+            /**
+             * 
+             * @param {number} currentPrice 
+             * @param {number} lastPrice 
+             * @param {number} previousLastPrice 
+             * @returns {undefined | {type: string; date: string; price: number;}}
+             */
+            const peakValleyDetection = (currentPrice, lastPrice, previousLastPrice) => {
+                const payload = {
+                    date: new Date().toISOString(),
+                    price: lastPrice
+                }
+                if (lastPrice !== undefined && previousLastPrice !== undefined) {
+                    if (lastPrice >= previousLastPrice && lastPrice > currentPrice) {
+                        payload.type = 'peak'
+                        return payload
+                    }
+                    if (lastPrice <= previousLastPrice && lastPrice < currentPrice) {
+                        payload.type = 'valley'
+                        return payload
+                    }
+                }
+
+                return
+            }
+            class PriceAnalysis {
+                _peakValleyHistory;
+                _currentPrice;
+                _currentPosition;
+                _isCrypto;
+                static IN = true
+                static OUT = false
+                static PEAK = 'peak'
+                static VALLEY = 'valley'
+
+                constructor(history = [], currentPrice, currentPosition, isCrypto = false) {
+                    try {
+                        this._isCrypto = isCrypto
+                        this._peakValleyHistory = Array.from(history)
+                        this._currentPrice = {
+                            price: currentPrice,
+                            epochDate: Date.now()
+                        }
+                        this._currentPrice.date = new Date(this._currentPrice.epochDate).toISOString()
+                        this._currentPosition = currentPosition
+                        // this._currentPosition = {date: '2025-01-16T05:11:22.719Z', price: 5, position: PriceAnalysis.IN}
+                        if (this.dateExistsForCurrrentPosition) {
+                            this._currentPosition.epochDate = this.transformDateToEpochMiliseconds(this._currentPosition.date)
+                        }
+                    } catch (error) {
+                        console.log('Ida Trader Bot - PRICE ANALYSIS CONSTRUCTOR', error)
+                    }
+                    
+
+                }
+
+                get peakValleyProgressionOrder() {
+                    return this._peakValleyHistory.map((item) => {
+                        item.epochDate = this.transformDateToEpochMiliseconds(item.date)
+                        return item
+                    })
+                    .sort((a,b) => {
+                        // ascending date
+                        if (a.epochDate < b.epochDate) {
+                            return -1
+                        }
+                        if (a.epochDate === b.epochDate) {
+                            return 0
+                        }
+                        return 1
+                    })
+                }
+
+                get todaysDateMidnight () {
+                   const today = new Date()
+                   return today.setHours(0,0,0)
+                //    return today.toISOString()
+                }
+
+                get dateExistsForCurrrentPosition() {
+                    return typeof this._currentPosition === 'object' && 'date' in this._currentPosition
+                }
+
+                get peakOnlyProgressionOrder() {
+                    return this.peakValleyProgressionOrder.filter((item) => item.type === PriceAnalysis.PEAK)
+                }
+
+                get valleyOnlyProgressionOrder() {
+                    return this.peakValleyProgressionOrder.filter((item) => item.type === PriceAnalysis.VALLEY)
+                }
+
+                get highestPeakToday() {
+                    const peaks = this.peakOnlyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
+                    if (peaks.length === 0) {
+                        return undefined
+                    }
+                    const prices = peaks.map((item) => item.price)
+                    // const dates = peaks.map((item) => item.epochDate)
+                    const maxPrice = Math.max(...prices)
+                    const maxPriceIndex = prices.lastIndexOf(maxPrice)
+                    return peaks[maxPriceIndex]
+                }
+
+                get lowestValleyToday() {
+                    const valleys = this.valleyOnlyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
+                    if (valleys.length === 0) {
+                        return undefined
+                    }
+                    const valleyPrices = valleys.map((peak) => peak.price)
+                    const minPrice = Math.min(...valleyPrices)
+                    const minPriceIndex = valleyPrices.lastIndexOf(minPrice)
+
+                    return valleys.at(minPriceIndex)
+                }
+
+                get highestPeakAndLowestValleyToday() {
+                    const list = []
+                    this.lowestValleyToday !== undefined ? list.push(this.lowestValleyToday) : null
+                    this.highestPeakToday !== undefined ? list.push(this.highestPeakToday) : null
+
+                    return list
+                }
+
+                get closestPeakToToday() {
+                    const peaksBeforeToday = this.peakOnlyProgressionOrder.filter((item) => item.epochDate < this.todaysDateMidnight)
+                    if (peaksBeforeToday.length === 0) {
+                        return undefined
+                    }
+                    return peaksBeforeToday.at(peaksBeforeToday.length - 1)
+                }
+
+                get closestHighestPeak() {
+                    // Have a recent position info to make it very accurate regardless of implementation
+
+                    return this.findOptimalClosestHighestPeak()
+                    // if ([this.closestPeakToToday, this.highestPeakToday].every((value) => value === undefined)) {
+                    //     return
+                    // }
+
+                    // if (this.closestPeakToToday === undefined) {
+                    //     return this.highestPeakToday
+                    // }
+                    // if (this.highestPeakToday === undefined) {
+                    //     return this.closestPeakToToday
+                    // }
+
+                    // if (this.closestPeakToToday.price > this.highestPeakToday.price) {
+                    //     return this.closestPeakToToday
+                    // }
+
+                    // return this.highestPeakToday
+
+                }
+
+                get peakValleyBeforeToday() {
+                    return this.peakValleyProgressionOrder.filter((item) => item.epochDate < this.todaysDateMidnight)
+                }
+
+                get peakValleyToday() {
+                    return this.peakValleyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
+                }
+
+                get peakValleySizeManagement() {
+                    if (this.peakValleyToday.length <= 100) {
+                        return
+                    }
+                    const newPeakValleyHistory = Array.from(this.peakValleyBeforeToday).concat(this.highestPeakAndLowestValleyToday)
+                                        
+                    return newPeakValleyHistory
+                }
+
+                findAnchorPeak(recentPosition) {
+                    // filter peaks between recentPosition & currentPrice dates
+                    // search for highest peak
+                    // from highest peak make sure negative slope between peak and current price
+                    // from recentPosition price make sure positive slope between it and current price
+                    // logic not met do nothing and keep watching
+                    // Note current position date & price needed for this function to work
+                    if (this._currentPosition.position !== PriceAnalysis.IN || !this.dateExistsForCurrrentPosition) {
+                        return
+                    }
+
+                    const peaks = this.peakOnlyProgressionOrder
+                        .filter((item) => (item.epochDate > this._currentPosition.epochDate && item.epochDate < this._currentPrice.epochDate))
+                    const prices = peaks.map((item) => item.price)
+                    const maxPrice = Math.max(...prices)
+                    const maxPriceIndex = prices.lastIndexOf(maxPrice)
+                    const maxPeak = peaks.at(maxPriceIndex)
+                    const slopeOfCurrentPriceFromPeak = this.priceSlope(maxPeak, this._currentPrice)
+                    const slopeOfCurrentPriceFromRecentPosition = this.priceSlope(this._currentPosition, this._currentPrice)
+                    if (slopeOfCurrentPriceFromPeak !== undefined 
+                        && slopeOfCurrentPriceFromRecentPosition !== undefined 
+                        && slopeOfCurrentPriceFromPeak.negative 
+                        && slopeOfCurrentPriceFromRecentPosition.positive
+                    ) {
+                        return maxPeak
+                    }
+
+                    return
+
+                }
+
+                findAnchorValley(recentPosition) {
+                    // find closest highest peak
+                    // from closest highest peak date search for deepest valley
+                    // from deepest valley make sure positive slope between valley price and current price
+                    // logic not met do nothing and keep watching
+                                        
+                    if (this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
+                        return
+                    }
+                    const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => item.epochDate > this.closestHighestPeak.epochDate)
+                    const prices = valleysFromClosestHighestPeak.map((item) => item.price)
+                    const lowestPrice = Math.min(...prices)
+                    const lowestPriceIndex = prices.lastIndexOf(lowestPrice)
+                    const lowestValley = lowestPriceIndex !== -1 ? valleysFromClosestHighestPeak.at(lowestPriceIndex) : undefined
+                    const slopeOfCurrentPriceFromLowestValley = this.priceSlope(lowestValley, this._currentPrice)
+                    if (slopeOfCurrentPriceFromLowestValley !== undefined && slopeOfCurrentPriceFromLowestValley.positive) {
+                        return lowestValley
+                    }
+
+                    return undefined
+
+                }
+
+                findAnchor() {
+                    if (this._currentPosition.position === PriceAnalysis.IN) {
+                        return this.findAnchorPeak()
+                    }
+
+                    return this.findAnchorValley()
+                }
+
+                transformDateToEpochMiliseconds(dateISOString) {
+                    // Make sure that you append stock market closing hour and ISO format [T00:00:00]
+                    // for non ISO format dates so parse method uses local timezone automatically
+                    if (dateISOString !== undefined || dateISOString !== '') {
+                        return Date.parse(dateISOString)
+                    }
+
+                    return undefined
+                }
+
+                priceSlope(anchorPrice, currentPrice) {
+                    if ([anchorPrice, currentPrice].some((item) => item === undefined)) {
+                        return
+                    }
+                    const priceDifference = currentPrice.price - anchorPrice.price
+                    const dateDifference = currentPrice.epochDate - anchorPrice.epochDate
+                    const slope = priceDifference/dateDifference
+                    const direction = Math.sign(slope)
+
+                    return {value: slope, positive: direction > 0, negative: direction < 0}
+                }
+
+                findOptimalClosestHighestPeak() {
+                    // if recent/current position price exists limit lookback up to that date
+                    // in the case of no recent position price, use up to 7 days
+                    // Note: volatile stocks might need lower max days lookback and vice versa
+                    // each max price for each past day range gets a point
+                    // the max price with the highest point we use (in edge case of multiple highest point we use the first one)
+
+                    const shiftDateFromWeekend = (dayToDeductFromInMiliSeconds, daysToDeduct, isCrypto) => {
+                        // const dayToDeductFromInMiliSeconds = this.transformDateToEpochMiliseconds(dayToDeductFromString)
+                        const twentyFourHoursInMiliSeconds = 1000*60*60*24
+                        let correctionModifier = 0
+                        let deductionDate = new Date(dayToDeductFromInMiliSeconds - (twentyFourHoursInMiliSeconds*daysToDeduct))
+                        if (!isCrypto) {
+                            switch(deductionDate.getDay()) {
+                                case 0:
+                                    //sunday
+                                    correctionModifier = 2
+                                    break
+                                case 6:
+                                    //saturday
+                                    correctionModifier = 2
+                                    break
+                                default:
+                            }
+                        }
+
+                        // Make sure that the next date shift feeds off the output of this function to be in proper order
+                        return dayToDeductFromInMiliSeconds - (twentyFourHoursInMiliSeconds*(daysToDeduct + correctionModifier))
+                    }
+                    const today = new Date()
+                    // const todayMidnightInISOString = new Date(this.todaysDateMidnight).toISOString()
+                    // const twentyFourHoursInMiliSeconds = 1000*60*60*24
+                    // Step back on days from the weekend when its a weekend for all
+                    const oneDayAgo = shiftDateFromWeekend(this.todaysDateMidnight, 1, this._isCrypto)
+                    const twoDaysAgo = shiftDateFromWeekend(oneDayAgo, 1, this._isCrypto)
+                    const threeDaysAgo = shiftDateFromWeekend(twoDaysAgo, 1, this._isCrypto)
+                    const fiveDaysAgo = shiftDateFromWeekend(threeDaysAgo, 2, this._isCrypto)
+                    const sevenDaysAgo = shiftDateFromWeekend(fiveDaysAgo, 2, this._isCrypto)
+                    const peakList = this.peakOnlyProgressionOrder
+                    const daysAsList = [this.todaysDateMidnight,oneDayAgo,twoDaysAgo,threeDaysAgo,fiveDaysAgo,sevenDaysAgo]
+                    const daysToProcess = daysAsList
+                    // let daysToProcess = this.dateExistsForCurrrentPosition
+                    //     ? daysAsList.filter((day) => day > this._currentPosition.epochDate)
+                    //     : daysAsList
+                    // if (this.dateExistsForCurrrentPosition && daysToProcess.lenth === 0) {
+                    //     // For situations where trade position is done within the day
+                    //     daysToProcess.push(this.todaysDateMidnight)
+                    // }
+                    let tracker = new Map()
+                    // console.log(daysToProcess)
+                    daysToProcess.forEach((day) => {
+                        let basket = new Map()
+                        peakList.filter((item) => item.epochDate > day)
+                            .forEach((item) => basket.set(item.price, item.epochDate))
+                        if (basket.size > 0) {
+                            const prices = basket.keys().toArray()
+                            const maxPrice = Math.max(...prices)
+                            const peakDateToTrack = basket.get(maxPrice)
+                            if (tracker.has(peakDateToTrack)) {
+                                let value = tracker.get(peakDateToTrack)
+                                value += 1
+                                tracker.set(peakDateToTrack, value)
+                                return
+                            }
+                            tracker.set(peakDateToTrack, 1)
+                        }
+                        
+                    })
+                    if (tracker.size > 0) {
+                        const trackerDates = tracker.keys().toArray()
+                        const trackerPoints = tracker.values().toArray()
+                        const maxTrackerPoints = Math.max(...trackerPoints)
+                        const maxTrackerPointsIndex = trackerPoints.indexOf(maxTrackerPoints)
+                        const dateToUse = trackerDates.at(maxTrackerPointsIndex)
+                        const peakToUse = peakList.find((peak) => peak.epochDate === dateToUse)
+                        return peakToUse !== -1 ? peakToUse : undefined
+                    }
+
+                    return
+                }
+                
             }
             traderSetUp(code)
 
             return (mutationArray, observerInstance) => {
-                
+                // TO-DO have a disconnect method to cleanup setTimeouts for history upload
                 const lastRecord = mutationArray[mutationArray.length - 1]
                 const targetValue = lastRecord.target.nodeValue.replace('$','')
+                const priceStore = window.idaStockVision.priceStore
                 const currentPrice =  decimalConvert(targetValue)
+                const confirmationLink = `${window.idaStockVision.notificationServerUrl}/trader/confirm?`
+                const confirmationQueryParams = new URLSearchParams()
+                let entryPrice = manualEntryPrice
+                let exitPrice = manualExitPrice
+                let analysis, anchor
+                let anchorPrice = ''
+                let notificationBody = ''
+                const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
+                if (autoEntryExitMode) {
+                    const currentPosition = priceStore.currentPosition[code]
+                    const peakValleyDetected = peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
+                    updatePrices(currentPrice, peakValleyDetected)
+                    analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition)
+                    priceStore.analysis[code] = analysis
+                    entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentage, exitPercentage)
+                    exitPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
+                    priceStore.peakValleyHistory = analysis.peakValleySizeManagement !== undefined 
+                        ? analysis.peakValleySizeManagement
+                        : priceStore.peakValleyHistory
+                    priceStore.highestPeakAndLowestValleyToday = analysis.highestPeakAndLowestValleyToday
+                    anchor = analysis.findAnchor()
+                    anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
+                    const timeToUpload = setUploadPricesTimeout(isCrypto,priceStore.uploadTodaysPriceTime,uploadTodaysPriceHistory)
+                    if (typeof timeToUpload === 'number') {
+                        priceStore.uploadTodaysPriceTime = timeToUpload
+                    }
+                    if (anchor !== undefined){
+                        notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
+                        notificationBody = notificationBody.concat(`Anchor Type: ${anchor.type} \r\n`)
+                        notificationBody = window.idaStockVision.positionIn[code] 
+                        ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice, true)} \r\n`)
+                        : notificationBody
+                    }
+                }
                 const cryptoDecision = {
                     // No need for <= to logic since probability of exact match is very low
                     enter: currentPrice < entryPrice,
@@ -488,25 +1172,32 @@ const token = {
                 }
                 const enterDecision = isCrypto ? cryptoDecision.enter : stockDecision.enter
                 const exitDecision = isCrypto ? cryptoDecision.exit : stockDecision.exit
+                
                 let color = 'red'
-                let message = `[${code}] DO NOTHING AT ${currentPrice} - ${new Date().toString()}`
+                let message = `[${code}] DO NOTHING AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
+                confirmationQueryParams.append('code', code)
+                confirmationQueryParams.append('price', currentPrice)
 
                 if (entryPrice !== undefined && enterDecision) {
                     // No need for equals to logic since probabiloty of exact match is very low
-                    message = `[${code}] SWAP IN AT ${currentPrice} - ${new Date().toString()}`
+                    message = `[${code}] SWAP IN AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
                     color = 'green'
-                    sendNotification(code, undefined, currentPrice, 'in')
+                    confirmationQueryParams.append('position', 'in')
+                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
+                    sendNotification(code, notificationBody, currentPrice, 'in', anchorPrice)
                     if (window.idaStockVision.positionIn[code]) {
-                        message = `[${code}] YOU ARE IN ALREADY ${currentPrice} - ${new Date().toString()}`
+                        message = `[${code}] YOU ARE IN ALREADY ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
                         color = 'blue'
                     }
                 }
                 if (exitPrice !== undefined && exitDecision) {
-                    message = `[${code}] SWAP OUT AT ${currentPrice} - ${new Date().toString()}`
+                    message = `[${code}] SWAP OUT AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
                     color = 'orange'
-                    sendNotification(code, undefined, currentPrice, 'out')
+                    confirmationQueryParams.append('position', 'out')
+                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
+                    sendNotification(code, notificationBody, currentPrice, 'out', anchorPrice)
                     if (!window.idaStockVision.positionIn[code]) {
-                        message = `[${code}] YOU ARE OUT ALREADY ${currentPrice} - ${new Date().toString()}`
+                        message = `[${code}] YOU ARE OUT ALREADY ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
                         color = 'blue'
                     }
                 }

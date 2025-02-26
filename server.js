@@ -1,4 +1,7 @@
 var express = require('express');
+// const bodyParser = require('body-parser')
+// const multer = require('multer')
+// const upload = multer() // for parsing multipart/form-data
 var path = require('path')
 var app = express();
 var server = require('http').Server(app);
@@ -11,6 +14,11 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config()
 }
 const stripe = require('stripe')(process.env.STRIPE_PRIVATE_KEY);
+// app.use(bodyParser.json()) // for parsing application/json
+// app.use(bodyParser.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
+app.use(express.json()) // for parsing application/json
+app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
+
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
 
@@ -159,7 +167,7 @@ async function getPlaylists(){
 }
 
 //console.log(process.env.YOUTUBE_KEY)
-getPlaylists()
+// getPlaylists()
 
 function clearDataLater(){
     dataStore.timeout = function(){
@@ -424,20 +432,32 @@ app.get('/paySecret', async function(req,res){
     }
 });
 
-app.post('/trader/notify', async function(req,res){
-    try {
-        const fileExist = await fs.lstat('trader.json')
-    } catch (error) {
-        // Create file to store trader api data
-        await fs.writeFile('trader.json', JSON.stringify({}))
+const trader = {
+    constants: {
+        IN: 'in',
+        OUT: 'out'
+    },
+    methods: {
+        checkOrSetupFileStorage: async () => {
+            try {
+                const fileExist = await fs.lstat(process.env.STOCK_VISION_STORAGE_FILE)
+            } catch (error) {
+                // Create file to store trader api data
+                await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify({}))
+            }
+        }
     }
+}
 
+app.post('/trader/notify', async function(req,res){
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
     try {
         const response = await axios.post(`https://styleminions.co/api/trader/notify`,{
             subject: req.query.subject,
             message: req.query.message,
         })
-        const data = await fs.readFile('trader.json')
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
         const code = req.query.code.toUpperCase()
         const codeExists = code && code in parsedData && parsedData[code]
@@ -453,7 +473,6 @@ app.post('/trader/notify', async function(req,res){
             }
 
         }
-        res.append('Access-Control-Allow-Origin', '*')
         res.send(parsedData)   
     } catch (error) {
         res.status(404)
@@ -464,13 +483,30 @@ app.post('/trader/notify', async function(req,res){
 app.get('/trader/confirm', async function(req,res){
     try {
         const code = req.query.code.toUpperCase()
-        const action = req.query.action
-        const data = await fs.readFile('trader.json')
+        const position = req.query.position
+        const positionDate = req.query.date
+        const price = Number(req.query.price)
+        if (![trader.constants.IN,trader.constants.OUT].includes(position)) {
+            throw new Error('position not valid')
+        }
+        if (isNaN(price)) {
+            throw new Error('price not valid number')
+        }
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
-        code in parsedData 
-            ? parsedData[code].position = action 
-            : parsedData[code] = {position: action}
-        await fs.writeFile('trader.json', JSON.stringify(parsedData))
+        if (!(code in parsedData)) {
+            parsedData[code] = {position: undefined, price: undefined}
+        }
+        if (parsedData[code].position === position && parsedData[code].price === price) {
+            throw new Error('already confirmed')
+        }
+        parsedData[code].position = position
+        parsedData[code].date = new Date().toISOString()
+        if (positionDate !== undefined) {
+            parsedData[code].date = positionDate
+        }
+        parsedData[code].price = price
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
         res.status(200)
         res.send('confirmed')
     } catch (error) {
@@ -480,8 +516,10 @@ app.get('/trader/confirm', async function(req,res){
 });
 
 app.get('/trader/status', async function(req,res){
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
     try {
-        const data = await fs.readFile('trader.json')
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
         const code = req.query.code.toUpperCase()
         const codeExists = code && code in parsedData && parsedData[code]
@@ -496,7 +534,6 @@ app.get('/trader/status', async function(req,res){
             }
 
         }
-        res.append('Access-Control-Allow-Origin', '*')
         res.send(parsedData)
         console.log(parsedData)
     } catch (error) {
@@ -504,3 +541,50 @@ app.get('/trader/status', async function(req,res){
         res.send(`${error.toString()}`)
     }
 });
+
+app.post('/trader/history', async function(req,res){
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
+    try {
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+        const parsedData = JSON.parse(data)
+        let code = req.body?.code || req.query.code
+        let primaryCode = req.body?.primaryCode || req.query.primaryCode
+        code = code.toUpperCase()
+        primaryCode = primaryCode.toUpperCase()
+        const peakValleyToday = req.body?.peakValleyToday || JSON.parse(req.query.peakValleyToday)
+        const codeExists = primaryCode && primaryCode in parsedData && parsedData[primaryCode]
+        res.status(202)
+        if (codeExists) {
+            const position = parsedData[code]?.position
+            
+            if (position === 'in') {
+                res.status(201)
+            }
+            if (position === 'out') {
+                res.status(200)
+            }
+
+        } else {
+            parsedData[primaryCode] = {
+                position: 'out',
+                peakValleyHistory: []
+            }
+        }
+
+        parsedData[primaryCode].peakValleyHistory.push(...peakValleyToday)
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
+        res.send(parsedData)
+        console.log(parsedData)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.post('/trader/vroom', function(req, res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    res.status(200)
+    res.send('we are here again')
+    console.log(req.query, req.body)
+})
