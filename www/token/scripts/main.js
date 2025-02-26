@@ -352,6 +352,7 @@ const token = {
             // ob.observe(document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'), {subtree: true,characterData: true, characterDataOldValue: true})
             // idaStockVision.priceStore.currentPosition.TSLA = {price: 396, date: new Date().toISOString(), position: true}; idaStockVision.positionIn.TSLA = true
             const code = codeInput.toUpperCase()
+            const projectParameters = arguments
             const decimalConvert = (val) => {
                 const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
                 const zeroString = '0'
@@ -374,6 +375,13 @@ const token = {
                 numbersAfterZERO = String(val).substring(subscript.index + 1)
                 return Number(`0.${zeroString.repeat(subEnum[subscript[0]])}${numbersAfterZERO}`)
     
+            }
+            const sanitizePrice = (val) => {
+                if (typeof val === 'string') {
+                    return val.replace('$', '')
+                }
+
+                return val
             }
             const percentageDelta = (oldNumber, newNumber, includeSign = false) => {
                 if ([oldNumber, newNumber].every((item) => typeof item !== 'number')){
@@ -429,8 +437,8 @@ const token = {
                 const nowInMilliSeconds = Date.now()
                 const nowInDateObject = new Date(nowInMilliSeconds)
                 const uploadTime = isCrypto 
-                    ? new Date(nowInMilliSeconds).setHours(23,59,0,0) 
-                    : new Date(nowInMilliSeconds).setHours(20,0,0,0)
+                    ? new Date(nowInMilliSeconds).setHours(23,59,59,0) 
+                    : new Date(nowInMilliSeconds).setHours(16,59,59,0)
                 const timeDifference = uploadTime - nowInMilliSeconds
                 if (currentTimeoutDateInMiliseconds !== undefined) {
                     currentTiemoutInDateObject = new Date(currentTimeoutDateInMiliseconds)
@@ -478,12 +486,97 @@ const token = {
                 }
                 
             }
+            const watch = () => {
+                try {
+                    const origin = location.origin
+                    const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
+                    let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver, lowMutationObserver, highMutationObserver
+                    window.idaStockVision.mutationObservers[code] = new MutationObserver(projectStockVision(...projectParameters))
+                    const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
+                        if (lowElementText !== undefined) {
+                            window.idaStockVision.priceStore.marketHighLowRange.low = decimalConvert(sanitizePrice(lowElementText))
+                        }
+                        if (highElementText !== undefined) {
+                            window.idaStockVision.priceStore.marketHighLowRange.high = decimalConvert(sanitizePrice(highElementText))
+                        }
+                    }
+                    const storeJointHighLowRange = (elementText) => {
+                        const value = elementText.split('-')
+                        window.idaStockVision.priceStore.marketHighLowRange.low = decimalConvert(sanitizePrice(value[0]))                 
+                        window.idaStockVision.priceStore.marketHighLowRange.high = decimalConvert(sanitizePrice(value[1]))
+                    }
+                    const setUpGeneralHighLowRangeMutations = () => {
+                        if (priceLowRangeElement !== null && priceHighRangeElement !== null) {
+                            storeHighLowRangeGeneral(priceLowRangeElement.innerText)
+                            storeHighLowRangeGeneral(undefined, priceHighRangeElement.innerText)
+                            lowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
+                                const lastRecord = mutationArray[mutationArray.length - 1]
+                                const targetValue = lastRecord.target.nodeValue
+                                storeHighLowRangeGeneral(targetValue)                      
+                            })
+                            highMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
+                                const lastRecord = mutationArray[mutationArray.length - 1]
+                                const targetValue = lastRecord.target.nodeValue
+                                storeHighLowRangeGeneral(undefined, targetValue)                      
+                            })
+                            lowMutationObserver.observe(priceLowRangeElement, observeOptions)
+                            highMutationObserver.observe(priceHighRangeElement, observeOptions)
+                        }
+                    }
+                    switch(true) {
+                        case origin.includes('nasdaq'):
+                        case origin.includes('google'):
+                            const websiteName = origin.includes('google') ? 'google' : 'nasdaq'
+                            priceElement = window.idaStockVision.cssSelectors[websiteName].price()
+                            priceHighAndLowRangeElement = window.idaStockVision.cssSelectors[websiteName].highLowRange()
+                           if (priceHighAndLowRangeElement !== null) {
+                               storeJointHighLowRange(priceHighAndLowRangeElement.innerText)
+                               highAndLowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
+                                    const lastRecord = mutationArray[mutationArray.length - 1]
+                                    const targetValue = lastRecord.target.nodeValue
+                                    storeJointHighLowRange(targetValue)                      
+                               })
+                               highAndLowMutationObserver.observe(priceHighAndLowRangeElement, observeOptions)
+                           }
+                           break
+                        case origin.includes('cboe'):
+                            priceElement = window.idaStockVision.cssSelectors.cboe.price()
+                            priceLowRangeElement = window.idaStockVision.cssSelectors.cboe.lowRange()
+                            priceHighRangeElement = window.idaStockVision.cssSelectors.cboe.highRange()
+                            setUpGeneralHighLowRangeMutations()
+                            break
+                        case origin.includes('webull'):
+                            priceElement = window.idaStockVision.cssSelectors.webull.price()
+                            priceLowRangeElement = window.idaStockVision.cssSelectors.webull.lowRange()
+                            priceHighRangeElement = window.idaStockVision.cssSelectors.webull.highRange()
+                            setUpGeneralHighLowRangeMutations()
+                            break
+                        case origin.includes('livecoinwatch'):
+                            priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
+                            break
+                        default:
+                            // add webull, tradingview, google finance
+                            throw new Error('website css selectors do not exist')
+                    }
+
+                    if (priceElement === null || priceElement === undefined) {
+                        throw new Error('can\'t find price')
+                    }
+                    window.idaStockVision.mutationObservers[code].observe(priceElement, observeOptions)
+                } catch (error) {
+                    console.log('Ida Trader Bot - WATCH STOCK', error)
+                }
+            }
+            const destroyCode = (code) => {
+                window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
+            }
             const traderSetUp = async (code) => {
                 if (!('idaStockVision' in window)) {
                     window.idaStockVision = {
                         positionIn: {},
                         notificationInProgress: {},
                         lastNotificationSent: {},
+                        mutationObservers: {},
                         consoleClearInstance: setInterval(()=>{console.clear()}, 1000*60*20),
                         // window.idaStockVision is deleted before function fires rendering it usless
                         windowCloseEventListener: window.addEventListener('beforeunload', uploadTodaysPriceHistory),
@@ -496,6 +589,10 @@ const token = {
                         priceStore: {
                             lastPrice: undefined,
                             previousLastPrice: undefined,
+                            marketHighLowRange: {
+                                low: undefined,
+                                high: undefined
+                            },
                             peakValleyHistory: [],
                             highestPeakAndLowestValleyToday: [],
                             currentPosition: {},
@@ -507,12 +604,53 @@ const token = {
                             percentageDelta,
                             percentageFinalAmount,
                             uploadTodaysPriceHistory,
-                            positionStatusPolling
+                            positionStatusPolling,
+                            destroyCode,
                         },
                         server: {
                             development: 'http://localhost:9000',
                             developmentNotification: 'http://10.0.0.148:9000',
                             // production: 'https://tobyexitstrategy-d8c8b00cdf74.herokuapp.com'
+                        },
+                        cssSelectors: {
+                            nasdaq: {
+                                price: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'),
+                                highLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-day-range-info'),
+                                fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span')
+                            },
+                            yahoo: {
+                                // csp locked
+                                price: () => document.querySelector("div.price > section > div > div:nth-child(1) > section > div.container > div:nth-child(1) > span"),
+                                preMarketAndAfterHoursPrice: () => document.querySelector("div.price > section > div > div:nth-child(2) > section > div.container > div:nth-child(1) > span"),
+                                highLowRange: () => document.querySelector("fin-streamer[data-field=regularMarketDayRange]"),
+                            },
+                            livecoinwatch: {
+                                price: () => document.querySelector('.coin-price-large .price'),
+                                highLowRange: () => null
+                            },
+                            cboe: {
+                                price: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(1) td:nth-child(2)'),
+                                lowRange: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(11) td:nth-child(2)'),
+                                highRange: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(12) td:nth-child(2)'),
+                            },
+                            webull: {
+                                // https only
+                                price: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div"),
+                                preMarketAndAfterHoursPrice: document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div > span"),
+                                lowRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                highRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            },
+                            tradingview: {
+                                // https only
+                                price: () => document.evaluate('//*[@id="js-category-content"]/div[1]/div[1]/div/div/div/div[3]/div[1]/div/div[1]/span[1]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            },
+                            google: {
+                                // too slow compared to nasdaq
+                                price: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[1]/div[1]/c-wiz/div/div[1]/div/div[1]/div/div[1]/div/span/div/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                preMarketAndAfterHoursPrice: document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[1]/div[1]/c-wiz/div/div[1]/div/div[2]/span[1]/span/div/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                highLowRange: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[2]/div/div[1]/div[3]/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            },
+
                         }
                     }
                 }
@@ -525,6 +663,7 @@ const token = {
                         position: false,
                     }
                     window.idaStockVision.priceStore.analysis[code] = undefined
+                    window.idaStockVision.tools[`watch_${code}`] = watch
                 }
     
                 try {
@@ -617,19 +756,30 @@ const token = {
                         anchorPrice
                     }
                     window.idaStockVision.notificationInProgress[tokenOrStockCode] = false
+                    new Notification(notificationSubject, {body: messageBody})
                     positionStatusPolling(tokenOrStockCode, true)
                 } catch (error) {
                     console.log('Ida Trader Bot - NOTIFY ERROR', error)
                 }
             }
             const updatePrices = (currentPrice, peakValleyDetected) => {
-                if (idaStockVision.priceStore.lastPrice !== currentPrice) {
-                    idaStockVision.priceStore.previousLastPrice = idaStockVision.priceStore.lastPrice
-                    idaStockVision.priceStore.lastPrice = currentPrice
-                }
+                try {
+                    const priceStore = window.idaStockVision.priceStore
+                    const {low, high} = priceStore.marketHighLowRange
+                    const isHighLowRangeValid = [low, high].every((item) => typeof item === 'number' && item > 0)
+                    // Reduce market noise from outlier price trades(pre-market & after market hours especially)
+                    const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice >= low && currentPrice <= high) : true
 
-                if (peakValleyDetected !== undefined) {
-                    idaStockVision.priceStore.peakValleyHistory.push(peakValleyDetected)
+                    if (priceStore.lastPrice !== currentPrice && isCurrentPriceWithinMarketRange) {
+                        priceStore.previousLastPrice = priceStore.lastPrice
+                        priceStore.lastPrice = currentPrice
+                    }
+    
+                    if (peakValleyDetected !== undefined) {
+                        priceStore.peakValleyHistory.push(peakValleyDetected)
+                    }
+                } catch (error) {
+                    console.log('Ida Trader Bot - UPDATE PRICES', error)
                 }
             }
             /**
