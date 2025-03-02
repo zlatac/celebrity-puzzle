@@ -1206,8 +1206,8 @@ const token = {
                     enter: currentPrice >= entryPrice,
                     exit: currentPrice <= exitPrice,
                 }
-                const enterDecision = isCrypto ? cryptoDecision.enter : stockDecision.enter
-                const exitDecision = isCrypto ? cryptoDecision.exit : stockDecision.exit
+                const enterDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.enter : stockDecision.enter
+                const exitDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.exit : stockDecision.exit
                 
                 let color = 'red'
                 let message = `[${code}] DO NOTHING AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
