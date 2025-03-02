@@ -433,6 +433,7 @@ app.get('/paySecret', async function(req,res){
 });
 
 const trader = {
+    // For namecheap nodejs setup all api paths must be prepended with the namecheap nodejs app url
     constants: {
         IN: 'in',
         OUT: 'out'
