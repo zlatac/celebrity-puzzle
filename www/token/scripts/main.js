@@ -1188,14 +1188,13 @@ const token = {
                     if (anchor !== undefined){
                         notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
                         notificationBody = notificationBody.concat(`Anchor Type: ${anchor.type} \r\n`)
-                        notificationBody = window.idaStockVision.positionIn[code] 
-                            ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice, true)} \r\n`)
-                            : notificationBody
-                        notificationBody = analysis.isCurrentPositionStuck
-                            ? notificationBody.concat(`Stuck: true \r\n`)
-                            : notificationBody
-
                     }
+                    notificationBody = window.idaStockVision.positionIn[code] 
+                        ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice, true)} \r\n`)
+                        : notificationBody
+                    notificationBody = analysis.isCurrentPositionStuck
+                        ? notificationBody.concat(`Stuck: true \r\n`)
+                        : notificationBody
                 }
                 const cryptoDecision = {
                     // No need for <= to logic since probability of exact match is very low
