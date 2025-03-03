@@ -912,6 +912,7 @@ const token = {
             }
             const destroyCode = (code) => {
                 window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
+                delete window.idaStockVision.positionIn[code.toUpperCase()]
             }
             const traderSetUp = async (code) => {
                 if (!('idaStockVision' in window)) {
@@ -1034,9 +1035,6 @@ const token = {
                     if (code in data && data[code].date && data[code].price) {
                         window.idaStockVision.priceStore.currentPosition[code].date = data[code]?.date
                         window.idaStockVision.priceStore.currentPosition[code].price = data[code]?.price
-                        if (isCrypto && window.idaStockVision.priceStore.currentPosition[code].position) {
-                            window.idaStockVision.priceStore.currentPosition[code].date = undefined
-                        }
                     }
                     if (
                         primaryCode in data && 
