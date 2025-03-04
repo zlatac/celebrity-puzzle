@@ -754,7 +754,6 @@ const token = {
                 return
             }
             const uploadTodaysPriceHistory = async (code = window.idaStockVision.code, squashTodaysHistory = true) => {
-                // use setTimeout from within traderSetp to update at 8pm for non crypto and  11:59pm for crypto
                 try {
                     const primaryCode = code.split('_')[0]
                     const priceStore = window.idaStockVision.priceStore
@@ -771,6 +770,8 @@ const token = {
                     })
                     if (squashTodaysHistory) {
                         priceStore.peakValleyHistory = priceStore.analysis[code].squashTodaysPeakValleyHistory
+                        // Make sure that lastPrice does not become a peak or valley in the next trading session
+                        priceStore.lastPrice = priceStore.previousLastPrice = undefined
                     }
                 } catch (error) {
                     console.log('Ida Trader Bot - UPLOAD TODAYS PRICE HISTORY', error)
@@ -784,7 +785,7 @@ const token = {
                 const nowInDateObject = new Date(nowInMilliSeconds)
                 const uploadTime = isCrypto 
                     ? new Date(nowInMilliSeconds).setHours(23,59,59,0) 
-                    : new Date(nowInMilliSeconds).setHours(16,59,59,0)
+                    : new Date(nowInMilliSeconds).setHours(15,59,59,0)
                 const timeDifference = uploadTime - nowInMilliSeconds
                 if (currentTimeoutDateInMiliseconds !== undefined) {
                     currentTiemoutInDateObject = new Date(currentTimeoutDateInMiliseconds)
