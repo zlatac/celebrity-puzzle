@@ -566,7 +566,10 @@ const token = {
                     if (this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
                         return
                     }
-                    const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => item.epochDate > this.closestHighestPeak.epochDate)
+                    const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
+                    const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => {
+                        return (item.epochDate > this.closestHighestPeak.epochDate) && (item.epochDate > currentPositionDate)
+                    })
                     const prices = valleysFromClosestHighestPeak.map((item) => item.price)
                     const lowestPrice = Math.min(...prices)
                     const lowestPriceIndex = prices.lastIndexOf(lowestPrice)
@@ -913,6 +916,9 @@ const token = {
             const destroyCode = (code) => {
                 window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
                 delete window.idaStockVision.positionIn[code.toUpperCase()]
+            }
+            const pauseWatchCode = (code) => {
+                window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
             }
             const traderSetUp = async (code) => {
                 if (!('idaStockVision' in window)) {
