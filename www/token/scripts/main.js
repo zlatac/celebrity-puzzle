@@ -521,7 +521,7 @@ const token = {
                     const halfEntryThreshold = this._entryThreshold/2
                     const halfEntryThresholdPrice = PriceAnalysis.percentageFinalAmount(this._currentPosition.price, halfEntryThreshold, true)
                     
-                    return (this._currentPrice.price <= halfEntryThresholdPrice) || (this._currentPrice.epochDate > fullDayAfterCurrentPosition
+                    return (this._currentPrice.price <= halfEntryThresholdPrice) || (this._currentPrice.epochDate >= fullDayAfterCurrentPosition
                         && this._currentPrice.price <= this._currentPosition.price)
 
                 }
@@ -1176,7 +1176,7 @@ const token = {
                     const currentPosition = priceStore.currentPosition[code]
                     const peakValleyDetected = peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                     updatePrices(currentPrice, peakValleyDetected)
-                    analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, entryPercentage, exitPercentage)
+                    analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage)
                     priceStore.analysis[code] = analysis
                     entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentage, exitPercentage)
                     exitPrice = analysis.isCurrentPositionStuck ? currentPrice : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
