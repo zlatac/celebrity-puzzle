@@ -957,6 +957,7 @@ const token = {
                             uploadTodaysPriceHistory,
                             positionStatusPolling,
                             destroyCode,
+                            pauseWatchCode,
                         },
                         server: {
                             // development: 'http://localhost:9000',
