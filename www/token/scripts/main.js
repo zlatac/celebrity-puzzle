@@ -1,3 +1,10 @@
+ //@ts-check
+/**
+ * @typedef { import("globals") }
+ * @typedef { import("token").IPriceHistory } PriceHistory
+ * @typedef { import("token").IPrice } Price
+ * @typedef { import("token").IPosition } Position
+ */
 const serviceProvider = {
     data: function(){
         return{
@@ -341,6 +348,16 @@ const token = {
             const value = $event.target.value.replace(/,/g, '')
             item.price = this.$options.filters.numberFormat(value, 100)
         },
+        /**
+         * projectStockVision
+         * @param {string} codeInput 
+         * @param {number | undefined} manualEntryPrice 
+         * @param {number | undefined} manualExitPrice 
+         * @param {boolean} isCrypto 
+         * @param {number} entryPercentage 
+         * @param {number} exitPercentage 
+         * @returns {MutationCallback}
+         */
         projectStockVision(codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage) {
             // Use sessionStorage to separate concern for a stock code browser session
             /** livecoinwatch.com */
@@ -355,26 +372,44 @@ const token = {
             const projectParameters = arguments
             class PriceAnalysis {
                 _peakValleyHistory;
+                /** @type {Price} */
                 _currentPrice;
                 _currentPosition;
+                /** @type {boolean} _isCrypto */
                 _isCrypto;
+                /** @type {number} _twentyFourHoursInMiliSeconds */
                 _twentyFourHoursInMiliSeconds = 1000*60*60*24
+                /** @type {true} IN */
                 static IN = true
+                /** @type {false} OUT */
                 static OUT = false
+                /** @type {'peak'} PEAK */
                 static PEAK = 'peak'
+                /** @type {'valley'} VALLEY */
                 static VALLEY = 'valley'
 
+                /**
+                 * 
+                 * @param {PriceHistory[]} history 
+                 * @param {number} currentPrice 
+                 * @param {Position} currentPosition 
+                 * @param {boolean} isCrypto 
+                 * @param {number} entryThreshold 
+                 * @param {number} exitThreshold 
+                 */
                 constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold) {
                     try {
+                        const now = Date.now()
                         this._isCrypto = isCrypto
                         this._entryThreshold = entryThreshold
                         this._exitThreshold = exitThreshold
                         this._peakValleyHistory = Array.from(history)
                         this._currentPrice = {
                             price: currentPrice,
-                            epochDate: Date.now()
+                            epochDate: now,
+                            date: new Date(now).toISOString()
                         }
-                        this._currentPrice.date = new Date(this._currentPrice.epochDate).toISOString()
+                        // this._currentPrice.date = new Date(this._currentPrice.epochDate).toISOString()
                         this._currentPosition = currentPosition
                         // this._currentPosition = {date: '2025-01-16T05:11:22.719Z', price: 5, position: PriceAnalysis.IN}
                         if (this.dateExistsForCurrrentPosition) {
@@ -387,6 +422,7 @@ const token = {
 
                 }
 
+                /** @return {PriceHistory[]} peakValleyProgressionOrder */
                 get peakValleyProgressionOrder() {
                     return this._peakValleyHistory.map((item) => {
                         item.epochDate = this.transformDateToEpochMiliseconds(item.date)
@@ -500,7 +536,7 @@ const token = {
                     // const newPeakValleyHistory = Array.from(this.peakValleyBeforeToday).concat(this.highestPeakAndLowestValleyToday)
                                         
                     // return newPeakValleyHistory
-                    return
+                    return undefined
                 }
 
                 get squashTodaysPeakValleyHistory() {
@@ -510,30 +546,39 @@ const token = {
                 }
 
                 get isCurrentPositionStuck() {
-                    if (this._currentPosition.position !== PriceAnalysis.IN 
+                    if (this._currentPosition === undefined
+                        || this._currentPrice === undefined
+                        || this._entryThreshold === undefined
+                        || this._currentPosition.position !== PriceAnalysis.IN 
                         || !this.dateExistsForCurrrentPosition
                         || typeof this._currentPosition.price !== 'number'
                     ) {
                         return false
                     }
                     
+                    // to-do: optimize to deal with full day after a friday so its 24 hours into monday
                     const fullDayAfterCurrentPosition = this._currentPosition.epochDate + this._twentyFourHoursInMiliSeconds
-                    const halfEntryThreshold = this._entryThreshold/2
-                    const halfEntryThresholdPrice = PriceAnalysis.percentageFinalAmount(this._currentPosition.price, halfEntryThreshold, true)
+                    const stuckThreshold = 1 // 100%
+                    const stuckFromEntryThreshold = this._entryThreshold*stuckThreshold
+                    const stuckFromEntryThresholdPrice = PriceAnalysis.percentageFinalAmount(this._currentPosition.price, stuckFromEntryThreshold, true)
+                    const fullDayHasPassedFromCurrentPosition = this._currentPrice.epochDate >= fullDayAfterCurrentPosition
+                    // const isCurrentPriceLessThanCurrentPositionPrice = this._currentPrice.price <= this._currentPosition.price
+                    const isCurrentPriceLessThanStuckFromEntryThresholdPrice = this._currentPrice.price <= stuckFromEntryThresholdPrice
+                    // Goal is to have the right amount of loss threshold to give us enough room for having more long term wins than losses
+                    const positionIsStuck = fullDayHasPassedFromCurrentPosition && isCurrentPriceLessThanStuckFromEntryThresholdPrice
                     
-                    return (this._currentPrice.price <= halfEntryThresholdPrice) || (this._currentPrice.epochDate >= fullDayAfterCurrentPosition
-                        && this._currentPrice.price <= this._currentPosition.price)
+                    return positionIsStuck
 
                 }
 
-                findAnchorPeak(recentPosition) {
+                findAnchorPeak() {
                     // filter peaks between recentPosition & currentPrice dates
                     // search for highest peak
                     // from highest peak make sure negative slope between peak and current price
                     // from recentPosition price make sure positive slope between it and current price
                     // logic not met do nothing and keep watching
                     // Note current position date & price needed for this function to work
-                    if (this._currentPosition.position !== PriceAnalysis.IN || !this.dateExistsForCurrrentPosition) {
+                    if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.IN || !this.dateExistsForCurrrentPosition) {
                         return
                     }
 
@@ -557,13 +602,13 @@ const token = {
 
                 }
 
-                findAnchorValley(recentPosition) {
+                findAnchorValley() {
                     // find closest highest peak
                     // from closest highest peak date search for deepest valley
                     // from deepest valley make sure positive slope between valley price and current price
                     // logic not met do nothing and keep watching
                                         
-                    if (this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
+                    if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
                         return
                     }
                     const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
@@ -591,6 +636,7 @@ const token = {
                     return this.findAnchorValley()
                 }
 
+                /** @param {string} dateISOString */
                 transformDateToEpochMiliseconds(dateISOString) {
                     // Make sure that you append stock market closing hour and ISO format [T00:00:00]
                     // for non ISO format dates so parse method uses local timezone automatically
@@ -601,6 +647,12 @@ const token = {
                     return undefined
                 }
 
+                /**
+                 * 
+                 * @param {PriceHistory} anchorPrice 
+                 * @param {Price} currentPrice 
+                 * @returns {{value: number; positive: boolean; negative: boolean;} | undefined}
+                 */
                 priceSlope(anchorPrice, currentPrice) {
                     if ([anchorPrice, currentPrice].some((item) => item === undefined)) {
                         return
@@ -620,6 +672,13 @@ const token = {
                     // each max price for each past day range gets a point
                     // the max price with the highest point we use (in edge case of multiple highest point we use the first one)
 
+                    /**
+                     * 
+                     * @param {number} dayToDeductFromInMiliSeconds 
+                     * @param {number} daysToDeduct 
+                     * @param {boolean} isCrypto 
+                     * @returns {number}
+                     */
                     const shiftDateFromWeekend = (dayToDeductFromInMiliSeconds, daysToDeduct, isCrypto) => {
                         // const dayToDeductFromInMiliSeconds = this.transformDateToEpochMiliseconds(dayToDeductFromString)
                         const twentyFourHoursInMiliSeconds = 1000*60*60*24
@@ -694,12 +753,24 @@ const token = {
                     return
                 }
 
+                /**
+                 * 
+                 * @param {number} startAmount 
+                 * @param {number} percentageAmount 
+                 * @param {boolean} negative 
+                 * @returns {number}
+                 */
                 static percentageFinalAmount(startAmount, percentageAmount, negative = false) {
                     const sign  = negative === true ? -1 : 1
                     return startAmount*(1 + (sign * percentageAmount/100))
                 }
                 
             }
+            /**
+             * 
+             * @param {string} val 
+             * @returns {number}
+             */
             const decimalConvert = (val) => {
                 const subscript = String(val).match(/₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/)
                 const zeroString = '0'
@@ -723,6 +794,11 @@ const token = {
                 return Number(`0.${zeroString.repeat(subEnum[subscript[0]])}${numbersAfterZERO}`)
     
             }
+            /**
+             * 
+             * @param {string} val 
+             * @returns {string}
+             */
             const sanitizePrice = (val) => {
                 if (typeof val === 'string') {
                     return val.replace('$', '')
@@ -730,6 +806,13 @@ const token = {
 
                 return val
             }
+            /**
+             * 
+             * @param {number} oldNumber 
+             * @param {number} newNumber 
+             * @param {boolean} includeSign 
+             * @returns {number | undefined}
+             */
             const percentageDelta = (oldNumber, newNumber, includeSign = false) => {
                 if ([oldNumber, newNumber].every((item) => typeof item !== 'number')){
                     return
@@ -741,6 +824,13 @@ const token = {
                 
                 return Math.abs(percentage)
             }
+            /**
+             * 
+             * @param {PriceHistory | undefined} anchor 
+             * @param {number} entryThreshold 
+             * @param {number} exitThreshold 
+             * @returns {number | undefined}
+             */
             const applyEntryExitThresholdToAnchor = (anchor, entryThreshold, exitThreshold) => {
                 if (anchor !== undefined && 'price' in anchor && 'type' in anchor) {
                     if (anchor.type === PriceAnalysis.PEAK) {
@@ -753,6 +843,12 @@ const token = {
 
                 return
             }
+            /**
+             * 
+             * @param {string} code 
+             * @param {boolean} squashTodaysHistory 
+             * @returns {Promise<void>}
+             */
             const uploadTodaysPriceHistory = async (code = window.idaStockVision.code, squashTodaysHistory = true) => {
                 try {
                     const primaryCode = code.split('_')[0]
@@ -778,6 +874,13 @@ const token = {
                 }
                 
             }
+            /**
+             * 
+             * @param {boolean} isCrypto 
+             * @param {number} currentTimeoutDateInMiliseconds 
+             * @param {Function} callback 
+             * @returns {number | undefined}
+             */
             const setUploadPricesTimeout = (isCrypto, currentTimeoutDateInMiliseconds, callback) => {
                 let isSameDate = false
                 let currentTiemoutInDateObject
@@ -797,6 +900,10 @@ const token = {
                 }
 
             }
+            /**
+             * @param {string} code
+             * @returns {Promise<Response>}
+             */
             const statusHTTP = (code) => {
                 const queryParams = new URLSearchParams()
                 queryParams.append('code', code)
@@ -805,6 +912,12 @@ const token = {
                     mode: 'cors',
                 })
             }
+            /**
+             * 
+             * @param {string} code 
+             * @param {boolean} restartCounter 
+             * @returns {Promise<void>}
+             */
             const positionStatusPolling = async (code = window.idaStockVision.code, restartCounter = false) => {
                 try {
                     if (restartCounter) {
@@ -814,7 +927,7 @@ const token = {
                     const resp = await statusHTTP(code)
                     const data = await resp.json()
                     const codes = Object.keys(window.idaStockVision.positionIn)
-                    const timeOutSeconds = idaStockVision.statusTimeoutList.at(window.idaStockVision.statusCounter)
+                    const timeOutSeconds = window.idaStockVision.statusTimeoutList.at(window.idaStockVision.statusCounter)
                     codes.forEach((item) => {
                         if (item in data) {
                             const position = data[item].position === 'in' ? true : false
@@ -838,7 +951,7 @@ const token = {
                     const origin = location.origin
                     const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
                     let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver, lowMutationObserver, highMutationObserver
-                    window.idaStockVision.mutationObservers[code] = new MutationObserver(projectStockVision(...projectParameters))
+                    window.idaStockVision.mutationObservers[code] = new MutationObserver(window.projectStockVision(...projectParameters))
                     const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
                         if (lowElementText !== undefined) {
                             window.idaStockVision.priceStore.marketHighLowRange.low = decimalConvert(sanitizePrice(lowElementText))
@@ -914,13 +1027,25 @@ const token = {
                     console.log('Ida Trader Bot - WATCH STOCK', error)
                 }
             }
+            /**
+             * 
+             * @param {string} code 
+             */
             const destroyCode = (code) => {
                 window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
                 delete window.idaStockVision.positionIn[code.toUpperCase()]
             }
+            /**
+             * 
+             * @param {string} code 
+             */
             const pauseWatchCode = (code) => {
                 window.idaStockVision.mutationObservers[code.toUpperCase()].disconnect()
             }
+            /**
+             * 
+             * @param {string} code 
+             */
             const traderSetUp = async (code) => {
                 if (!('idaStockVision' in window)) {
                     window.idaStockVision = {
@@ -988,7 +1113,7 @@ const token = {
                             webull: {
                                 // https only
                                 price: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div"),
-                                preMarketAndAfterHoursPrice: document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div > span"),
+                                preMarketAndAfterHoursPrice: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div > span"),
                                 lowRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                                 highRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                             },
@@ -1056,6 +1181,15 @@ const token = {
                     console.log('Ida Trader Bot - STATUS ERROR', error)
                 }
             }
+            /**
+             * 
+             * @param {string} tokenOrStockCode 
+             * @param {string} messageBody 
+             * @param {number} currentPrice 
+             * @param {string} action 
+             * @param {number | string} anchorPrice 
+             * @returns {Promise<void>}
+             */
             const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice) => {
                 const priceDifferencePercentage = window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
                     ? percentageDelta(window.idaStockVision.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
@@ -1111,6 +1245,11 @@ const token = {
                     console.log('Ida Trader Bot - NOTIFY ERROR', error)
                 }
             }
+            /**
+             * 
+             * @param {number} currentPrice 
+             * @param {PriceHistory | undefined} peakValleyDetected 
+             */
             const updatePrices = (currentPrice, peakValleyDetected) => {
                 try {
                     const priceStore = window.idaStockVision.priceStore
@@ -1136,12 +1275,12 @@ const token = {
              * @param {number} currentPrice 
              * @param {number} lastPrice 
              * @param {number} previousLastPrice 
-             * @returns {undefined | {type: string; date: string; price: number;}}
+             * @returns {undefined | PriceHistory}
              */
             const peakValleyDetection = (currentPrice, lastPrice, previousLastPrice) => {
                 const payload = {
                     date: new Date().toISOString(),
-                    price: lastPrice
+                    price: lastPrice,
                 }
                 if (lastPrice !== undefined && previousLastPrice !== undefined) {
                     if (lastPrice >= previousLastPrice && lastPrice > currentPrice) {
@@ -1170,6 +1309,7 @@ const token = {
                 let entryPrice = manualEntryPrice
                 let exitPrice = manualExitPrice
                 let analysis, anchor
+                /** @type {number | string} */
                 let anchorPrice = ''
                 let notificationBody = ''
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
@@ -1217,7 +1357,7 @@ const token = {
                 let color = 'red'
                 let message = `[${code}] DO NOTHING AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
                 confirmationQueryParams.append('code', code)
-                confirmationQueryParams.append('price', currentPrice)
+                confirmationQueryParams.append('price', String(currentPrice))
 
                 if (entryPrice !== undefined && enterDecision) {
                     // No need for equals to logic since probabiloty of exact match is very low
