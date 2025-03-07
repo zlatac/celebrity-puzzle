@@ -558,6 +558,9 @@ app.post('/trader/history', async function(req,res){
         res.status(202)
         if (codeExists) {
             const position = parsedData[code]?.position
+            if (!Array.isArray(parsedData[primaryCode].peakValleyHistory)) {
+                parsedData[primaryCode].peakValleyHistory = []
+            }
             
             if (position === 'in') {
                 res.status(201)

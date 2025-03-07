@@ -889,7 +889,7 @@ const token = {
                 const nowInDateObject = new Date(nowInMilliSeconds)
                 const uploadTime = isCrypto 
                     ? new Date(nowInMilliSeconds).setHours(23,59,59,0) 
-                    : new Date(nowInMilliSeconds).setHours(15,59,59,0)
+                    : new Date(nowInMilliSeconds).setHours(16,10,0,0) // buffer needed for timezone
                 const timeDifference = uploadTime - nowInMilliSeconds
                 if (currentTimeoutDateInMiliseconds !== undefined) {
                     currentTiemoutInDateObject = new Date(currentTimeoutDateInMiliseconds)
