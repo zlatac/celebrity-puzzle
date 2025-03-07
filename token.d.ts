@@ -15,17 +15,31 @@ export interface IPosition extends IPrice {
   position: boolean;
 }
 
+export interface IPriceStore {
+  lastPrice: undefined | number;
+  previousLastPrice: undefined | number;
+  marketHighLowRange: {
+      low: undefined | number;
+      high: undefined | number;
+  };
+  peakValleyHistory: IPriceHistory[];
+  highestPeakAndLowestValleyToday: IPriceHistory[];
+  currentPosition: IPosition;
+  analysis: {[key]: Function};
+  uploadTodaysPriceTime: undefined | number;
+}
+
 export interface IStockVision {
   positionIn: {[key:string]: boolean};
   notificationInProgress: {[key:string]: boolean};
   lastNotificationSent: {
-    [key]: {
+    [key:string]: {
       tokenOrStockCode: string;
       message: string;
       currentPrice: number;
       action: string;
       anchorPrice: number | string;
-    }
+    } | {}
   };
   mutationObservers: {[key:string]: MutationObserver};
   consoleClearInstance: number;
@@ -36,19 +50,7 @@ export interface IStockVision {
   statusCounter: number;
   serverUrl: string;
   notificationServerUrl: string;
-  priceStore: {
-    lastPrice: undefined | number;
-    previousLastPrice: undefined | number;
-    marketHighLowRange: {
-        low: undefined | number;
-        high: undefined | number;
-    };
-    peakValleyHistory: IPriceHistory[];
-    highestPeakAndLowestValleyToday: IPriceHistory[];
-    currentPosition: IPosition;
-    analysis: {[key]: Function};
-    uploadTodaysPriceTime: undefined | number;
-  }
+  priceStore: IPriceStore
   tools: {[key:string]: Function}
   server: {[key:string]: string}
   cssSelectors: {[key:string]: {[key]: Function}}

@@ -867,7 +867,8 @@ const token = {
                     if (squashTodaysHistory) {
                         priceStore.peakValleyHistory = priceStore.analysis[code].squashTodaysPeakValleyHistory
                         // Make sure that lastPrice does not become a peak or valley in the next trading session
-                        priceStore.lastPrice = priceStore.previousLastPrice = undefined
+                        priceStore.lastPrice = undefined
+                        priceStore.previousLastPrice = undefined
                     }
                 } catch (error) {
                     console.log('Ida Trader Bot - UPLOAD TODAYS PRICE HISTORY', error)
@@ -1191,7 +1192,7 @@ const token = {
              * @returns {Promise<void>}
              */
             const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice) => {
-                const priceDifferencePercentage = window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
+                const priceDifferencePercentage = 'currentPrice' in window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
                     ? percentageDelta(window.idaStockVision.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
                     : 0
                 const percentageThreshold = 5
