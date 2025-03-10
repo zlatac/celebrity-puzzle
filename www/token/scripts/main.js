@@ -556,8 +556,7 @@ const token = {
                         return false
                     }
                     
-                    // to-do: optimize to deal with full day after a friday so its 24 hours into monday
-                    const fullDayAfterCurrentPosition = this._currentPosition.epochDate + this._twentyFourHoursInMiliSeconds
+                    const fullDayAfterCurrentPosition = PriceAnalysis.addBusinessDaysToEpochDate(this._currentPosition.epochDate, 1, !this._isCrypto)
                     const stuckThreshold = 1 // 100%
                     const stuckFromEntryThreshold = this._entryThreshold*stuckThreshold
                     const stuckFromEntryThresholdPrice = PriceAnalysis.percentageFinalAmount(this._currentPosition.price, stuckFromEntryThreshold, true)
@@ -649,7 +648,7 @@ const token = {
 
                 /**
                  * 
-                 * @param {PriceHistory} anchorPrice 
+                 * @param {Price} anchorPrice 
                  * @param {Price} currentPrice 
                  * @returns {{value: number; positive: boolean; negative: boolean;} | undefined}
                  */
@@ -751,6 +750,42 @@ const token = {
                     }
 
                     return
+                }
+
+                /**
+                 * 
+                 * @param {number} epochDate 
+                 * @param {number} daysNumber 
+                 * @param {boolean} skipWeekend 
+                 * @returns {number}
+                 */
+                static addBusinessDaysToEpochDate(epochDate, daysNumber, skipWeekend = true) {
+                    const date = new Date(epochDate)
+                    const saturday = 6
+                    const friday = 5
+                    const sunday = 0
+                    const weekendDays = [saturday,sunday]
+                    const triggerDays = [friday,saturday]
+                    const dateDayIsWeekend = weekendDays.includes(date.getDay())
+                    const twentyFourHoursInMiliSeconds = 1000*60*60*24
+                    let dateForSkipWeekend = epochDate
+                    if (skipWeekend === false) {
+                        return epochDate + (twentyFourHoursInMiliSeconds * daysNumber)
+                    }
+                    if (skipWeekend === true) {
+                        for (let i=0; i < daysNumber; i++) {
+                            const dateInstance = new Date(dateForSkipWeekend)
+                            const day = dateInstance.getDay()
+                            const triggerSkip = triggerDays.includes(dateInstance.getDay())
+                            const extendDaysBy = day === friday ? 2 : 1
+                            if (triggerSkip) {
+                                dateForSkipWeekend += twentyFourHoursInMiliSeconds * extendDaysBy
+                            }
+                            dateForSkipWeekend += twentyFourHoursInMiliSeconds
+                        }
+                        return dateForSkipWeekend
+                    }
+
                 }
 
                 /**
