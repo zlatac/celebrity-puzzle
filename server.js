@@ -438,6 +438,12 @@ const trader = {
         IN: 'in',
         OUT: 'out'
     },
+    asyncOperation: {
+        historyTimeout: undefined,
+        history: [],
+        confirmTimeout: undefined,
+        confirm: [],
+    },
     methods: {
         checkOrSetupFileStorage: async () => {
             try {
@@ -446,35 +452,77 @@ const trader = {
                 // Create file to store trader api data
                 await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify({}))
             }
+        },
+        processHistories: async () => {
+            try {
+                const historyAmount = trader.asyncOperation.history.length
+                if (historyAmount === 0) {
+                    return
+                }
+                const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+                const parsedData = JSON.parse(data)
+                for (let i = 0; i < historyAmount; i++) {
+                    const item = trader.asyncOperation.history[i]
+                    const position = parsedData[item.code]?.position
+                    const codeExists = item.primaryCode && item.primaryCode in parsedData && parsedData[item.primaryCode]
+                    if (codeExists) {
+                        if (!Array.isArray(parsedData[item.primaryCode].peakValleyHistory)) {
+                            parsedData[item.primaryCode].peakValleyHistory = []
+                        } 
+            
+                    } else {
+                        parsedData[item.primaryCode] = {
+                            position: 'out',
+                            peakValleyHistory: []
+                        }
+                    }
+            
+                    parsedData[item.primaryCode].peakValleyHistory.push(...item.peakValleyToday)
+                }
+                await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
+                trader.asyncOperation.history.splice(0, historyAmount)
+                console.log('history set')
+            } catch (error) {
+                // console.log('Failed to write history')
+                console.log(error)
+            }
+        },
+        processConfrimations: async () => {
+            try {
+                const confirmationAmount = trader.asyncOperation.confirm.length
+                if (confirmationAmount === 0) {
+                    return
+                }
+                const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+                const parsedData = JSON.parse(data)
+                for (let i = 0; i < confirmationAmount; i++) {
+                    const item = trader.asyncOperation.confirm[i]
+                    if (!(item.code in parsedData)) {
+                        parsedData[item.code] = {}
+                    }
+                    parsedData[item.code].position = item.position
+                    parsedData[item.code].date = item.payloadDate
+                    parsedData[item.code].price = item.price  
+                }
+                await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
+                trader.asyncOperation.confirm.splice(0, confirmationAmount)
+                console.log('confirmation set')
+            } catch (error) {
+                console.log(error)
+            }
         }
+
     }
 }
 
 app.post('/trader/notify', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
-    await trader.methods.checkOrSetupFileStorage()
     try {
-        const response = await axios.post(`https://styleminions.co/api/trader/notify`,{
+        const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
             subject: req.query.subject,
             message: req.query.message,
         })
-        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
-        const parsedData = JSON.parse(data)
-        const code = req.query.code.toUpperCase()
-        const codeExists = code && code in parsedData && parsedData[code]
-        // notification optimize by updating notification price and use in client on status setup
-        res.status(202)
-        if (codeExists) {
-            const position = parsedData[code].position
-            if (position === 'in') {
-                res.status(201)
-            }
-            if (position === 'out') {
-                res.status(200)
-            }
-
-        }
-        res.send(parsedData)   
+        res.sendStatus(202)  
     } catch (error) {
         res.status(404)
         res.send(`${error.toString()}`)    
@@ -483,6 +531,7 @@ app.post('/trader/notify', async function(req,res){
 
 app.get('/trader/confirm', async function(req,res){
     try {
+        let payloadDate = new Date().toISOString()
         const code = req.query.code.toUpperCase()
         const position = req.query.position
         const positionDate = req.query.date
@@ -501,13 +550,13 @@ app.get('/trader/confirm', async function(req,res){
         if (parsedData[code].position === position && parsedData[code].price === price) {
             throw new Error('already confirmed')
         }
-        parsedData[code].position = position
-        parsedData[code].date = new Date().toISOString()
         if (positionDate !== undefined) {
-            parsedData[code].date = positionDate
+            payloadDate = positionDate
         }
-        parsedData[code].price = price
-        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
+        trader.asyncOperation.confirm.push({code, price, position, payloadDate})
+        clearTimeout(trader.asyncOperation.confirmTimeout)
+        trader.asyncOperation.confirmTimeout = setTimeout(trader.methods.processConfrimations, 500)
+        
         res.status(200)
         res.send('confirmed')
     } catch (error) {
@@ -536,7 +585,6 @@ app.get('/trader/status', async function(req,res){
 
         }
         res.send(parsedData)
-        console.log(parsedData)
     } catch (error) {
         res.status(404)
         res.send(`${error.toString()}`)
@@ -547,39 +595,15 @@ app.post('/trader/history', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
     await trader.methods.checkOrSetupFileStorage()
     try {
-        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
-        const parsedData = JSON.parse(data)
         let code = req.body?.code || req.query.code
         let primaryCode = req.body?.primaryCode || req.query.primaryCode
         code = code.toUpperCase()
         primaryCode = primaryCode.toUpperCase()
         const peakValleyToday = req.body?.peakValleyToday || JSON.parse(req.query.peakValleyToday)
-        const codeExists = primaryCode && primaryCode in parsedData && parsedData[primaryCode]
-        res.status(202)
-        if (codeExists) {
-            const position = parsedData[code]?.position
-            if (!Array.isArray(parsedData[primaryCode].peakValleyHistory)) {
-                parsedData[primaryCode].peakValleyHistory = []
-            }
-            
-            if (position === 'in') {
-                res.status(201)
-            }
-            if (position === 'out') {
-                res.status(200)
-            }
-
-        } else {
-            parsedData[primaryCode] = {
-                position: 'out',
-                peakValleyHistory: []
-            }
-        }
-
-        parsedData[primaryCode].peakValleyHistory.push(...peakValleyToday)
-        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
-        res.send(parsedData)
-        console.log(parsedData)
+        trader.asyncOperation.history.push({code,primaryCode,peakValleyToday})
+        clearTimeout(trader.asyncOperation.historyTimeout)
+        trader.asyncOperation.historyTimeout = setTimeout(trader.methods.processHistories, 500)
+        res.sendStatus(202)
     } catch (error) {
         res.status(404)
         res.send(`${error.toString()}`)
