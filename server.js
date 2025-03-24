@@ -445,12 +445,12 @@ const trader = {
         confirm: [],
     },
     methods: {
-        checkOrSetupFileStorage: async () => {
+        checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE) => {
             try {
-                const fileExist = await fs.lstat(process.env.STOCK_VISION_STORAGE_FILE)
+                const fileExist = await fs.lstat(file)
             } catch (error) {
                 // Create file to store trader api data
-                await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify({}))
+                await fs.writeFile(file, JSON.stringify({}))
             }
         },
         processHistories: async () => {
@@ -610,9 +610,52 @@ app.post('/trader/history', async function(req,res){
     }
 });
 
-app.post('/trader/vroom', function(req, res) {
+app.put('/trader/history', async function(req, res) {
     res.append('Access-Control-Allow-Origin', '*')
-    res.status(200)
-    res.send('we are here again')
-    console.log(req.query, req.body)
+    /**
+     * For production
+     * 1. update the checkOrSetupFileStorage method
+     * 2. set ENV name in production for STOCK_VISION_STORAGE_RESERVE_FILE
+     * 3. add new put route
+     * 4. restart node application
+     */
+    await trader.methods.checkOrSetupFileStorage(process.env.STOCK_VISION_STORAGE_RESERVE_FILE)
+    try {
+        const midnightFromNowInMilliseconds = new Date().setHours(0,0,0,0)
+        const thirtyDaysFromNow = midnightFromNowInMilliseconds - 1000*60*60*24*31
+        const currentData = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+        const reserveData = await fs.readFile(process.env.STOCK_VISION_STORAGE_RESERVE_FILE)
+        const parsedCurrentData = JSON.parse(currentData)
+        const parsedReserveData = JSON.parse(reserveData)
+        const codeKeys = Object.keys(parsedCurrentData)
+        codeKeys.forEach(code => {
+            if ('peakValleyHistory' in parsedCurrentData[code]) {
+                const history = parsedCurrentData[code].peakValleyHistory.map((item) => {
+                    item.epochDate = Date.parse(item.date)
+                    return item
+                })
+                const reserve = history.filter((item) => item.epochDate < thirtyDaysFromNow).map((item) => {
+                    delete item.epochDate
+                    return item
+                })
+                const current = history.filter((item) => item.epochDate > thirtyDaysFromNow).map((item) => {
+                    delete item.epochDate
+                    return item
+                })
+                if (!(code in parsedReserveData)) {
+                    parsedReserveData[code] = []
+                }
+                parsedCurrentData[code].peakValleyHistory = current
+                parsedReserveData[code].push(...reserve)
+            }
+        })
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_RESERVE_FILE, JSON.stringify(parsedReserveData))
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedCurrentData))
+        res.sendStatus(200)
+
+    } catch(error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+    
 })

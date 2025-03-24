@@ -422,7 +422,7 @@ const token = {
 
                 }
 
-                /** @return {PriceHistory[]} peakValleyProgressionOrder */
+                /** @returns {PriceHistory[]} peakValleyProgressionOrder */
                 get peakValleyProgressionOrder() {
                     return this._peakValleyHistory.map((item) => {
                         item.epochDate = this.transformDateToEpochMiliseconds(item.date)
@@ -450,14 +450,19 @@ const token = {
                     return typeof this._currentPosition === 'object' && 'date' in this._currentPosition
                 }
 
+                /** @returns {PriceHistory[]} */
                 get peakOnlyProgressionOrder() {
                     return this.peakValleyProgressionOrder.filter((item) => item.type === PriceAnalysis.PEAK)
                 }
 
+                /** @returns {PriceHistory[]} */
                 get valleyOnlyProgressionOrder() {
                     return this.peakValleyProgressionOrder.filter((item) => item.type === PriceAnalysis.VALLEY)
                 }
 
+                /**
+                 * @returns {PriceHistory | undefined}
+                 */
                 get highestPeakToday() {
                     const peaks = this.peakOnlyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
                     if (peaks.length === 0) {
@@ -470,6 +475,7 @@ const token = {
                     return peaks[maxPriceIndex]
                 }
 
+                /** @returns {PriceHistory | undefined} */
                 get lowestValleyToday() {
                     const valleys = this.valleyOnlyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
                     if (valleys.length === 0) {
@@ -482,6 +488,7 @@ const token = {
                     return valleys.at(minPriceIndex)
                 }
 
+                /** @returns {PriceHistory[]} */
                 get highestPeakAndLowestValleyToday() {
                     const list = []
                     this.lowestValleyToday !== undefined ? list.push(this.lowestValleyToday) : null
@@ -490,6 +497,7 @@ const token = {
                     return list
                 }
 
+                /** @returns {PriceHistory | undefined} */
                 get closestPeakToToday() {
                     const peaksBeforeToday = this.peakOnlyProgressionOrder.filter((item) => item.epochDate < this.todaysDateMidnight)
                     if (peaksBeforeToday.length === 0) {
@@ -529,6 +537,7 @@ const token = {
                     return this.peakValleyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
                 }
 
+                /** @returns {undefined} */
                 get peakValleySizeManagement() {
                     // if (this.peakValleyToday.length <= 100) {
                     //     return
@@ -570,6 +579,7 @@ const token = {
 
                 }
 
+                /** @returns {PriceHistory | undefined} */
                 findAnchorPeak() {
                     // filter peaks between recentPosition & currentPrice dates
                     // search for highest peak
@@ -601,6 +611,7 @@ const token = {
 
                 }
 
+                /** @returns {PriceHistory | undefined} */
                 findAnchorValley() {
                     // find closest highest peak
                     // from closest highest peak date search for deepest valley
@@ -627,6 +638,7 @@ const token = {
 
                 }
 
+                /** @returns {PriceHistory | undefined} */
                 findAnchor() {
                     if (this._currentPosition.position === PriceAnalysis.IN) {
                         return this.findAnchorPeak()
@@ -635,7 +647,9 @@ const token = {
                     return this.findAnchorValley()
                 }
 
-                /** @param {string} dateISOString */
+                /** @param {string} dateISOString 
+                *   @returns {number | undefined}
+                */
                 transformDateToEpochMiliseconds(dateISOString) {
                     // Make sure that you append stock market closing hour and ISO format [T00:00:00]
                     // for non ISO format dates so parse method uses local timezone automatically
@@ -664,6 +678,7 @@ const token = {
                     return {value: slope, positive: direction > 0, negative: direction < 0}
                 }
 
+                /** @returns {PriceHistory | undefined} */
                 findOptimalClosestHighestPeak() {
                     // if recent/current position price exists limit lookback up to that date
                     // in the case of no recent position price, use up to 7 days
@@ -711,7 +726,14 @@ const token = {
                     const sevenDaysAgo = shiftDateFromWeekend(fiveDaysAgo, 2, this._isCrypto)
                     const peakList = this.peakOnlyProgressionOrder
                     const daysAsList = [this.todaysDateMidnight,oneDayAgo,twoDaysAgo,threeDaysAgo,fiveDaysAgo,sevenDaysAgo]
+                    const todaysPeakIsCurrentPrice = this.highestPeakToday
+                        ? Math.floor(this._currentPrice.price) === Math.floor(this.highestPeakToday.price)
+                        : false
                     const daysToProcess = daysAsList
+                    if (todaysPeakIsCurrentPrice === true) {
+                        // remove today for more accurate valley anchor in edge case
+                        daysToProcess.splice(0,1)
+                    }
                     // let daysToProcess = this.dateExistsForCurrrentPosition
                     //     ? daysAsList.filter((day) => day > this._currentPosition.epochDate)
                     //     : daysAsList
@@ -721,7 +743,7 @@ const token = {
                     // }
                     let tracker = new Map()
                     // console.log(daysToProcess)
-                    daysToProcess.forEach((day) => {
+                    daysToProcess.forEach((day, index) => {
                         let basket = new Map()
                         peakList.filter((item) => item.epochDate > day)
                             .forEach((item) => basket.set(item.price, item.epochDate))
@@ -1091,9 +1113,9 @@ const token = {
                         mutationObservers: {},
                         consoleClearInstance: setInterval(()=>{console.clear()}, 1000*60*20),
                         // window.idaStockVision is deleted before function fires rendering it usless
-                        windowCloseEventListener: window.addEventListener('beforeunload', () => {uploadTodaysPriceHistory(undefined,false)}),
+                        // windowCloseEventListener: window.addEventListener('beforeunload', () => {uploadTodaysPriceHistory(undefined,false)}),
                         code: code,
-                        statusTimeoutList: [60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20],
+                        statusTimeoutList: [60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60],
                         statusTimeoutInstance: undefined,
                         statusCounter: 0,
                         serverUrl: '',
@@ -1317,6 +1339,7 @@ const token = {
                 const payload = {
                     date: new Date().toISOString(),
                     price: lastPrice,
+                    type: undefined,
                 }
                 if (lastPrice !== undefined && previousLastPrice !== undefined) {
                     if (lastPrice >= previousLastPrice && lastPrice > currentPrice) {

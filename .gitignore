@@ -6,3 +6,4 @@ www/bmr/dist/
 **/**/dist/
 playlist.json
 trader.json
+trader_reserve.json
