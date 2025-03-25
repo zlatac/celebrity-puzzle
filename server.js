@@ -602,7 +602,7 @@ app.post('/trader/history', async function(req,res){
         const peakValleyToday = req.body?.peakValleyToday || JSON.parse(req.query.peakValleyToday)
         trader.asyncOperation.history.push({code,primaryCode,peakValleyToday})
         clearTimeout(trader.asyncOperation.historyTimeout)
-        trader.asyncOperation.historyTimeout = setTimeout(trader.methods.processHistories, 500)
+        trader.asyncOperation.historyTimeout = setTimeout(trader.methods.processHistories, 1500)
         res.sendStatus(202)
     } catch (error) {
         res.status(404)
