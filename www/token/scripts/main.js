@@ -578,7 +578,9 @@ const token = {
 
                 }
 
-                /** @returns {PriceHistory | undefined} */
+                /** 
+                 * @param {boolean} isStuckCheck
+                 * @returns {PriceHistory | undefined} */
                 findAnchorPeak(isStuckCheck = false) {
                     // filter peaks between recentPosition & currentPrice dates
                     // search for highest peak
@@ -607,7 +609,8 @@ const token = {
                         return maxPeak
                     }
 
-                    if (slopeOfCurrentPriceFromPeak !== undefined 
+                    if (isStuckCheck === false 
+                        && slopeOfCurrentPriceFromPeak !== undefined 
                         && slopeOfCurrentPriceFromRecentPosition !== undefined 
                         && slopeOfCurrentPriceFromPeak.negative 
                         && slopeOfCurrentPriceFromRecentPosition.positive
