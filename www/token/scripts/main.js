@@ -555,32 +555,31 @@ const token = {
                 }
 
                 get isCurrentPositionStuck() {
+                    const isStuckMaxPeak = this.findAnchorPeak(true)
                     if (this._currentPosition === undefined
                         || this._currentPrice === undefined
-                        || this._entryThreshold === undefined
+                        || this._exitThreshold === undefined
                         || this._currentPosition.position !== PriceAnalysis.IN 
                         || !this.dateExistsForCurrrentPosition
                         || typeof this._currentPosition.price !== 'number'
+                        || isStuckMaxPeak === undefined
                     ) {
                         return false
                     }
                     
-                    const fullDayAfterCurrentPosition = PriceAnalysis.addBusinessDaysToEpochDate(this._currentPosition.epochDate, 1, !this._isCrypto)
                     const stuckThreshold = 1 // 100%
-                    const stuckFromEntryThreshold = this._entryThreshold*stuckThreshold
-                    const stuckFromEntryThresholdPrice = PriceAnalysis.percentageFinalAmount(this._currentPosition.price, stuckFromEntryThreshold, true)
-                    const fullDayHasPassedFromCurrentPosition = this._currentPrice.epochDate >= fullDayAfterCurrentPosition
-                    // const isCurrentPriceLessThanCurrentPositionPrice = this._currentPrice.price <= this._currentPosition.price
-                    const isCurrentPriceLessThanStuckFromEntryThresholdPrice = this._currentPrice.price <= stuckFromEntryThresholdPrice
+                    const stuckFromExitThreshold = this._exitThreshold*stuckThreshold
+                    const stuckFromExitThresholdPrice = PriceAnalysis.percentageFinalAmount(isStuckMaxPeak.price, stuckFromExitThreshold, true)
+                    const isCurrentPriceLessThanStuckFromExitThresholdPrice = this._currentPrice.price <= stuckFromExitThresholdPrice
                     // Goal is to have the right amount of loss threshold to give us enough room for having more long term wins than losses
-                    const positionIsStuck = fullDayHasPassedFromCurrentPosition && isCurrentPriceLessThanStuckFromEntryThresholdPrice
+                    const positionIsStuck = isCurrentPriceLessThanStuckFromExitThresholdPrice
                     
                     return positionIsStuck
 
                 }
 
                 /** @returns {PriceHistory | undefined} */
-                findAnchorPeak() {
+                findAnchorPeak(isStuckCheck = false) {
                     // filter peaks between recentPosition & currentPrice dates
                     // search for highest peak
                     // from highest peak make sure negative slope between peak and current price
@@ -599,6 +598,15 @@ const token = {
                     const maxPeak = peaks.at(maxPriceIndex)
                     const slopeOfCurrentPriceFromPeak = this.priceSlope(maxPeak, this._currentPrice)
                     const slopeOfCurrentPriceFromRecentPosition = this.priceSlope(this._currentPosition, this._currentPrice)
+                    if (isStuckCheck === true 
+                        && slopeOfCurrentPriceFromPeak !== undefined 
+                        && slopeOfCurrentPriceFromRecentPosition !== undefined 
+                        && slopeOfCurrentPriceFromPeak.negative 
+                        && slopeOfCurrentPriceFromRecentPosition.negative
+                    ) {
+                        return maxPeak
+                    }
+
                     if (slopeOfCurrentPriceFromPeak !== undefined 
                         && slopeOfCurrentPriceFromRecentPosition !== undefined 
                         && slopeOfCurrentPriceFromPeak.negative 
