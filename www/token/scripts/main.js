@@ -469,7 +469,6 @@ const token = {
                         return undefined
                     }
                     const prices = peaks.map((item) => item.price)
-                    // const dates = peaks.map((item) => item.epochDate)
                     const maxPrice = Math.max(...prices)
                     const maxPriceIndex = prices.lastIndexOf(maxPrice)
                     return peaks[maxPriceIndex]
@@ -539,12 +538,6 @@ const token = {
 
                 /** @returns {undefined} */
                 get peakValleySizeManagement() {
-                    // if (this.peakValleyToday.length <= 100) {
-                    //     return
-                    // }
-                    // const newPeakValleyHistory = Array.from(this.peakValleyBeforeToday).concat(this.highestPeakAndLowestValleyToday)
-                                        
-                    // return newPeakValleyHistory
                     return undefined
                 }
 
@@ -580,7 +573,8 @@ const token = {
 
                 /** 
                  * @param {boolean} isStuckCheck
-                 * @returns {PriceHistory | undefined} */
+                 * @returns {PriceHistory | undefined}
+                 */
                 findAnchorPeak(isStuckCheck = false) {
                     // filter peaks between recentPosition & currentPrice dates
                     // search for highest peak
@@ -726,19 +720,14 @@ const token = {
                         // Make sure that the next date shift feeds off the output of this function to be in proper order
                         return dayToDeductFromInMiliSeconds - (twentyFourHoursInMiliSeconds*(daysToDeduct + correctionModifier))
                     }
-                    const today = new Date()
-                    // const todayMidnightInISOString = new Date(this.todaysDateMidnight).toISOString()
-                    // const twentyFourHoursInMiliSeconds = 1000*60*60*24
-                    // Step back on days from the weekend when its a weekend for all
-                    const oneDayAgo = shiftDateFromWeekend(this.todaysDateMidnight, 1, this._isCrypto)
-                    const twoDaysAgo = shiftDateFromWeekend(oneDayAgo, 1, this._isCrypto)
-                    const threeDaysAgo = shiftDateFromWeekend(twoDaysAgo, 1, this._isCrypto)
-                    const fourDaysAgo = shiftDateFromWeekend(threeDaysAgo, 1, this._isCrypto)
-                    const fiveDaysAgo = shiftDateFromWeekend(fourDaysAgo, 1, this._isCrypto)
-                    const sixDaysAgo = shiftDateFromWeekend(fiveDaysAgo, 1, this._isCrypto)
-                    const sevenDaysAgo = shiftDateFromWeekend(sixDaysAgo, 1, this._isCrypto)
+
+                    const businessDaysToLookBackTo = 9 // 10 business days => 2 weeks
+                    const daysAsList = [this.todaysDateMidnight]
+                    for (let i=0; i < businessDaysToLookBackTo; i++) {
+                        const yesterday =  shiftDateFromWeekend(daysAsList[i], 1, this._isCrypto)
+                        daysAsList.push(yesterday)
+                    }
                     const peakList = this.peakOnlyProgressionOrder
-                    const daysAsList = [this.todaysDateMidnight,oneDayAgo,twoDaysAgo,threeDaysAgo,fourDaysAgo,fiveDaysAgo,sixDaysAgo,sevenDaysAgo]
                     const todaysPeakIsCurrentPrice = this.highestPeakToday
                         ? Math.floor(this._currentPrice.price) === Math.floor(this.highestPeakToday.price)
                         : false
@@ -747,13 +736,7 @@ const token = {
                         // remove today for more accurate valley anchor in edge case
                         daysToProcess.splice(0,1)
                     }
-                    // let daysToProcess = this.dateExistsForCurrrentPosition
-                    //     ? daysAsList.filter((day) => day > this._currentPosition.epochDate)
-                    //     : daysAsList
-                    // if (this.dateExistsForCurrrentPosition && daysToProcess.lenth === 0) {
-                    //     // For situations where trade position is done within the day
-                    //     daysToProcess.push(this.todaysDateMidnight)
-                    // }
+                    
                     let tracker = new Map()
                     // console.log(daysToProcess)
                     daysToProcess.forEach((day, index) => {
