@@ -733,10 +733,12 @@ const token = {
                     const oneDayAgo = shiftDateFromWeekend(this.todaysDateMidnight, 1, this._isCrypto)
                     const twoDaysAgo = shiftDateFromWeekend(oneDayAgo, 1, this._isCrypto)
                     const threeDaysAgo = shiftDateFromWeekend(twoDaysAgo, 1, this._isCrypto)
-                    const fiveDaysAgo = shiftDateFromWeekend(threeDaysAgo, 2, this._isCrypto)
-                    const sevenDaysAgo = shiftDateFromWeekend(fiveDaysAgo, 2, this._isCrypto)
+                    const fourDaysAgo = shiftDateFromWeekend(threeDaysAgo, 1, this._isCrypto)
+                    const fiveDaysAgo = shiftDateFromWeekend(fourDaysAgo, 1, this._isCrypto)
+                    const sixDaysAgo = shiftDateFromWeekend(fiveDaysAgo, 1, this._isCrypto)
+                    const sevenDaysAgo = shiftDateFromWeekend(sixDaysAgo, 1, this._isCrypto)
                     const peakList = this.peakOnlyProgressionOrder
-                    const daysAsList = [this.todaysDateMidnight,oneDayAgo,twoDaysAgo,threeDaysAgo,fiveDaysAgo,sevenDaysAgo]
+                    const daysAsList = [this.todaysDateMidnight,oneDayAgo,twoDaysAgo,threeDaysAgo,fourDaysAgo,fiveDaysAgo,sixDaysAgo,sevenDaysAgo]
                     const todaysPeakIsCurrentPrice = this.highestPeakToday
                         ? Math.floor(this._currentPrice.price) === Math.floor(this.highestPeakToday.price)
                         : false
