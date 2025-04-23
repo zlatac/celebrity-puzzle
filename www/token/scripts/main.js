@@ -732,7 +732,7 @@ const token = {
                         ? Math.floor(this._currentPrice.price) === Math.floor(this.highestPeakToday.price)
                         : false
                     const daysToProcess = daysAsList
-                    if (todaysPeakIsCurrentPrice === true) {
+                    if (true) {
                         // remove today for more accurate valley anchor in edge case
                         daysToProcess.splice(0,1)
                     }
@@ -741,7 +741,8 @@ const token = {
                     // console.log(daysToProcess)
                     daysToProcess.forEach((day, index) => {
                         let basket = new Map()
-                        peakList.filter((item) => item.epochDate > day)
+                        // Ignore today peaks to take advantage of steap slope increase in price
+                        peakList.filter((item) => item.epochDate > day && item.epochDate < this.todaysDateMidnight)
                             .forEach((item) => basket.set(item.price, item.epochDate))
                         if (basket.size > 0) {
                             const prices = basket.keys().toArray()
