@@ -536,6 +536,31 @@ const token = {
                     return this.peakValleyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
                 }
 
+                get todaysPeakValleySnapshot() {
+                    // since peak and valley alternate in pattern they will always be side by side in progression order
+                    const openPeakValley = this.peakValleyToday.slice(0,2)
+                    const closePeakValley = this.peakValleyToday.slice(-2,undefined)
+                    /* Nice to have the deepest valley before the end of the day when the lowest valley
+                       of the day comes before the highest peak of the day (steep slope price increase edge case) */
+                    const lowestValleyAfterHighestPeakToday = []
+                    if (this.highestPeakToday !== undefined 
+                        && this.lowestValleyToday !== undefined
+                        && this.highestPeakToday.epochDate > this.lowestValleyToday.epochDate
+                    ) {
+                        const valleysAfterHighestPeakToday = this.valleyOnlyProgressionOrder
+                            .filter((item) => item.epochDate > this.highestPeakToday.epochDate)
+                        if (valleysAfterHighestPeakToday.length > 0) {
+                            const valleyPrices = valleysAfterHighestPeakToday.map((valley) => valley.price)
+                            const minPrice = Math.min(...valleyPrices)
+                            const minPriceIndex = valleyPrices.lastIndexOf(minPrice)
+
+                            lowestValleyAfterHighestPeakToday.push(valleysAfterHighestPeakToday.at(minPriceIndex))
+                        }
+                    }
+
+                    return Array.from(this.highestPeakAndLowestValleyToday).concat(openPeakValley,lowestValleyAfterHighestPeakToday,closePeakValley)
+                }
+
                 /** @returns {undefined} */
                 get peakValleySizeManagement() {
                     return undefined
@@ -685,8 +710,8 @@ const token = {
 
                 /** @returns {PriceHistory | undefined} */
                 findOptimalClosestHighestPeak() {
-                    // if recent/current position price exists limit lookback up to that date
-                    // in the case of no recent position price, use up to 7 days
+                    // ignoring the current day look back from previous days to midnight of current day
+                    // use up to 10 business days
                     // Note: volatile stocks might need lower max days lookback and vice versa
                     // each max price for each past day range gets a point
                     // the max price with the highest point we use (in edge case of multiple highest point we use the first one)
@@ -907,13 +932,13 @@ const token = {
                 try {
                     const primaryCode = code.split('_')[0]
                     const priceStore = window.idaStockVision.priceStore
-                    if (priceStore.highestPeakAndLowestValleyToday.length === 0) {
+                    if (priceStore.todaysPeakValleySnapshot.length === 0) {
                         return
                     }
                     const payload = new URLSearchParams()
                     payload.append('code', code)
                     payload.append('primaryCode', primaryCode)
-                    payload.append('peakValleyToday', JSON.stringify(priceStore.highestPeakAndLowestValleyToday))
+                    payload.append('peakValleyToday', JSON.stringify(priceStore.todaysPeakValleySnapshot))
                     const resp = await fetch(`${window.idaStockVision.serverUrl}/trader/history?${payload.toString()}`, {
                         method: 'POST',
                         mode: 'cors',
@@ -1126,6 +1151,7 @@ const token = {
                             },
                             peakValleyHistory: [],
                             highestPeakAndLowestValleyToday: [],
+                            todaysPeakValleySnapshot: [],
                             currentPosition: {},
                             analysis: {},
                             uploadTodaysPriceTime: undefined,
@@ -1381,6 +1407,7 @@ const token = {
                         ? analysis.peakValleySizeManagement
                         : priceStore.peakValleyHistory
                     priceStore.highestPeakAndLowestValleyToday = analysis.highestPeakAndLowestValleyToday
+                    priceStore.todaysPeakValleySnapshot = analysis.todaysPeakValleySnapshot
                     anchor = analysis.findAnchor()
                     anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
                     const timeToUpload = setUploadPricesTimeout(isCrypto,priceStore.uploadTodaysPriceTime,uploadTodaysPriceHistory)

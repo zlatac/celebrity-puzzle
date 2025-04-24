@@ -24,6 +24,7 @@ export interface IPriceStore {
   };
   peakValleyHistory: IPriceHistory[];
   highestPeakAndLowestValleyToday: IPriceHistory[];
+  todaysPeakValleySnapshot: IPriceHistory[];
   currentPosition: IPosition;
   analysis: {[key]: Function};
   uploadTodaysPriceTime: undefined | number;
