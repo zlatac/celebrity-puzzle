@@ -1187,9 +1187,9 @@ const token = {
                                 highLowRange: () => null
                             },
                             cboe: {
-                                price: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(1) td:nth-child(2)'),
-                                lowRange: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(11) td:nth-child(2)'),
-                                highRange: () => document.querySelector('div.flex-container.zig-zag-lines tr:nth-child(12) td:nth-child(2)'),
+                                price: () => document.querySelector('#singleSecurityQuote > div > div > div > div> div:nth-child(2) > h2'),
+                                lowRange: () => document.querySelector('#singleSecurityQuote > div > div > div > div > div:nth-child(4) > h3'),
+                                highRange: () => document.querySelector('#singleSecurityQuote > div > div > div > div > div:nth-child(3) > h3'),
                             },
                             webull: {
                                 // https only
