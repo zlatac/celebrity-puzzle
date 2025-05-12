@@ -3,7 +3,9 @@
  * @typedef { import("globals") }
  * @typedef { import("token").IPriceHistory } PriceHistory
  * @typedef { import("token").IPrice } Price
+ * @typedef { import("token").ICurrentPrice } CurrentPrice
  * @typedef { import("token").IPosition } Position
+ * @typedef { import("token").INTERVAL_FLAGS } IntervalFlags
  */
 const serviceProvider = {
     data: function(){
@@ -356,9 +358,10 @@ const token = {
          * @param {boolean} isCrypto 
          * @param {number} entryPercentage 
          * @param {number} exitPercentage 
+         * @param {IntervalFlags} tradingInterval 
          * @returns {MutationCallback}
          */
-        projectStockVision(codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage) {
+        projectStockVision(codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage, tradingInterval = '1hour') {
             // Use sessionStorage to separate concern for a stock code browser session
             /** livecoinwatch.com */
             // MAKE SURE SITE IS IN $CAD BEFORE OBSERVING 
@@ -377,6 +380,8 @@ const token = {
                 _currentPosition;
                 /** @type {boolean} _isCrypto */
                 _isCrypto;
+                /** @type {IntervalFlags} _priceTradingInterval */
+                _priceTradingInterval;
                 /** @type {number} _twentyFourHoursInMiliSeconds */
                 _twentyFourHoursInMiliSeconds = 1000*60*60*24
                 /** @type {true} IN */
@@ -387,30 +392,54 @@ const token = {
                 static PEAK = 'peak'
                 /** @type {'valley'} VALLEY */
                 static VALLEY = 'valley'
+                /** @type {{[key: string]: IntervalFlags}} TRADING_INTERVAL */
+                static TRADING_INTERVAL = {
+                    oneMinute: '1min',
+                    twoMinute: '2min',
+                    fiveMinute: '5min',
+                    fifteenMinute: '15min',
+                    thirtyMinute: '30min',
+                    fourtyFiveMinute: '45min',
+                    oneHour: '1hour',
+                    none: 'none'
+                }
+                /** @type {{[key: string]: number}} TRADING_INTERVAL_SECONDS */
+                static TRADING_INTERVAL_SECONDS = {
+                    [PriceAnalysis.TRADING_INTERVAL.oneMinute]: 1*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.twoMinute]: 2*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.fiveMinute]: 5*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.fifteenMinute]: 15*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.thirtyMinute]: 30*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.fourtyFiveMinute]: 45*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.oneHour]: 60*1000*60,
+                }
 
                 /**
                  * 
                  * @param {PriceHistory[]} history 
-                 * @param {number} currentPrice 
+                 * @param {CurrentPrice} currentPrice 
                  * @param {Position} currentPosition 
                  * @param {boolean} isCrypto 
                  * @param {number} entryThreshold 
                  * @param {number} exitThreshold 
+                 * @param {IntervalFlags} priceTradingInterval 
                  */
-                constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold) {
+                constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval) {
                     try {
                         const now = Date.now()
                         this._isCrypto = isCrypto
                         this._entryThreshold = entryThreshold
                         this._exitThreshold = exitThreshold
                         this._peakValleyHistory = Array.from(history)
-                        this._currentPrice = {
-                            price: currentPrice,
-                            epochDate: now,
-                            date: new Date(now).toISOString()
-                        }
+                        // this._currentPrice = {
+                        //     price: currentPrice,
+                        //     epochDate: now,
+                        //     date: new Date(now).toISOString()
+                        // }
+                        this._currentPrice = currentPrice
                         // this._currentPrice.date = new Date(this._currentPrice.epochDate).toISOString()
                         this._currentPosition = currentPosition
+                        this._priceTradingInterval = priceTradingInterval
                         // this._currentPosition = {date: '2025-01-16T05:11:22.719Z', price: 5, position: PriceAnalysis.IN}
                         if (this.dateExistsForCurrrentPosition) {
                             this._currentPosition.epochDate = this.transformDateToEpochMiliseconds(this._currentPosition.date)
@@ -425,8 +454,17 @@ const token = {
                 /** @returns {PriceHistory[]} peakValleyProgressionOrder */
                 get peakValleyProgressionOrder() {
                     return this._peakValleyHistory.map((item) => {
-                        item.epochDate = this.transformDateToEpochMiliseconds(item.date)
+                        if (!('epochDate' in item)) {
+                            // Needed for manual addition of price histories without epochDate
+                            item.epochDate = this.transformDateToEpochMiliseconds(item.date)
+                        }
                         return item
+                    })
+                    .filter((item) => {
+                        if (PriceAnalysis.TRADING_INTERVAL_SECONDS[this._priceTradingInterval] === undefined) {
+                            return true
+                        }
+                        return item.flags?.includes(this._priceTradingInterval) || item.epochDate < this.todaysDateMidnight
                     })
                     .sort((a,b) => {
                         // ascending date
@@ -438,6 +476,7 @@ const token = {
                         }
                         return 1
                     })
+                    
                 }
 
                 get todaysDateMidnight () {
@@ -843,6 +882,11 @@ const token = {
                     const sign  = negative === true ? -1 : 1
                     return startAmount*(1 + (sign * percentageAmount/100))
                 }
+
+                static hourMinuteStringFormat(dateString) {
+                    const date = new Date(dateString)
+                    return `${date.getHours()}:${date.getMinutes()}`
+                }
                 
             }
             /**
@@ -1154,6 +1198,7 @@ const token = {
                             todaysPeakValleySnapshot: [],
                             currentPosition: {},
                             analysis: {},
+                            priceTimeIntervalsToday: {},
                             uploadTodaysPriceTime: undefined,
                         },
                         tools: {
@@ -1191,6 +1236,12 @@ const token = {
                                 lowRange: () => document.querySelector('#singleSecurityQuote > div > div > div > div > div:nth-child(4) > h3'),
                                 highRange: () => document.querySelector('#singleSecurityQuote > div > div > div > div > div:nth-child(3) > h3'),
                             },
+                            tmx: {
+                                // no websocket update
+                                price: () => document.evaluate('//*[@id="js-category-content"]/div[1]/div[1]/div/div/div/div[3]/div[1]/div/div[1]/span[1]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                                lowRange: () => document.querySelector('div[data-testid=dayHighLow-value] span:last-child'),
+                                highRange: () => document.querySelector('div[data-testid=dayHighLow-value] span:first-child'),
+                            },
                             webull: {
                                 // https only
                                 price: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div"),
@@ -1209,11 +1260,24 @@ const token = {
                                 highLowRange: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[2]/div/div[1]/div[3]/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                             },
 
+                        },
+                        constants: {
+                            tradingStartTime: {
+                                // Hour, Minute,Seconds
+                                crypto: [0,0,0],
+                                stocks: [9,30,0],
+                            },
+                            tradingEndTime: {
+                                crypto: [23,59,59],
+                                stocks: [16,0,0],
+                            },
                         }
                     }
                 }
 
                 if (!(code in window.idaStockVision.positionIn)) {
+                    let intervalsBag = []
+                    const codeStartTime = isCrypto ? window.idaStockVision.constants.tradingStartTime.crypto : window.idaStockVision.constants.tradingStartTime.stocks
                     window.idaStockVision.positionIn[code] = false
                     window.idaStockVision.notificationInProgress[code] = false
                     window.idaStockVision.lastNotificationSent[code] = {}
@@ -1222,6 +1286,8 @@ const token = {
                     }
                     window.idaStockVision.priceStore.analysis[code] = undefined
                     window.idaStockVision.tools[`watch_${code}`] = watch
+                    tradingTimeInterval(intervalsBag, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], ...codeStartTime)
+                    window.idaStockVision.priceStore.priceTimeIntervalsToday[code] = tradingTimeIntervalForPeakDetection(intervalsBag)
                 }
     
                 try {
@@ -1328,23 +1394,27 @@ const token = {
             }
             /**
              * 
-             * @param {number} currentPrice 
+             * @param {Price} currentPrice 
              * @param {PriceHistory | undefined} peakValleyDetected 
+             * @param {IntervalFlags} intervalFlag 
              */
-            const updatePrices = (currentPrice, peakValleyDetected) => {
+            const updatePrices = (currentPrice, peakValleyDetected, intervalFlag) => {
                 try {
                     const priceStore = window.idaStockVision.priceStore
                     const {low, high} = priceStore.marketHighLowRange
                     const isHighLowRangeValid = [low, high].every((item) => typeof item === 'number' && item > 0)
                     // Reduce market noise from outlier price trades(pre-market & after market hours especially)
-                    const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice >= low && currentPrice <= high) : true
+                    const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice.price >= low && currentPrice.price <= high) : true
 
-                    if (priceStore.lastPrice !== currentPrice && isCurrentPriceWithinMarketRange) {
+                    if (priceStore.lastPrice?.price !== currentPrice.price 
+                        && isCurrentPriceWithinMarketRange
+                    ) {
                         priceStore.previousLastPrice = priceStore.lastPrice
                         priceStore.lastPrice = currentPrice
                     }
     
                     if (peakValleyDetected !== undefined) {
+                        addIntervalFlagToPeakValleyDetected(code, peakValleyDetected, intervalFlag)
                         priceStore.peakValleyHistory.push(peakValleyDetected)
                     }
                 } catch (error) {
@@ -1353,23 +1423,24 @@ const token = {
             }
             /**
              * 
-             * @param {number} currentPrice 
-             * @param {number} lastPrice 
-             * @param {number} previousLastPrice 
+             * @param {CurrentPrice} currentPrice 
+             * @param {Price} lastPrice 
+             * @param {Price} previousLastPrice 
              * @returns {undefined | PriceHistory}
              */
             const peakValleyDetection = (currentPrice, lastPrice, previousLastPrice) => {
-                const payload = {
-                    date: new Date().toISOString(),
-                    price: lastPrice,
-                    type: undefined,
-                }
                 if (lastPrice !== undefined && previousLastPrice !== undefined) {
-                    if (lastPrice >= previousLastPrice && lastPrice > currentPrice) {
+                    const payload = {
+                        date: lastPrice.date,
+                        epochDate: lastPrice.epochDate,
+                        price: lastPrice.price,
+                        type: undefined,
+                    }
+                    if (lastPrice.price >= previousLastPrice.price && lastPrice.price > currentPrice.price) {
                         payload.type = 'peak'
                         return payload
                     }
-                    if (lastPrice <= previousLastPrice && lastPrice < currentPrice) {
+                    if (lastPrice.price <= previousLastPrice.price && lastPrice.price < currentPrice.price) {
                         payload.type = 'valley'
                         return payload
                     }
@@ -1377,96 +1448,181 @@ const token = {
 
                 return
             }
+
+            /**
+             * 
+             * @param {number[]} intervals 
+             * @param {number | undefined} intervalInSeconds 
+             * @param {number} startHour 
+             * @param {number} startMinute 
+             * @param {number} startSeconds 
+             */
+            const tradingTimeInterval = (intervals, intervalInSeconds, startHour = 0, startMinute = 0, startSeconds = 0) => {
+                if (intervalInSeconds === undefined) {
+                    return
+                }
+                const today = new Date()
+                const stopTime = today.setHours(23,59,59,0)
+                const startTime = today.setHours(startHour,startMinute,startSeconds,0)
+                const createTimeIntervals = (start, stop) => {
+                    const interval = start+intervalInSeconds
+                    // console.log(start, stop)
+                    !intervals.includes(interval) ?  intervals.push(interval) : null
+                    if (interval <= stop) {
+                        createTimeIntervals(interval, stop)
+                    }
+                }
+                !intervals.includes(startTime) ?  intervals.push(startTime) : null
+                createTimeIntervals(startTime, stopTime)
+
+            }
+
+            /**
+             * 
+             * @param {number[]} intervals 
+             * @returns {{[key:string]: {peak: boolean; valley: boolean; epochDate: number}} | {}}
+             */
+            const tradingTimeIntervalForPeakDetection = (intervals) => {
+                let timeKeysWithFlags = {}
+                intervals.forEach((item) => {
+                    const date = new Date(item)
+                    timeKeysWithFlags[`${date.getHours()}:${date.getMinutes()}`] = {peak: false, valley: false, epochDate: item}
+                })
+
+                return timeKeysWithFlags
+            }
+
+            /**
+             * 
+             * @param {string} code 
+             * @param {PriceHistory | CurrentPrice} peakValleyDetected 
+             * @param {IntervalFlags} intervalFlag
+             */
+            const addIntervalFlagToPeakValleyDetected = (code, peakValleyDetected, intervalFlag) => {
+                if (PriceAnalysis.TRADING_INTERVAL_SECONDS[intervalFlag] === undefined) {
+                    return
+                }
+                const priceStore = window.idaStockVision.priceStore
+                const timeFormatString = PriceAnalysis.hourMinuteStringFormat(peakValleyDetected.date)
+                const peakValleyMatchTradingInterval = timeFormatString in priceStore.priceTimeIntervalsToday[code]
+                if (peakValleyMatchTradingInterval === true) {
+                    if (!('flags' in peakValleyDetected)) {
+                        peakValleyDetected.flags = []
+                    }
+                    peakValleyDetected.flags.push(intervalFlag)
+                }
+            }
             
             traderSetUp(code)
 
-            return (mutationArray, observerInstance) => {
-                // TO-DO have a disconnect method to cleanup setTimeouts for history upload
-                const lastRecord = mutationArray[mutationArray.length - 1]
-                const targetValue = lastRecord.target.nodeValue.replace('$','')
-                const priceStore = window.idaStockVision.priceStore
-                const currentPrice =  decimalConvert(targetValue)
-                const confirmationLink = `${window.idaStockVision.notificationServerUrl}/trader/confirm?`
-                const confirmationQueryParams = new URLSearchParams()
-                let entryPrice = manualEntryPrice
-                let exitPrice = manualExitPrice
-                let analysis, anchor
-                /** @type {number | string} */
-                let anchorPrice = ''
-                let notificationBody = ''
-                const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
-                if (autoEntryExitMode) {
-                    const currentPosition = priceStore.currentPosition[code]
-                    const peakValleyDetected = peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
-                    updatePrices(currentPrice, peakValleyDetected)
-                    analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage)
-                    priceStore.analysis[code] = analysis
-                    entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentage, exitPercentage)
-                    exitPrice = analysis.isCurrentPositionStuck ? currentPrice : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
-                    priceStore.peakValleyHistory = analysis.peakValleySizeManagement !== undefined 
-                        ? analysis.peakValleySizeManagement
-                        : priceStore.peakValleyHistory
-                    priceStore.highestPeakAndLowestValleyToday = analysis.highestPeakAndLowestValleyToday
-                    priceStore.todaysPeakValleySnapshot = analysis.todaysPeakValleySnapshot
-                    anchor = analysis.findAnchor()
-                    anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
-                    const timeToUpload = setUploadPricesTimeout(isCrypto,priceStore.uploadTodaysPriceTime,uploadTodaysPriceHistory)
-                    if (typeof timeToUpload === 'number') {
-                        priceStore.uploadTodaysPriceTime = timeToUpload
+            /**
+             * 
+             * @param {MutationRecord[]} mutationArray 
+             * @param {MutationObserver} observerInstance 
+             * @returns {void}
+             */
+            const mutationObserverCallback = (mutationArray, observerInstance) => {
+                try {
+                    // TO-DO have a disconnect method to cleanup setTimeouts for history upload
+                    const nowEpochDate = Date.now()
+                    const lastRecord = mutationArray[mutationArray.length - 1]
+                    const targetValue = lastRecord.target.nodeValue.replace('$','')
+                    const priceStore = window.idaStockVision.priceStore
+                    const currentPrice =  {epochDate: nowEpochDate, date: new Date(nowEpochDate).toISOString(), price: decimalConvert(targetValue), flags: []}
+                    addIntervalFlagToPeakValleyDetected(code, currentPrice, tradingInterval)
+                    const confirmationLink = `${window.idaStockVision.notificationServerUrl}/trader/confirm?`
+                    const confirmationQueryParams = new URLSearchParams()
+                    let entryPrice = manualEntryPrice
+                    let exitPrice = manualExitPrice
+                    let analysis, anchor
+                    /** @type {number | string} */
+                    let anchorPrice = ''
+                    let notificationBody = ''
+                    const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
+                    if (autoEntryExitMode) {
+                        const currentPosition = priceStore.currentPosition[code]
+                        const peakValleyDetected = peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
+                        updatePrices(currentPrice, peakValleyDetected, tradingInterval)
+                        analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage, tradingInterval)
+                        priceStore.analysis[code] = analysis
+                        entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentage, exitPercentage)
+                        exitPrice = analysis.isCurrentPositionStuck ? currentPrice.price : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
+                        priceStore.peakValleyHistory = analysis.peakValleySizeManagement !== undefined 
+                            ? analysis.peakValleySizeManagement
+                            : priceStore.peakValleyHistory
+                        priceStore.highestPeakAndLowestValleyToday = analysis.highestPeakAndLowestValleyToday
+                        priceStore.todaysPeakValleySnapshot = analysis.todaysPeakValleySnapshot
+                        anchor = analysis.findAnchor()
+                        anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
+                        const timeToUpload = setUploadPricesTimeout(isCrypto,priceStore.uploadTodaysPriceTime,uploadTodaysPriceHistory)
+                        if (typeof timeToUpload === 'number') {
+                            priceStore.uploadTodaysPriceTime = timeToUpload
+                        }
+                        if (anchor !== undefined){
+                            notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
+                            notificationBody = notificationBody.concat(`Anchor Type: ${anchor.type} \r\n`)
+                        }
+                        notificationBody = window.idaStockVision.positionIn[code] 
+                            ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice.price, true)} \r\n`)
+                            : notificationBody
+                        notificationBody = analysis.isCurrentPositionStuck
+                            ? notificationBody.concat(`Stuck: true \r\n`)
+                            : notificationBody
                     }
-                    if (anchor !== undefined){
-                        notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
-                        notificationBody = notificationBody.concat(`Anchor Type: ${anchor.type} \r\n`)
+                    const cryptoDecision = {
+                        // No need for <= to logic since probability of exact match is very low
+                        enter: currentPrice.price < entryPrice,
+                        exit: currentPrice.price >= exitPrice,
                     }
-                    notificationBody = window.idaStockVision.positionIn[code] 
-                        ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice, true)} \r\n`)
-                        : notificationBody
-                    notificationBody = analysis.isCurrentPositionStuck
-                        ? notificationBody.concat(`Stuck: true \r\n`)
-                        : notificationBody
-                }
-                const cryptoDecision = {
-                    // No need for <= to logic since probability of exact match is very low
-                    enter: currentPrice < entryPrice,
-                    exit: currentPrice >= exitPrice,
-                }
-                const stockDecision = {
-                    enter: currentPrice >= entryPrice,
-                    exit: currentPrice <= exitPrice,
-                }
-                const enterDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.enter : stockDecision.enter
-                const exitDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.exit : stockDecision.exit
-                
-                let color = 'red'
-                let message = `[${code}] DO NOTHING AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
-                confirmationQueryParams.append('code', code)
-                confirmationQueryParams.append('price', String(currentPrice))
+                    const stockDecision = {
+                        enter: currentPrice.price >= entryPrice,
+                        exit: currentPrice.price <= exitPrice,
+                    }
+                    const enterDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.enter : stockDecision.enter
+                    const exitDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.exit : stockDecision.exit
+                    
+                    let color = 'red'
+                    let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                    confirmationQueryParams.append('code', code)
+                    confirmationQueryParams.append('price', String(currentPrice.price))
+    
+                    if (PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval] !== undefined 
+                        && 'flags' in currentPrice 
+                        && !currentPrice.flags.includes(tradingInterval)
+                    ) {
+                        return
+                    }
 
-                if (entryPrice !== undefined && enterDecision) {
-                    // No need for equals to logic since probabiloty of exact match is very low
-                    message = `[${code}] SWAP IN AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
-                    color = 'green'
-                    confirmationQueryParams.append('position', 'in')
-                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
-                    sendNotification(code, notificationBody, currentPrice, 'in', anchorPrice)
-                    if (window.idaStockVision.positionIn[code]) {
-                        message = `[${code}] YOU ARE IN ALREADY ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
-                        color = 'blue'
+                    if (entryPrice !== undefined && enterDecision) {
+                        // No need for equals to logic since probabiloty of exact match is very low
+                        message = `[${code}] SWAP IN AT ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                        color = 'green'
+                        confirmationQueryParams.append('position', 'in')
+                        notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
+                        sendNotification(code, notificationBody, currentPrice.price, 'in', anchorPrice)
+                        if (window.idaStockVision.positionIn[code]) {
+                            message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                            color = 'blue'
+                        }
                     }
-                }
-                if (exitPrice !== undefined && exitDecision) {
-                    message = `[${code}] SWAP OUT AT ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
-                    color = 'orange'
-                    confirmationQueryParams.append('position', 'out')
-                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
-                    sendNotification(code, notificationBody, currentPrice, 'out', anchorPrice)
-                    if (!window.idaStockVision.positionIn[code]) {
-                        message = `[${code}] YOU ARE OUT ALREADY ${currentPrice}[${anchorPrice}] - ${new Date().toString()}`
-                        color = 'blue'
+                    if (exitPrice !== undefined && exitDecision) {
+                        message = `[${code}] SWAP OUT AT ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                        color = 'orange'
+                        confirmationQueryParams.append('position', 'out')
+                        notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
+                        sendNotification(code, notificationBody, currentPrice.price, 'out', anchorPrice)
+                        if (!window.idaStockVision.positionIn[code]) {
+                            message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                            color = 'blue'
+                        }
                     }
+                    console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
+                } catch (error) {
+                    console.log('Ida Trader Bot - MUTATION OBSERVER CALLBACK ERROR', error)
                 }
-                console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
             }
+
+            return mutationObserverCallback
         }
     },
     filters: {
