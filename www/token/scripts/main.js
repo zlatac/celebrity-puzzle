@@ -606,7 +606,7 @@ const token = {
                 }
 
                 get squashTodaysPeakValleyHistory() {
-                    const newPeakValleyHistory = Array.from(this.peakValleyBeforeToday).concat(this.highestPeakAndLowestValleyToday)
+                    const newPeakValleyHistory = Array.from(this.peakValleyBeforeToday).concat(this.todaysPeakValleySnapshot)
                                         
                     return newPeakValleyHistory
                 }
@@ -1264,8 +1264,9 @@ const token = {
                         constants: {
                             tradingStartTime: {
                                 // Hour, Minute,Seconds
-                                crypto: [0,0,0],
-                                stocks: [9,30,0],
+                                // Add 1 minute to the minute time to have the close price of that minute
+                                crypto: [0,0 + 1,0],
+                                stocks: [9,30 + 1,0],
                             },
                             tradingEndTime: {
                                 crypto: [23,59,59],
@@ -1525,6 +1526,7 @@ const token = {
                 try {
                     // TO-DO have a disconnect method to cleanup setTimeouts for history upload
                     const nowEpochDate = Date.now()
+                    const nowDateISOString = new Date(nowEpochDate).toString()
                     const lastRecord = mutationArray[mutationArray.length - 1]
                     const targetValue = lastRecord.target.nodeValue.replace('$','')
                     const priceStore = window.idaStockVision.priceStore
@@ -1582,7 +1584,7 @@ const token = {
                     const exitDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.exit : stockDecision.exit
                     
                     let color = 'red'
-                    let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                    let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
                     confirmationQueryParams.append('code', code)
                     confirmationQueryParams.append('price', String(currentPrice.price))
     
@@ -1595,24 +1597,24 @@ const token = {
 
                     if (entryPrice !== undefined && enterDecision) {
                         // No need for equals to logic since probabiloty of exact match is very low
-                        message = `[${code}] SWAP IN AT ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                        message = `[${code}] SWAP IN AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
                         color = 'green'
                         confirmationQueryParams.append('position', 'in')
                         notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
                         sendNotification(code, notificationBody, currentPrice.price, 'in', anchorPrice)
                         if (window.idaStockVision.positionIn[code]) {
-                            message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                            message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
                             color = 'blue'
                         }
                     }
                     if (exitPrice !== undefined && exitDecision) {
-                        message = `[${code}] SWAP OUT AT ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                        message = `[${code}] SWAP OUT AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
                         color = 'orange'
                         confirmationQueryParams.append('position', 'out')
                         notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
                         sendNotification(code, notificationBody, currentPrice.price, 'out', anchorPrice)
                         if (!window.idaStockVision.positionIn[code]) {
-                            message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${new Date().toString()}`
+                            message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
                             color = 'blue'
                         }
                     }
