@@ -10,7 +10,7 @@ export interface IPrice {
 
 export interface IPriceHistory extends IPrice {
   type: PEAK | VALLEY;
-  flags?: INTERVAL_FLAGS[]; 
+  flags: INTERVAL_FLAGS[]; 
 }
 
 export interface ICurrentPrice extends IPrice {
@@ -22,6 +22,46 @@ export interface IPosition extends IPrice {
   positionAnchor?: number;
 }
 
+export interface IIntervalInspection {
+   peakCaptured: boolean;
+   valleyCaptured: boolean;
+   currentPriceExecuted: boolean;
+   epochDate: number;
+   inspectionEpochDate: number;
+   index: number;
+   hourMinute: string;
+}
+
+export interface PriceAnalysis {
+  constructor(history: IPriceHistory[], currentPrice: ICurrentPrice, currentPosition: IPosition, isCrypto: boolean, entryThreshold: number, exitThreshold: number, priceTradingInterval: string)
+  _peakValleyHistory: IPriceHistory;
+  _currentPrice: ICurrentPrice;
+  _currentPosition: IPosition;
+  _isCrypto: boolean;
+  _priceTradingInterval: string;
+  _twentyFourHoursInMiliSeconds: number
+  get peakValleyProgressionOrder(): IPriceHistory[]
+  get todaysDateMidnight(): number
+  get dateExistsForCurrrentPosition(): boolean
+  get peakOnlyProgressionOrder(): IPriceHistory[]
+  get valleyOnlyProgressionOrder(): IPriceHistory[]
+  get highestPeakToday(): IPriceHistory | undefined
+  get lowestValleyToday(): IPriceHistory | undefined
+  get highestPeakAndLowestValleyToday(): IPriceHistory[]
+  get closestPeakToToday(): IPriceHistory | undefined
+  get closestHighestPeak(): IPriceHistory | undefined
+  get peakValleyBeforeToday(): IPriceHistory[]
+  get peakValleyToday(): IPriceHistory[]
+  get todaysPeakValleySnapshot(): IPriceHistory[]
+  get peakValleySizeManagement(): undefined
+  get isCurrentPositionStuck(): boolean
+  findAnchorPeak(): IPriceHistory | undefined
+  findAnchorValley(): IPriceHistory | undefined
+  findAnchor(): IPriceHistory | undefined
+  findOptimalClosestHighestPeak(): IPriceHistory | undefined
+  priceSlope(): {value: number; positive: boolean; negative: boolean;} | undefined
+}
+
 export interface IPriceStore {
   lastPrice: IPrice | undefined;
   previousLastPrice: IPrice | undefined;
@@ -30,11 +70,11 @@ export interface IPriceStore {
       high: undefined | number;
   };
   peakValleyHistory: IPriceHistory[];
-  highestPeakAndLowestValleyToday: IPriceHistory[];
-  todaysPeakValleySnapshot: IPriceHistory[];
-  currentPosition: IPosition;
-  analysis: {[key]: Function};
-  priceTimeIntervalsToday: {[key]: number[]};
+  highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
+  todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};
+  currentPosition: {[key: string]: IPosition};
+  analysis: {[key: string]: InstanceType<PriceAnalysis>};
+  priceTimeIntervalsToday: {[key: string]: Map<string, IIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
 }
 
@@ -56,19 +96,25 @@ export interface IStockVision {
   code: string;
   statusTimeoutList: number[];
   statusTimeoutInstance: undefined | number;
+  intervalInspectorInstance: {
+    [key: string]: undefined | number;
+  };
+  timeoutInspectorInstance: {
+    [key: string]: undefined | number;
+  };
   statusCounter: number;
   serverUrl: string;
   notificationServerUrl: string;
+  tradingStartTime: number[];
+  tradingEndTime: number[];
   priceStore: IPriceStore
   tools: {[key:string]: Function};
+  settings: {
+    [key:string]: {
+      tradingInterval: INTERVAL_FLAGS;
+    };
+  };
   server: {[key:string]: string};
   cssSelectors: {[key:string]: {[key]: Function}};
-  constants: {
-    tradingStartTime: {
-      [key:string]: number[];
-    };
-    tradingEndTime: {
-      [key:string]: number[];
-    };
-  }
+  constants: {}
 }
