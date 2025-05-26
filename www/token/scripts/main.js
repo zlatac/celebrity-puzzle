@@ -848,7 +848,14 @@ const token = {
                     return
                 }
 
+                /**
+                 * 
+                 * @param {number} sampleSize 
+                 * @returns {number}
+                 */
                 dayTradingAveragePrice(sampleSize = 200) {
+                    // we ignore 9:30 - 10:30am because of initial noise of the day
+                    // depending on the volume of the stock we might see really small sampleSize peaks & valleys
                     const dateToIgnore = new Date(this.todaysDateMidnight).setHours(10,30,0,0)
                     const priceHistoryFromIgnoredDate = this._peakValleyHistory.filter((item) => item.epochDate > dateToIgnore)
 
@@ -857,10 +864,10 @@ const token = {
                     }
 
                     const firstTwoHundredPriceHistory = priceHistoryFromIgnoredDate.slice(0, sampleSize)
-                    const totalSum = priceHistoryFromIgnoredDate.reduce((previousValue, currentValue) => {
+                    const totalSum = firstTwoHundredPriceHistory.reduce((previousValue, currentValue) => {
                         return previousValue + currentValue.price
                     }, 0)
-                    
+
                     return totalSum/firstTwoHundredPriceHistory.length
                 }
 
@@ -1372,6 +1379,8 @@ const token = {
                             window.removeEventListener(PriceAnalysis.EVENT_NAMES.setFutureInterval, setFutureIntervalListener)
                             clearInterval(window.idaStockVision.intervalInspectorInstance[code])
                             clearTimeout(window.idaStockVision.timeoutInspectorInstance[code])
+                            window.idaStockVision.timeoutInspectorInstance[code] = undefined
+                            window.idaStockVision.intervalInspectorInstance[code] = undefined
                         }
                     })
                 }
@@ -1839,17 +1848,17 @@ const token = {
                             ? notificationBody.concat(`Stuck: true \r\n`)
                             : notificationBody
                     }
-                    const cryptoDecision = {
+                    const stockRangeDecision = {
                         // No need for <= to logic since probability of exact match is very low
                         enter: currentPrice.price < entryPrice,
                         exit: currentPrice.price >= exitPrice,
                     }
-                    const stockDecision = {
-                        enter: currentPrice.price <= entryPrice,
-                        exit: currentPrice.price >= exitPrice,
+                    const stockSurfDecision = {
+                        enter: currentPrice.price >= entryPrice,
+                        exit: currentPrice.price <= exitPrice,
                     }
-                    const enterDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.enter : stockDecision.enter
-                    const exitDecision = isCrypto && !autoEntryExitMode ? cryptoDecision.exit : stockDecision.exit
+                    const enterDecision = !autoEntryExitMode ? stockRangeDecision.enter : stockSurfDecision.enter
+                    const exitDecision = !autoEntryExitMode ? stockRangeDecision.exit : stockSurfDecision.exit
                     
                     let color = 'red'
                     let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`

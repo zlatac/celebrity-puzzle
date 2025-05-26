@@ -60,6 +60,7 @@ export interface PriceAnalysis {
   findAnchor(): IPriceHistory | undefined
   findOptimalClosestHighestPeak(): IPriceHistory | undefined
   priceSlope(): {value: number; positive: boolean; negative: boolean;} | undefined
+  dayTradingAveragePrice(): number
 }
 
 export interface IPriceStore {
