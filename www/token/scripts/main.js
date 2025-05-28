@@ -1360,8 +1360,8 @@ const token = {
                             position: false,
                         })
                     window.idaStockVision.priceStore.analysis[code] = undefined
-                    window.idaStockVision.priceStore.todaysPeakValleySnapshot[code] = undefined
-                    window.idaStockVision.priceStore.highestPeakAndLowestValleyToday[code] = undefined
+                    window.idaStockVision.priceStore.todaysPeakValleySnapshot[code] = []
+                    window.idaStockVision.priceStore.highestPeakAndLowestValleyToday[code] = []
                     window.idaStockVision.intervalInspectorInstance[code] = undefined
                     window.idaStockVision.timeoutInspectorInstance[code] = undefined
                     window.idaStockVision.tools[`watch_${code}`] = watch
