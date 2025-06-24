@@ -402,6 +402,7 @@ const token = {
                 static TRADING_INTERVAL = {
                     oneMinute: '1min',
                     twoMinute: '2min',
+                    threeMinute: '3min',
                     fiveMinute: '5min',
                     fifteenMinute: '15min',
                     thirtyMinute: '30min',
@@ -413,6 +414,7 @@ const token = {
                 static TRADING_INTERVAL_SECONDS = {
                     [PriceAnalysis.TRADING_INTERVAL.oneMinute]: 1*1000*60,
                     [PriceAnalysis.TRADING_INTERVAL.twoMinute]: 2*1000*60,
+                    [PriceAnalysis.TRADING_INTERVAL.threeMinute]: 3*1000*60,
                     [PriceAnalysis.TRADING_INTERVAL.fiveMinute]: 5*1000*60,
                     [PriceAnalysis.TRADING_INTERVAL.fifteenMinute]: 15*1000*60,
                     [PriceAnalysis.TRADING_INTERVAL.thirtyMinute]: 30*1000*60,
@@ -664,7 +666,7 @@ const token = {
                     }
 
                     const peaks = this.peakOnlyProgressionOrder
-                        .filter((item) => (item.epochDate > this._currentPosition.epochDate && item.epochDate < this._currentPrice.epochDate))
+                        .filter((item) => (item.epochDate >= this._currentPosition.epochDate && item.epochDate < this._currentPrice.epochDate))
                     const prices = peaks.map((item) => item.price)
                     const maxPrice = Math.max(...prices)
                     const maxPriceIndex = prices.lastIndexOf(maxPrice)
@@ -705,7 +707,7 @@ const token = {
                     }
                     const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
                     const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => {
-                        return (item.epochDate > this.closestHighestPeak.epochDate) && (item.epochDate > currentPositionDate)
+                        return (item.epochDate > this.closestHighestPeak.epochDate) && (item.epochDate >= currentPositionDate)
                     })
                     const prices = valleysFromClosestHighestPeak.map((item) => item.price)
                     const lowestPrice = Math.min(...prices)
@@ -1044,21 +1046,29 @@ const token = {
                     const priceStore = window.idaStockVision.priceStore
                     // const settings = window.idaStockVision.settings
                     // const startTime = window.idaStockVision.tradingStartTime
+                    let snapShotBasket = []
                     const allCodesPeakValleySnapshots = Object.values(priceStore.todaysPeakValleySnapshot).flat()
-                    if (allCodesPeakValleySnapshots.length === 0) {
+                    const uniquePeakValleySnapshots = allCodesPeakValleySnapshots.flatMap((item) => {
+                        const itemExists = snapShotBasket.includes(item)
+                        if (!itemExists) {
+                            snapShotBasket.push(item)
+                        }
+                        return itemExists ? [] : item
+                    })
+                    if (uniquePeakValleySnapshots.length === 0) {
                         return
                     }
                     const payload = new URLSearchParams()
                     payload.append('code', code)
                     payload.append('primaryCode', primaryCode)
-                    payload.append('peakValleyToday', JSON.stringify(allCodesPeakValleySnapshots))
+                    payload.append('peakValleyToday', JSON.stringify(uniquePeakValleySnapshots))
                     const resp = await fetch(`${window.idaStockVision.serverUrl}/trader/history?${payload.toString()}`, {
                         method: 'POST',
                         mode: 'cors',
                     })
                     if (squashTodaysHistory) {
                         const squashTodaysPeakValleyHistoryForAllCodes = 
-                            Array.from(priceStore.analysis[code].peakValleyBeforeToday).concat(allCodesPeakValleySnapshots)
+                            Array.from(priceStore.analysis[code].peakValleyBeforeToday).concat(uniquePeakValleySnapshots)
                         priceStore.peakValleyHistory = squashTodaysPeakValleyHistoryForAllCodes
                         // Make sure that lastPrice does not become a peak or valley in the next trading session
                         priceStore.lastPrice = undefined
@@ -1608,6 +1618,9 @@ const token = {
                         inspectionEpochDate: item + PriceAnalysis.TRADING_INTERVAL_SECONDS[PriceAnalysis.TRADING_INTERVAL.oneMinute], 
                         hourMinute: hourMinuteString,
                         index,
+                        peakPrice: undefined,
+                        valleyPrice: undefined,
+                        currentPrice: undefined,
                     })
                 })
 
@@ -1655,12 +1668,14 @@ const token = {
                                 if (!intervalSettings.peakCaptured) {
                                     peakValleyDetected.flags.push(intervalFlag)
                                     intervalSettings.peakCaptured = true
+                                    intervalSettings.peakPrice = peakValleyDetected.price
                                 }
                                 break;
                             case 'valley':
                                 if (!intervalSettings.valleyCaptured) {
                                     peakValleyDetected.flags.push(intervalFlag)
                                     intervalSettings.valleyCaptured = true
+                                    intervalSettings.valleyPrice = peakValleyDetected.price
                                 }
                                 break;
                             default:
@@ -1670,6 +1685,7 @@ const token = {
                     if (!isPeakValley && !intervalSettings.currentPriceExecuted) {
                         peakValleyDetected.flags.push(intervalFlag)
                         intervalSettings.currentPriceExecuted = true
+                        intervalSettings.currentPrice = peakValleyDetected.price
                     }
                 }
             }
@@ -1798,12 +1814,13 @@ const token = {
                 try {
                     // TO-DO have a disconnect method to cleanup setTimeouts for history upload
                     const nowEpochDate = Date.now()
-                    const nowDateISOString = new Date(nowEpochDate).toString()
+                    const nowDateFullString = new Date(nowEpochDate).toString()
+                    const nowDateISOString = new Date(nowEpochDate).toISOString()
                     const lastRecord = mutationArray[mutationArray.length - 1]
                     const targetValue = lastRecord.target.nodeValue.replace('$','')
                     const priceStore = window.idaStockVision.priceStore
                     /** @type {CurrentPrice} */
-                    const currentPrice =  {epochDate: nowEpochDate, date: new Date(nowEpochDate).toISOString(), price: decimalConvert(targetValue), flags: []}
+                    const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: decimalConvert(targetValue), flags: []}
                     addIntervalFlagToPeakValleyDetected(code, currentPrice, tradingInterval)
                     if (inspectorTrigger === true) {
                         currentPrice.flags.push(tradingInterval)
@@ -1861,9 +1878,10 @@ const token = {
                     const exitDecision = !autoEntryExitMode ? stockRangeDecision.exit : stockSurfDecision.exit
                     
                     let color = 'red'
-                    let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
+                    let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     confirmationQueryParams.append('code', code)
                     confirmationQueryParams.append('price', String(currentPrice.price))
+                    confirmationQueryParams.append('date', nowDateISOString) // will help with scenario where entry is the max peak so the peak is not ignored for exit threshold
     
                     if (PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval] !== undefined 
                         && 'flags' in currentPrice 
@@ -1874,24 +1892,24 @@ const token = {
 
                     if (entryPrice !== undefined && enterDecision) {
                         // No need for equals to logic since probabiloty of exact match is very low
-                        message = `[${code}] SWAP IN AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
+                        message = `[${code}] SWAP IN AT ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                         color = 'green'
                         confirmationQueryParams.append('position', 'in')
                         notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
                         sendNotification(code, notificationBody, currentPrice.price, 'in', anchorPrice)
                         if (window.idaStockVision.positionIn[code]) {
-                            message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
+                            message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                             color = 'blue'
                         }
                     }
                     if (exitPrice !== undefined && exitDecision) {
-                        message = `[${code}] SWAP OUT AT ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
+                        message = `[${code}] SWAP OUT AT ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                         color = 'orange'
                         confirmationQueryParams.append('position', 'out')
                         notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
                         sendNotification(code, notificationBody, currentPrice.price, 'out', anchorPrice)
                         if (!window.idaStockVision.positionIn[code]) {
-                            message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateISOString}`
+                            message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                             color = 'blue'
                         }
                     }

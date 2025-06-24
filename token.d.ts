@@ -1,6 +1,6 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
-export type INTERVAL_FLAGS = '1min' | '2min' | '5min' | '10min' | '15min' | '30min' | '45min' | '1hour' | 'none'
+export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '10min' | '15min' | '30min' | '45min' | '1hour' | 'none'
 
 export interface IPrice {
   price: number;
@@ -30,6 +30,9 @@ export interface IIntervalInspection {
    inspectionEpochDate: number;
    index: number;
    hourMinute: string;
+   peakPrice: number;
+   valleyPrice: number;
+   currentPrice: number;
 }
 
 export interface PriceAnalysis {
