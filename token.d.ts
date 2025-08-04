@@ -1,6 +1,6 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
-export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '10min' | '15min' | '30min' | '45min' | '1hour' | 'none'
+export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' | '15min' | '30min' | '45min' | '1hour' | 'none'
 
 export interface IPrice {
   price: number;
@@ -121,4 +121,38 @@ export interface IStockVision {
   server: {[key:string]: string};
   cssSelectors: {[key:string]: {[key]: Function}};
   constants: {}
+}
+
+/** STOCK_VISION_TRADE */
+export interface IStockVisionTrade {
+  pollServerInProgress: boolean;
+  pollServerInstance: undefined | number;
+  investigateOrderQueueInProgress: boolean;
+  processOrderQueueInProgress: boolean;
+  tools: {[key:string]: Function};
+  brokerage: {
+    name: string;
+  },
+  accountId: string;
+  securities: {[key: string]: {
+    securityId: string;
+    capital: number
+  }};
+  orders: {
+    code: string;
+    primaryCode: string;
+    executed?: boolean;
+    accepted?: boolean;
+    orderId?: string | undefined;
+    last: number;
+    ask_price: number;
+    bid_price: number;
+    capital: number;
+    confirmationLink: string;
+    quantity?: number;
+    position: boolean;
+    checkCount?: number;
+    modify?: boolean;
+    timeSubmitted: string;
+  }[]
 }

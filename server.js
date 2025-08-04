@@ -436,7 +436,9 @@ const trader = {
     // For namecheap nodejs setup all api paths must be prepended with the namecheap nodejs app url
     constants: {
         IN: 'in',
-        OUT: 'out'
+        OUT: 'out',
+        LOCAL_SERVER: 'local',
+        CLOUD_SERVER: 'cloud',
     },
     asyncOperation: {
         historyTimeout: undefined,
@@ -659,3 +661,20 @@ app.put('/trader/history', async function(req, res) {
     }
     
 })
+
+app.get('/trader/priceCheck', async function(req,res){
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
+    try {
+        let primaryCode = req.body?.primaryCode || req.query.primaryCode
+        const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${primaryCode.toUpperCase()}/quote/`, {})
+        if (!('symbol_name' in axiosResponse.data.data) || axiosResponse.data.data.symbol_name !== primaryCode.toUpperCase()) {
+            throw new Error('cannot retrieve price')
+        }
+        res.status(200)
+        res.send(axiosResponse.data.data)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
