@@ -127,11 +127,15 @@ export interface IStockVision {
 export interface IStockVisionTrade {
   pollServerInProgress: boolean;
   pollServerInstance: undefined | number;
-  investigateOrderQueueInProgress: boolean;
+  pollServerErrorCount: number;
   processOrderQueueInProgress: boolean;
+  investigateOrderQueueInProgress: boolean;
+  modifyOrderQueueInProgress: boolean;
+  newOrdersReceived: boolean;
+  keepAwakeInstances: number[];
   tools: {[key:string]: Function};
   brokerage: {
-    name: string;
+    name: 'questrade' | 'ibkr';
   },
   accountId: string;
   securities: {[key: string]: {
@@ -144,15 +148,24 @@ export interface IStockVisionTrade {
     executed?: boolean;
     accepted?: boolean;
     orderId?: string | undefined;
-    last: number;
-    ask_price: number;
-    bid_price: number;
+    rootOrderId?: string | undefined;
+    last: string;
+    ask_price: string;
+    bid_price: string;
     capital: number;
     confirmationLink: string;
     quantity?: number;
     position: boolean;
     checkCount?: number;
     modify?: boolean;
-    timeSubmitted: string;
-  }[]
+    partialExecution?: boolean;
+    openQuantity?: number;
+    filledQuantity: number;
+    timeSubmitted?: string;
+    priceSubmitted?: string|number;
+  }[];
+  orderHistory: {[key:string]: {
+    quantity: number;
+    orderId: string;
+  }};
 }

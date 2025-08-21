@@ -19,9 +19,9 @@
  * @param {number} entryPercentage 
  * @param {number} exitPercentage 
  * @param {IntervalFlags} tradingInterval 
- * @returns {Function}
+ * @returns {MutationCallback}
  */
-const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage, tradingInterval = '1hour') => {
+let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage, tradingInterval = '1hour') {
     // Use sessionStorage to separate concern for a stock code browser session
     // Use localStorage to share data between multiple tabs/windows of the same domain
     /** livecoinwatch.com */
@@ -614,7 +614,28 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
             // Hour, Minute, Seconds
             return isCrypto 
                 ? [23, 58, 0] 
+                : [15, 59, 59]
+        }
+
+        /**
+         * 
+         * @param {boolean} isCrypto 
+         * @returns {number[]}
+         */
+        static tradingHistoryUploadTime (isCrypto = false) {
+            // Hour, Minute, Seconds
+            return isCrypto 
+                ? PriceAnalysis.tradingEndTime(true)
                 : [16, 10, 0] // buffer needed for timezone
+        }
+
+       /**
+        * 
+        * @param {string} code 
+        * @returns {string}
+        */
+        static primaryCode(code) {
+            return code.split('_')[0]
         }
         
     }
@@ -756,7 +777,7 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
         let currentTiemoutInDateObject
         const nowInMilliSeconds = Date.now()
         const nowInDateObject = new Date(nowInMilliSeconds)
-        const [endHour, endMinute, endSecond] = PriceAnalysis.tradingEndTime(isCrypto)
+        const [endHour, endMinute, endSecond] = PriceAnalysis.tradingHistoryUploadTime(isCrypto)
         const uploadTime =  new Date(nowInMilliSeconds).setHours(endHour, endMinute, endSecond,0) 
         const timeDifference = uploadTime - nowInMilliSeconds
         if (currentTimeoutDateInMiliseconds !== undefined) {
@@ -820,7 +841,7 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
             const origin = location.origin
             const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
             let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver, lowMutationObserver, highMutationObserver
-            window.idaStockVision.mutationObservers[code] = new MutationObserver(window.projectStockVision(...projectParameters))
+            window.idaStockVision.mutationObservers[code] = new MutationObserver(projectStockVision(...projectParameters))
             const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
                 if (lowElementText !== undefined) {
                     window.idaStockVision.priceStore.marketHighLowRange.low = decimalConvert(sanitizePrice(lowElementText))
@@ -968,7 +989,8 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
                 server: {
                     // development: 'http://localhost:9000',
                     // developmentNotification: 'http://10.0.0.148:9000',
-                    production: 'https://styleminions.co/ninja'
+                    production: 'https://styleminions.co/ninja', // [cs]
+                    localServer: 'http://localhost:9000', // [ls]
                 },
                 cssSelectors: {
                     nasdaq: {
@@ -1108,9 +1130,10 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
       * @param {number} currentPrice 
       * @param {string} action 
       * @param {number | string} anchorPrice 
+      * @param {string} confirmationLink 
       * @returns {Promise<void>}
       */
-    const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice) => {
+    const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink) => {
         const priceDifferencePercentage = 'currentPrice' in window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
             ? percentageDelta(window.idaStockVision.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
             : 0
@@ -1146,11 +1169,20 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
             queryParams.append('message', messageBody)
             queryParams.append('subject', notificationSubject)
             queryParams.append('code', tokenOrStockCode)
-            const resp = await fetch(`${window.idaStockVision.serverUrl}/trader/notify?${queryParams.toString()}`, {
+            queryParams.append('primaryCode', PriceAnalysis.primaryCode(tokenOrStockCode))
+            queryParams.append('action', action)
+            queryParams.append('currentPrice', currentPrice.toString())
+            queryParams.append('confirmationLink', confirmationLink)
+            const cloudServerRequest = fetch(`${window.idaStockVision.serverUrl}/trader/notify?${queryParams.toString()}`, {
                 method: 'POST',
                 mode: 'cors',
             })
-            // const data = await resp.json()
+            const localServerRequest = fetch(`${window.idaStockVision.server.localServer}/trader/notify?${queryParams.toString()}`, {
+                method: 'POST',
+                mode: 'cors',
+            })
+            const resp = await Promise.allSettled([cloudServerRequest,localServerRequest])
+            // const data = await resp[0].value.json()
             window.idaStockVision.lastNotificationSent[tokenOrStockCode] = {
                 tokenOrStockCode, 
                 message: messageBody,
@@ -1557,7 +1589,7 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
                 color = 'green'
                 confirmationQueryParams.append('position', 'in')
                 notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
-                sendNotification(code, notificationBody, currentPrice.price, 'in', anchorPrice)
+                sendNotification(code, notificationBody, currentPrice.price, 'in', anchorPrice, `${confirmationLink}${confirmationQueryParams.toString()}`)
                 if (window.idaStockVision.positionIn[code]) {
                     message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     color = 'blue'
@@ -1568,7 +1600,7 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
                 color = 'orange'
                 confirmationQueryParams.append('position', 'out')
                 notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
-                sendNotification(code, notificationBody, currentPrice.price, 'out', anchorPrice)
+                sendNotification(code, notificationBody, currentPrice.price, 'out', anchorPrice, `${confirmationLink}${confirmationQueryParams.toString()}`)
                 if (!window.idaStockVision.positionIn[code]) {
                     message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     color = 'blue'
@@ -1580,10 +1612,11 @@ const projectStockVision = (codeInput, manualEntryPrice, manualExitPrice, isCryp
         }
     }
 
+    // @ts-ignore
     return mutationObserverCallback
 }
 
-const stockVisionTrade = () => {
+let stockVisionTrade = function () {
     // should work for both questrade & IBKR
     // get key variables from localstorgae
     // keep screen awake
@@ -1603,7 +1636,8 @@ const stockVisionTrade = () => {
         const securityIds = [ 
             {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO"},
             {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO"},
-            {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO"}
+            {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO"},
+            {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO"},
         ]
 
         const submit = {
@@ -1962,7 +1996,7 @@ const stockVisionTrade = () => {
         }
 
         const orders = {
-            fetch: (accessToken, fromDateISO, ) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=20&sort-by=-createdDateTime`, {
+            fetch: (accessToken, fromDateISO) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=20&sort-by=-createdDateTime`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
@@ -2321,7 +2355,7 @@ const stockVisionTrade = () => {
         }
 
         const searchStockCode = {
-            fetch: fetch("https://api.questrade.com/v1/securities?pattern=nvda&have-options=false&limit=8", {
+            fetch: () => fetch("https://api.questrade.com/v1/securities?pattern=nvda&have-options=false&limit=8", {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
@@ -2342,7 +2376,7 @@ const stockVisionTrade = () => {
         }
 
         const getMarketData = {
-            fetch: fetch("https://api.questrade.com/v1/market-data/update?symbols=515c3938-2281-4122-0285-869320320824&symbols=1f2c511b-0b83-4f92-0dac-66503e9d0a9d&symbols=7502295d-2255-4592-0ada-a6911f5a1d9b&symbols=67063f4c-2e03-4772-014c-37523481047d&symbols=0d45156a-12a3-4d32-0454-c4943e440535&symbols=1921123f-154c-4962-0c4e-6697040c446f&symbols=0b022952-501c-4b12-0b03-0892834b1012&symbols=22187e06-039b-4272-0001-039849600070", {
+            fetch: () => fetch("https://api.questrade.com/v1/market-data/update?symbols=515c3938-2281-4122-0285-869320320824&symbols=1f2c511b-0b83-4f92-0dac-66503e9d0a9d&symbols=7502295d-2255-4592-0ada-a6911f5a1d9b&symbols=67063f4c-2e03-4772-014c-37523481047d&symbols=0d45156a-12a3-4d32-0454-c4943e440535&symbols=1921123f-154c-4962-0c4e-6697040c446f&symbols=0b022952-501c-4b12-0b03-0892834b1012&symbols=22187e06-039b-4272-0001-039849600070", {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
@@ -2364,7 +2398,7 @@ const stockVisionTrade = () => {
 
         const scopeToFindAccessToken = "openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read"
 
-        return {submit,modify,balance,orders,position,searchStockCode,getMarketData}
+        return {submit,modify,balance,orders,scopeToFindAccessToken}
 
     }
 
@@ -2640,13 +2674,20 @@ const stockVisionTrade = () => {
 
     const constants = {
         localServer: {
-            serverUrl: 'http://localhost:7000'
+            serverUrl: 'http://localhost:9000'
         },
         cloudServer: {
             serverUrl: 'https://styleminions.co/ninja'
         },
+        serverApi: {
+            notify: '/trader/notify'
+        },
+        notification: {
+            subjectGeneral: '[BWA] NOTIFICATION',
+        },
         pingPongInterval: 1000*5,
-        orderInspectionInterval: 1000*60*1,
+        orderInspectionDelay: 1000*60*1,
+        modifyThreshold: 60/5, // keep within 1 minute for now
         questrade: {
             firstElement: () => document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('app-bottom-tabs-section > div > app-tabs > div > qt-trad-carousel > section > ul > li:nth-child(1) > div > span'),
             secondElement: () => document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('app-bottom-tabs-section > div > app-tabs > div > qt-trad-carousel > section > ul > li:nth-child(2) > div > span'),
@@ -2682,6 +2723,11 @@ const stockVisionTrade = () => {
         return storage
     }
 
+    /**
+     * 
+     * @param {{[key: string]: {securityId: string; capital: number}}[]} securities 
+     * @param {string} accountId 
+     */
     const defaultBrokerageVariables = (securities, accountId) => {
         // securityIds, capital, accountId
         const storage = localStorage.getItem('stockvisionTrade') !== null ? JSON.parse(localStorage.getItem('stockvisionTrade')) : {}
@@ -2707,12 +2753,28 @@ const stockVisionTrade = () => {
         localStorage.setItem('stockvisionTrade', JSON.stringify(objectToStore))
     }
 
+    const backUp = () => {
+        // securities, orders and orderHistory for now
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const storage = getBrokerageVariables()
+        storage.orders = idaStockVisionTrade.orders
+        storage.orderHistory = idaStockVisionTrade.orderHistory
+        storage.securities = idaStockVisionTrade.securities
+
+        storeBrokerageVariables(storage)
+
+    }
+
+    /**
+     * 
+     * @param {string} brokerage 
+     * @returns {string | undefined}
+     */
     const getAccessToken = (brokerage) => {
         let accessToken = undefined
         switch(brokerage) {
             case 'questrade':
-                const scopeToFindAccessToken = 'openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read'
-                const tokenObject = Object.values(sessionStorage).find((item) => item.includes(scopeToFindAccessToken))
+                const tokenObject = Object.values(sessionStorage).find((item) => item.includes(constants.questrade.tradeProcess.scopeToFindAccessToken))
                 if (tokenObject) {
                     accessToken = JSON.parse(tokenObject).access_token
                 }
@@ -2723,22 +2785,39 @@ const stockVisionTrade = () => {
         return accessToken
     }
 
-    const keepAwake = (firstElement, secondElement) => {
+    /**
+     * 
+     * @param {HTMLElement | number} firstElement 
+     * @param {HTMLElement | number} secondElement 
+     * @param {boolean} stop 
+     * @returns {number[]}
+     */
+    const keepAwake = (firstElement, secondElement, stop = false) => {
         // switch between 2 elements to keep browser tab active
-        if (![firstElement, secondElement].every((element) => element instanceof HTMLElement)) {
+        if (!stop && ![firstElement, secondElement].every((element) => element instanceof HTMLElement)) {
             throw new Error('Need all elements to keep tab awake')
         }
-        const secondIntervalInstance = window.setInterval(()=>{secondElement.click();/**console.log('second element')*/}, 1000*4);
-        const firstIntervalInstance = window.setInterval(()=>{firstElement.click();/**console.log('first element')*/}, 1000*5);
 
-        return {firstIntervalInstance, secondIntervalInstance}
+        if (stop) {
+            [firstElement, secondElement].forEach((item) => {
+                if (typeof item === 'number') {
+                    window.clearInterval(item)
+                }
+            })
+            return
+        }
+
+        const secondIntervalInstance = window.setInterval(()=>{/**@type {HTMLElement}*/ (secondElement).click();/**console.log('second element')*/}, 1000*4);
+        const firstIntervalInstance = window.setInterval(()=>{/**@type {HTMLElement}*/ (firstElement).click();/**console.log('first element')*/}, 1000*5);
+
+        return [firstIntervalInstance, secondIntervalInstance]
     }
 
     const pollLocalServer = () => {
         try {
             const idaStockVisionTrade = window.idaStockVisionTrade
             const brokerageName = idaStockVisionTrade.brokerage.name
-            keepAwake(constants[brokerageName].firstElement(), constants[brokerageName].secondElement())
+            idaStockVisionTrade.keepAwakeInstances = keepAwake(constants[brokerageName].firstElement(), constants[brokerageName].secondElement())
             const intervalCallback = async () => {
                 try {
                     if (idaStockVisionTrade.pollServerInProgress) {
@@ -2746,6 +2825,7 @@ const stockVisionTrade = () => {
                     }
                     idaStockVisionTrade.pollServerInProgress = true
                     const payload = new URLSearchParams()
+                    payload.set('brokerageName', brokerageName)
                     const resp = await fetch(`${constants.localServer.serverUrl}/trader/tradeCheck?${payload.toString()}`, {
                         method: 'GET',
                         mode: 'cors',
@@ -2753,13 +2833,24 @@ const stockVisionTrade = () => {
                     const formattedResp = await resp.json()
                     if (Array.isArray(formattedResp) && formattedResp.length > 0) {
                         window.idaStockVisionTrade.orders.push(...formattedResp)
+                        idaStockVisionTrade.pollServerInProgress = false
+                        backUp()
+                        // backup order data in localstorage
                         // start/queue trade operation
                         processOrderQueue()
-                    } else {
-                        // backup order data in localstorage
+                        return
                     }
-                } catch (error) {
+                    if (!idaStockVisionTrade.processOrderQueueInProgress && !idaStockVisionTrade.investigateOrderQueueInProgress) {
+                        investigateOrderQueue()
+                    }
                     
+                } catch (error) {
+                    const errorMessage = ['Ida Trader Bot - POLL LOCAL SERVER', error.toString()]
+                    console.log(...errorMessage)
+                    if (idaStockVisionTrade.pollServerErrorCount === 0) {
+                        notify(errorMessage.join('-'))
+                        idaStockVisionTrade.pollServerErrorCount++
+                    }
                 } finally {
                     idaStockVisionTrade.pollServerInProgress = false
                 }
@@ -2772,154 +2863,349 @@ const stockVisionTrade = () => {
     }
 
     const stopPollLocalServer = () => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const [first, second] = idaStockVisionTrade.keepAwakeInstances
         clearInterval(window.idaStockVisionTrade.pollServerInstance)
+        keepAwake(first, second, true)
     }
 
+    /**
+     * 
+     * @param {string|number} price 
+     * @param {number} capitalAmount 
+     * @returns {number}
+     */
     const sharesAmount = (price, capitalAmount) => {
-        return Math.ceil(capitalAmount/price)
+        return Math.ceil(capitalAmount / Number(price))
     }
     
-    const priceCheck = async (primaryCode) => {
+    /**
+     * 
+     * @param {string} primaryCode 
+     * @returns {Promise<Response>} 
+     */
+    const priceCheck = (primaryCode) => {
         const payload = new URLSearchParams()
         payload.set('primaryCode', primaryCode)
-        const resp = await fetch(`${constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
+        return fetch(`${constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
             method: 'GET',
             mode: 'cors',
         })
     }
 
-    const priceDecision = (lastPrice, bidPrice, askPrice) => {
+    /**
+     * 
+     * @param {string} last 
+     * @param {string} bid 
+     * @param {string} ask 
+     * @returns {string|number}
+     */
+    const priceDecision = (last, bid, ask) => {
         // seems like askPrice and Bid price from cboe might not always be available. plan for edge case
-        const missingBidOrAskPrice = [askPrice, bidPrice].some((price) => price === undefined)
+        const missingBidOrAskPrice = [ask, bid].some((price) => price === undefined)
+        const lastPrice = Number(last)
+        const bidPrice = Number(bid)
+        const askPrice = Number(ask)
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
         const midAskBidPrice = Number(((bidPrice + askPrice)/2).toPrecision(4))
         if (!missingBidOrAskPrice && !lastPriceInMiddle) {
             return midAskBidPrice
         }
 
-        return lastPrice
+        return last
     }
 
-    const processOrderQueue = () => {
-        //always store orders in localstorage as backup in case of forced logout
+    /**
+     * 
+     * @param {string} code 
+     * @returns {number | undefined}
+     */
+    const getLatestOrderedQuantity = (code) => {
         const stockVisionTrade = window.idaStockVisionTrade
-        const orders = stockVisionTrade.orders.filter((order) => (order.accepted !== undefined || order.accepted === false))
-        const brokerageName = stockVisionTrade.brokerage.name
-        if (orders.length > 0 && !stockVisionTrade.processOrderQueueInProgress) {
-            stockVisionTrade.processOrderQueueInProgress = true
-            orders.forEach(async (order) => {
-                try {
-                    const action = order.position === true ? constants[brokerageName].buy : constants[brokerageName].sell
-                    const price = priceDecision(order.last, order.bid_price, order.ask_price)
-                    const quantity = sharesAmount(price, stockVisionTrade.securities[order.primaryCode].capital)
-                    const securityId = stockVisionTrade.securities[order.primaryCode].securityId
-                    const accountId = stockVisionTrade.accountId
-                    const accessToken = getAccessToken(brokerageName)
-                    const now = new Date().toISOString()
-                    const res = await constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
-                    const resFormatted = await res.json()
-                    if (constants[brokerageName].trade.orderId in resFormatted) {
-                        // setup order object with FE default properties it needs later
-                        order.accepted = true
-                        order.timeSubmitted = now
-                        order.orderId = resFormatted[constants[brokerageName].trade.orderId]
-                        order.quantity = quantity
-                        order.checkCount = 0
-                        order.executed = false
-                    } else {
-                        throw new Error(`no orderId returned - ${order.code}`)
-                    }
-    
-                } catch (error) {
-                    console.log('Ida Trader Bot - PROCESS ORDER QUEUE', error)
-                }
-            })
-            stockVisionTrade.processOrderQueueInProgress = false
-            processOrderQueue()
-            return
+        if (code in stockVisionTrade.orderHistory) {
+            return stockVisionTrade.orderHistory[code].quantity
         }
-        investigateOrderQueue(true)
 
-        
+        return
     }
 
-    const investigateOrderQueue = async (defer = false) => {
-        const stockVisionTrade = window.idaStockVisionTrade
-        const orders = stockVisionTrade.orders.filter((order) => (order.accepted === true && order.executed === false))
-        const brokerageName = stockVisionTrade.brokerage.name
-        const orderStatuses = constants[brokerageName].trade.orderStatus
-        // const acceptableorderStatuses = [orderStatuses.executed,orderStatuses.accepted]
-        if (orders.length > 0) {
-            const fromDateISO = orders.at(0).timeSubmitted
-            if (defer) {
-                window.setTimeout(investigateOrderQueue, constants.orderInspectionInterval)
-                return
-            }
-            try {
-                if (stockVisionTrade.investigateOrderQueueInProgress) {
-                    return
-                }
-                stockVisionTrade.investigateOrderQueueInProgress = true
-                const accessToken = getAccessToken(brokerageName)
-                const res = await constants[brokerageName].tradeProcess.orders.fetch(accessToken,fromDateISO)
-                const formattedRes = res.json()
-                const brokerageOrdersObject = formattedRes.data.reduce((previous, current) => {
-                    previous[current[constants[brokerageName].orderId]] = current
-                    return previous
-                }, {})
-                orders.forEach((order) => {
-                    try {
-                        const orderId = order[constants[brokerageName].orderId]
-                        if (!(orderId in brokerageOrdersObject)) {
-                            throw new Error(`Cannot find orderId - ${orderId}`)
-                        }
-                        switch(brokerageOrdersObject[orderId].status) {
-                            case orderStatuses.executed:
-                                order.executed = true
-                                confirmOrderWithLink(order.confirmationLink, order.quantity)
-                                // confirm order with confirmation link to [cs]
-                                break
-                            case orderStatuses.accepted:
-                            case orderStatuses.pending:
-                            case orderStatuses.partial:
-                            case orderStatuses.queued:
-                            case orderStatuses.activated:
-                                if (order.checkCount >= 5) {
-                                    order.modify = true
-                                }
-                                order.checkCount++
-                                break
-                            default:
-                                throw new Error(`order status is bad - ${orderId}`)
-                            
-                        }
-                    } catch (error) {
-                        console.log('Ida Trader Bot', error)
-                    }
-                })
-                stockVisionTrade.investigateOrderQueueInProgress = false
-                // you can trigger modifying orders around here
-                investigateOrderQueue(true)
-            } catch (error) {
-                console.log('Ida Trader Bot - INVESTIGATE ORDER QUEUE', error)
-            }
-        }
-    }
-
-    const confirmOrderWithLink = (link, sharesQuantity) => {
+    /**
+     * 
+     * @param {string} message 
+     * @param {string} subject 
+     * @param {string} brokerageName 
+     */
+    const notify = async (message, subject = constants.notification.subjectGeneral, brokerageName = window.idaStockVisionTrade.brokerage.name) => {
         try {
-            const payload = new URLSearchParams()
-            payload.set('quantity', sharesQuantity)
-            fetch(`${link}${payload.toString()}`, {
-                method: 'GET',
-                mode: 'cors',
+            let brokerageSubject = `${subject} (${brokerageName})`
+            const queryParams = new URLSearchParams()
+            queryParams.set('subject', brokerageSubject)
+            queryParams.set('message', message)
+            fetch(`${constants.cloudServer.serverUrl}${constants.serverApi.notify}?${queryParams.toString()}`, {
+                method: 'POST',
             })
         } catch (error) {
             
         }
     }
 
-    const modifyOrders = () => {} // to do later
+    const processOrderQueue = async () => {
+        //always store orders in localstorage as backup in case of forced logout
+        const stockVisionTrade = window.idaStockVisionTrade
+        if (stockVisionTrade.processOrderQueueInProgress) {
+            stockVisionTrade.newOrdersReceived = true
+            return
+        }
+        stockVisionTrade.processOrderQueueInProgress = true
+        const orders = stockVisionTrade.orders.filter((order) => (order.accepted === undefined || order.accepted === false))
+        const brokerageName = stockVisionTrade.brokerage.name
+        if (orders.length === 0) {
+            stockVisionTrade.processOrderQueueInProgress = false
+            return 
+        }
+
+        // sequential promise fulfliment as forEach doe not respect asyc/await
+        for(const order of orders) {
+            try {
+                const action = order.position === true ? constants[brokerageName].trade.buy : constants[brokerageName].trade.sell
+                const price = priceDecision(order.last, order.bid_price, order.ask_price)
+                const quantity = order.position === true 
+                    ? sharesAmount(price, stockVisionTrade.securities[order.primaryCode].capital) 
+                    : getLatestOrderedQuantity(order.code)
+                const securityId = stockVisionTrade.securities[order.primaryCode].securityId
+                if (quantity === undefined) {
+                    throw new Error(`no quantity to process order - ${order.code}`)
+                }
+                if (securityId === undefined) {
+                    throw new Error(`no security Id to process order - ${order.code}`)
+                }
+                const accountId = stockVisionTrade.accountId
+                const accessToken = getAccessToken(brokerageName)
+                const now = new Date().toISOString()
+                const res = await constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
+                const resFormatted = await res.json()
+                if (constants[brokerageName].trade.orderId in resFormatted) {
+                    // setup order object with FE default properties it needs later
+                    order.accepted = true // assume it's been accepted with the return of an orderId
+                    order.timeSubmitted = now
+                    order.orderId = resFormatted[constants[brokerageName].trade.orderId]
+                    order.quantity = quantity
+                    order.priceSubmitted = price
+                    order.checkCount = 0
+                    order.executed = false
+                    order.modify = false
+                    order.partialExecution = false
+                    stockVisionTrade.orderHistory[order.code] = {
+                        quantity,
+                        orderId: order.orderId
+                    }
+                    // backup order data in localstorage
+                    backUp()
+                } else {
+                    throw new Error(`no orderId returned - ${order.code} - ${resFormatted.toString()}`)
+                }
+
+            } catch (error) {
+                const errorMessage = ['Ida Trader Bot - PROCESS ORDER QUEUE', error.toString()]
+                console.log(...errorMessage)
+                notify(errorMessage.join('-'))
+                order.accepted = true
+                order.executed = true
+                // backup order data in localstorage
+                backUp()
+                // notify for manual intervention
+            }
+        }
+
+        stockVisionTrade.processOrderQueueInProgress = false
+
+        if (stockVisionTrade.newOrdersReceived) {
+            stockVisionTrade.newOrdersReceived = false
+            processOrderQueue()
+            return
+        }
+        investigateOrderQueue(true)
+        
+    }
+
+    /**
+     * 
+     * @param {boolean} defer 
+     * @returns 
+     */
+    const investigateOrderQueue = async (defer = false) => {
+        const stockVisionTrade = window.idaStockVisionTrade
+        if (stockVisionTrade.investigateOrderQueueInProgress) {
+            return
+        }
+
+        if (defer) {
+            window.setTimeout(investigateOrderQueue, constants.orderInspectionDelay)
+            return
+        }
+
+        stockVisionTrade.investigateOrderQueueInProgress = true
+        const orders = stockVisionTrade.orders
+            .filter((order) => (order.accepted === true && order.executed === false && order.modify === false))
+        if (orders.length === 0) {
+            stockVisionTrade.investigateOrderQueueInProgress = false
+            return
+        }
+
+        
+        try {
+            let orderToModifyExist = false
+            const fromDateISO = orders.at(0).timeSubmitted
+            const brokerageName = stockVisionTrade.brokerage.name
+            const orderStatuses = constants[brokerageName].trade.orderStatus
+            const accessToken = getAccessToken(brokerageName)
+            const res = await constants[brokerageName].tradeProcess.orders.fetch(accessToken,fromDateISO)
+            const formattedRes = await res.json()
+            const brokerageOrdersObject = formattedRes.data.reduce((previous, current) => {
+                previous[current[constants[brokerageName].trade.orderId]] = current
+                return previous
+            }, {})
+            orders.forEach((order) => {
+                try {
+                    const orderId = order.orderId
+                    if (!(orderId in brokerageOrdersObject)) {
+                        throw new Error(`Cannot find orderId - ${orderId}`)
+                    }
+                    const orderFromBrokerage = brokerageOrdersObject[orderId]
+                    switch(orderFromBrokerage.status) {
+                        case orderStatuses.executed:
+                            order.executed = true
+                            confirmOrderWithLink(order.confirmationLink, order.quantity)
+                            break
+                        case orderStatuses.partial:
+                            order.partialExecution = true
+                            order.openQuantity = orderFromBrokerage.openQuantity
+                            order.filledQuantity = orderFromBrokerage.filledQuantity
+                            break
+                            // to-do handle edge case of partial execution and never completely executes (price run off buy/sell edge case)
+                            // remove break, so that checkCount can be itirated and modify can be triggered
+                            // in modify function use openQunatity and quantity to modify buy/sell orders with partialExecution flag
+                        case orderStatuses.accepted:
+                        case orderStatuses.pending:
+                        case orderStatuses.queued:
+                        case orderStatuses.activated:
+                            if (order.checkCount >= constants.modifyThreshold) {
+                                order.modify = true
+                                orderToModifyExist = true
+                            }
+                            order.checkCount++
+                            break
+                        default:
+                            throw new Error(`order status is bad - ${orderId} - - ${formattedRes.toString()}`)
+                        
+                    }
+                } catch (error) {
+                    console.log('Ida Trader Bot', error)
+                }
+            })
+            // backup order data in localstorage
+            backUp()
+            
+            stockVisionTrade.investigateOrderQueueInProgress = false
+            if (orderToModifyExist) {
+                modifyOrders()
+            }
+            // you can trigger modifying orders around here
+            // polling will trigger this function
+        } catch (error) {
+            const errorMessage = ['Ida Trader Bot - INVESTIGATE ORDER QUEUE', error.toString()]
+            console.log(...errorMessage)
+            notify(errorMessage.join('-'))
+            stockVisionTrade.investigateOrderQueueInProgress = false
+        }
+    }
+
+    /**
+     * 
+     * @param {string} link 
+     * @param {number} sharesQuantity 
+     */
+    const confirmOrderWithLink = (link, sharesQuantity) => {
+        try {
+            const url = new URL(link)
+            url.searchParams.set('quantity', sharesQuantity.toString())
+            fetch(`${url.toString()}`, {
+                method: 'GET',
+                mode: 'cors',
+            })
+        } catch (error) {
+            const errorMessage = ['Ida Trader Bot - CONFIRM ORDER WITH LINK', error.toString()]
+            console.log(...errorMessage)
+            notify(errorMessage.join('-'))
+        }
+    }
+
+    const modifyOrders = async () => {
+        // get list of orders to modify
+        // price check each
+        // send modify request
+        // update orderId
+        // reset order details to be picked up for later investigation
+        // investigate
+        const stockVisionTrade = window.idaStockVisionTrade
+        if (stockVisionTrade.modifyOrderQueueInProgress) {
+            return
+        }
+        stockVisionTrade.modifyOrderQueueInProgress = true
+        const orders = stockVisionTrade.orders
+            .filter((order) => (order.accepted === true && order.executed === false && order.modify === true))
+        const brokerageName = stockVisionTrade.brokerage.name
+        if (orders.length === 0) {
+            stockVisionTrade.modifyOrderQueueInProgress = false
+            return
+        }
+
+        for(const order of orders) {
+            try {
+                const newPricesResponse = await priceCheck(order.primaryCode)
+                const newPriceJson = await newPricesResponse.json()
+                const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price)
+                const quantity = order.position === true 
+                    ? sharesAmount(newPrice, stockVisionTrade.securities[order.primaryCode].capital) 
+                    : getLatestOrderedQuantity(order.code)
+                if (quantity === undefined) {
+                    order.accepted = true
+                    order.executed = true
+                    throw new Error(`MODIFY ORDERS - no quantity to process - ${order.code}`)
+                }
+                const accessToken = getAccessToken(brokerageName)
+                const now = new Date().toISOString()
+                const res = await constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, stockVisionTrade.accountId, quantity, newPrice)
+                const formattedRes = await res.json()
+                if (constants[brokerageName].trade.orderId in formattedRes) {
+                    // reset order details for next investigation
+                    order.accepted = true
+                    order.timeSubmitted = now
+                    order.rootOrderId = order.orderId
+                    order.orderId = formattedRes[constants[brokerageName].trade.orderId]
+                    order.quantity = quantity
+                    order.checkCount = 0
+                    order.executed = false
+                    order.modify = false
+                    stockVisionTrade.orderHistory[order.code] = {
+                        quantity,
+                        orderId: order.orderId
+                    }
+                    // backup order data in localstorage
+                    backUp()
+                } else {
+                    throw new Error(`MODIFY ORDERS - no orderId returned - ${order.code} - ${formattedRes.toString()}`)
+                }
+
+            } catch (error) {
+                const errorMessage = ['Ida Trader Bot - MODIFY ORDER QUEUE', error.toString()]
+                console.log(...errorMessage)
+                notify(errorMessage.join('-'))
+            }
+        }
+
+        stockVisionTrade.modifyOrderQueueInProgress = false
+    }
 
     const setUp = () => {
         try {
@@ -2928,17 +3214,36 @@ const stockVisionTrade = () => {
                 pollServerInProgress: false,
                 processOrderQueueInProgress: false,
                 investigateOrderQueueInProgress: false,
+                modifyOrderQueueInProgress: false,
+                newOrdersReceived: false,
                 pollServerInstance: undefined,
+                pollServerErrorCount: 0,
+                keepAwakeInstances: [],
                 orders: [],
+                orderHistory: {},
                 tools: {
                     start: pollLocalServer,
                     stop: stopPollLocalServer,
-                    define: defaultBrokerageVariables
+                    define: defaultBrokerageVariables,
+                    process: processOrderQueue,
+                    investigate: investigateOrderQueue,
+                    modify: modifyOrders,
+                    api: constants.questrade.tradeProcess,
+                    priceDecision,
+                    sharesAmount,
+                    getAccessToken,
+                    notify,
+                    keepAwake,
+                    backUp,
                 },
                 ...brokerageVariables,
             }
+            window.addEventListener('beforeunload', () => {
+                const message = `Browser tab has been closed. Please investigate`
+                notify(message, undefined, brokerageVariables.brokerage.name)
+            })
         } catch (error) {
-            console.log('')
+            console.log(`Ida Trader Bot - SETUP - ${error.toString()}`)
         }
 
     }

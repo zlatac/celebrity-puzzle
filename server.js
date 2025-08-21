@@ -29,6 +29,13 @@ app.get('*',function(req,res,next){
         next() /* Continue to other routes if we're not redirecting */
 })
 
+app.options('*',function(req,res,next){
+    // Necessary for CORS preflight checks from the browser
+    res.append('Access-Control-Allow-Origin', '*')
+    res.append('Access-Control-Allow-Headers', '*')
+    next() /* Continue to other routes if we're not redirecting */
+})
+
 app.get('/', function (req, res) {
     //console.log(req.hostname)
     if(req.hostname.includes('celebrity')){
@@ -167,6 +174,7 @@ async function getPlaylists(){
 }
 
 //console.log(process.env.YOUTUBE_KEY)
+console.log(`Name is ${process.env.SERVER_NAME}`)
 // getPlaylists()
 
 function clearDataLater(){
@@ -445,6 +453,8 @@ const trader = {
         history: [],
         confirmTimeout: undefined,
         confirm: [],
+        ordersToExecute: [],
+        notificationOrders: [],
     },
     methods: {
         checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE) => {
@@ -519,19 +529,45 @@ const trader = {
 
 app.post('/trader/notify', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
-    try {
-        const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
-            subject: req.query.subject,
-            message: req.query.message,
-        })
-        res.sendStatus(202)  
-    } catch (error) {
-        res.status(404)
-        res.send(`${error.toString()}`)    
+    if (process.env.SERVER_NAME === trader.constants.LOCAL_SERVER) {
+        try {
+            const prepareOrder = {
+                primaryCode: req.query.primaryCode,
+                code: req.query.code,
+                position: req.query.action === trader.constants.IN ? true : false,
+                confirmationLink: req.query.confirmationLink,
+                // observationPrice: req.query.currentPrice,
+                seenByBrokerage: [],
+            }
+            const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
+            if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
+                throw new Error('cannot retrieve price')
+            }
+            trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
+            res.sendStatus(200)
+        } catch (error) {
+            res.status(404)
+            res.send(`${error.toString()}`)
+        }
     }
+
+    if (process.env.SERVER_NAME === trader.constants.CLOUD_SERVER) {
+        try {
+            const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
+                subject: req.query.subject,
+                message: req.query.message,
+            })
+            res.sendStatus(202)  
+        } catch (error) {
+            res.status(404)
+            res.send(`${error.toString()}`)    
+        }
+    }
+
 });
 
 app.get('/trader/confirm', async function(req,res){
+     res.append('Access-Control-Allow-Origin', '*')
     try {
         let payloadDate = new Date().toISOString()
         const code = req.query.code.toUpperCase()
@@ -662,17 +698,32 @@ app.put('/trader/history', async function(req, res) {
     
 })
 
-app.get('/trader/priceCheck', async function(req,res){
+app.get('/trader/priceCheck', async function(req,res) {
     res.append('Access-Control-Allow-Origin', '*')
     await trader.methods.checkOrSetupFileStorage()
     try {
         let primaryCode = req.body?.primaryCode || req.query.primaryCode
         const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${primaryCode.toUpperCase()}/quote/`, {})
-        if (!('symbol_name' in axiosResponse.data.data) || axiosResponse.data.data.symbol_name !== primaryCode.toUpperCase()) {
+        if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== primaryCode.toUpperCase()) {
             throw new Error('cannot retrieve price')
         }
         res.status(200)
         res.send(axiosResponse.data.data)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.get('/trader/tradeCheck', async function(req,res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
+    try {
+        let brokerageName = req.body?.brokerageName || req.query.brokerageName
+        const ordersToSend = trader.asyncOperation.ordersToExecute.filter((order) => !order.seenByBrokerage.includes(brokerageName))
+        res.status(200)
+        res.send(ordersToSend)
+        ordersToSend.forEach((order) => order.seenByBrokerage.push(brokerageName))
     } catch (error) {
         res.status(404)
         res.send(`${error.toString()}`)
