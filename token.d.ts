@@ -1,6 +1,6 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
-export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' | '15min' | '30min' | '45min' | '1hour' | 'none'
+export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' | '15min' | '27min' | '30min' | '45min' | '1hour' | 'none'
 
 export interface IPrice {
   price: number;
@@ -124,6 +124,128 @@ export interface IStockVision {
 }
 
 /** STOCK_VISION_TRADE */
+export interface ICboeQuoteResponse {
+    symbol_name: string;
+    trade_time: string;
+    book: string;
+    last: string;
+    prev_close: string;
+    change: string;
+    change_pct: string;
+    symb_name: string;
+    company_name: string;
+    primary_listing_exchange: string;
+    high: string;
+    low: string;
+    one_yr_high: string;
+    one_yr_low: string;
+    volume: string;
+    name: string;
+    state: string;
+    open: string;
+    ask_shares: number;
+    bid_shares: number;
+    ask_price: string;
+    bid_price: string;
+    ts: string;
+    market_cap: number;
+}
+export interface IQuestradeOrder {
+  security: {
+      securityUuid: string;
+      symbol: string;
+      isQuotable: boolean;
+      description: string;
+      currency: string;
+      type: string;
+      displayName: string;
+      option: null;
+  };
+  account: {
+      accountUuid: string;
+      number: string;
+      name: string;
+      detailType: string;
+  };
+  orderStatement: string;
+  cancelledQuantity: number;
+  openQuantity: number;
+  isDefaultRouted: boolean;
+  isConditional: boolean;
+  isModifiable: boolean;
+  isCancellable: boolean;
+  isDollarValueBased: boolean;
+  hasSpecialInstructions: boolean;
+  action: string;
+  goodTillDate: null | string;
+  orderUuid: string;
+  createdDateTime: string;
+  status: string;
+  clientSideAction: string;
+  totalQuantity: number;
+  dollarValue: null|number;
+  limitPrice: number;
+  stopPrice: number;
+  duration: string;
+  type: string;
+  bracket: null;
+  bracketGroupUuid: null|string;
+  crossZeroGroupUuid: null|string;
+  venue: null|string;
+  exchangeOrderId: string;
+  parentOrderUuid: string;
+  strategyType: null|string;
+  specialInstructions: {
+      summary: null|string;
+      isAnonymous: boolean;
+      isAllOrNone: boolean;
+      isPostOnly: boolean;
+      minimumQuantity: number;
+      icebergQuantity: number;
+  };
+  route: string;
+  subRoute: string;
+  note: null|string;
+  totalFees: number;
+  updatedDateTime: string; //ISO format 
+  filledQuantity: number;
+  averageFilledPrice: number;
+  stopPriceType: null|string;
+  limitPriceType: string;
+  rejectionReason: null|string;
+  triggerPrice: number;
+  rootOrderUuid: string;
+  legs: null;
+}
+export interface IQuestradeOrdersResponse {
+  data: IQuestradeOrder[]
+}
+export interface IQuestradeSubmitResponse {
+  orderUuid: string;
+}
+export interface IQuestradeSubmitErrorResponse {}
+export interface ITradeCheckResponse extends ICboeQuoteResponse {
+  code: string;
+  primaryCode: string;
+  confirmationLink: string;
+  position: boolean;
+}
+export interface ITradeOrder extends ITradeCheckResponse {
+  executed?: boolean;
+  accepted?: boolean;
+  orderId?: string | undefined;
+  rootOrderId?: string | undefined;
+  capital: number;
+  quantity?: number;
+  checkCount?: number;
+  modify?: boolean;
+  partialExecution?: boolean;
+  openQuantity?: number;
+  filledQuantity: number;
+  timeSubmitted?: string;
+  priceSubmitted?: string|number;
+}
+
 export interface IStockVisionTrade {
   pollServerInProgress: boolean;
   pollServerInstance: undefined | number;
@@ -136,34 +258,13 @@ export interface IStockVisionTrade {
   tools: {[key:string]: Function};
   brokerage: {
     name: 'questrade' | 'ibkr';
-  },
+  };
   accountId: string;
   securities: {[key: string]: {
     securityId: string;
     capital: number
   }};
-  orders: {
-    code: string;
-    primaryCode: string;
-    executed?: boolean;
-    accepted?: boolean;
-    orderId?: string | undefined;
-    rootOrderId?: string | undefined;
-    last: string;
-    ask_price: string;
-    bid_price: string;
-    capital: number;
-    confirmationLink: string;
-    quantity?: number;
-    position: boolean;
-    checkCount?: number;
-    modify?: boolean;
-    partialExecution?: boolean;
-    openQuantity?: number;
-    filledQuantity: number;
-    timeSubmitted?: string;
-    priceSubmitted?: string|number;
-  }[];
+  orders: ITradeOrder[];
   orderHistory: {[key:string]: {
     quantity: number;
     orderId: string;

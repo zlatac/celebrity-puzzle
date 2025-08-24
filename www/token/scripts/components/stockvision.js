@@ -8,6 +8,12 @@
  * @typedef { import("token").INTERVAL_FLAGS } IntervalFlags
  * @typedef { import("token").IIntervalInspection } IntervalInspection
  * @typedef { import("token").PriceAnalysis } IPriceAnalysis
+ * 
+ * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
+ * @typedef { import("token").ICboeQuoteResponse } CboeQuoteResponse
+ * @typedef { import("token").IQuestradeSubmitResponse } QuestradeSubmitResponse
+ * @typedef { import("token").IQuestradeOrdersResponse } QuestradeOrdersResponse
+ * @typedef { import("token").IQuestradeOrder } QuestradeOrder
  */
 
 /**
@@ -64,6 +70,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             fiveMinute: '5min',
             sevenMinute: '7min',
             fifteenMinute: '15min',
+            twentySevenMinute: '27min',
             thirtyMinute: '30min',
             fourtyFiveMinute: '45min',
             oneHour: '1hour',
@@ -78,6 +85,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             [PriceAnalysis.TRADING_INTERVAL.fiveMinute]: 5 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.sevenMinute]: 7 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.fifteenMinute]: 15 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
+            [PriceAnalysis.TRADING_INTERVAL.twentySevenMinute]: 27 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.thirtyMinute]: 30 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.fourtyFiveMinute]: 45 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.oneHour]: 60 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
@@ -2830,6 +2838,7 @@ let stockVisionTrade = function () {
                         method: 'GET',
                         mode: 'cors',
                     })
+                    /** @type {TradeCheckResponse} */
                     const formattedResp = await resp.json()
                     if (Array.isArray(formattedResp) && formattedResp.length > 0) {
                         window.idaStockVisionTrade.orders.push(...formattedResp)
@@ -2983,6 +2992,7 @@ let stockVisionTrade = function () {
                 const accessToken = getAccessToken(brokerageName)
                 const now = new Date().toISOString()
                 const res = await constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
+                /** @type {QuestradeSubmitResponse} */
                 const resFormatted = await res.json()
                 if (constants[brokerageName].trade.orderId in resFormatted) {
                     // setup order object with FE default properties it needs later
@@ -3060,7 +3070,9 @@ let stockVisionTrade = function () {
             const orderStatuses = constants[brokerageName].trade.orderStatus
             const accessToken = getAccessToken(brokerageName)
             const res = await constants[brokerageName].tradeProcess.orders.fetch(accessToken,fromDateISO)
+            /** @type {QuestradeOrdersResponse} */
             const formattedRes = await res.json()
+            /** @type {{[key: string]: QuestradeOrder}} */
             const brokerageOrdersObject = formattedRes.data.reduce((previous, current) => {
                 previous[current[constants[brokerageName].trade.orderId]] = current
                 return previous
@@ -3083,7 +3095,7 @@ let stockVisionTrade = function () {
                             order.filledQuantity = orderFromBrokerage.filledQuantity
                             break
                             // to-do handle edge case of partial execution and never completely executes (price run off buy/sell edge case)
-                            // remove break, so that checkCount can be itirated and modify can be triggered
+                            // remove break, so that checkCount can be iterated and modify can be triggered
                             // in modify function use openQunatity and quantity to modify buy/sell orders with partialExecution flag
                         case orderStatuses.accepted:
                         case orderStatuses.pending:
@@ -3163,6 +3175,7 @@ let stockVisionTrade = function () {
         for(const order of orders) {
             try {
                 const newPricesResponse = await priceCheck(order.primaryCode)
+                /** @type {CboeQuoteResponse} */
                 const newPriceJson = await newPricesResponse.json()
                 const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price)
                 const quantity = order.position === true 
@@ -3176,6 +3189,7 @@ let stockVisionTrade = function () {
                 const accessToken = getAccessToken(brokerageName)
                 const now = new Date().toISOString()
                 const res = await constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, stockVisionTrade.accountId, quantity, newPrice)
+                /** @type {QuestradeSubmitResponse} */
                 const formattedRes = await res.json()
                 if (constants[brokerageName].trade.orderId in formattedRes) {
                     // reset order details for next investigation
