@@ -116,6 +116,7 @@ export interface IStockVision {
   settings: {
     [key:string]: {
       tradingInterval: INTERVAL_FLAGS;
+      experiment: boolean;
     };
   };
   server: {[key:string]: string};

@@ -1066,7 +1066,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             window.idaStockVision.intervalInspectorInstance[code] = undefined
             window.idaStockVision.timeoutInspectorInstance[code] = undefined
             window.idaStockVision.tools[`watch_${code}`] = watch
-            window.idaStockVision.settings[code] = {tradingInterval}
+            window.idaStockVision.settings[code] = {
+                tradingInterval,
+                experiment: false,
+            }
             setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
             const setFutureIntervalListener = () => {
                 setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2], true)
@@ -1155,6 +1158,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         const sameAnchorPriceAsLastNotificationAnchorPrice = 'anchorPrice' in window.idaStockVision.lastNotificationSent[tokenOrStockCode]
             ? anchorPrice === window.idaStockVision.lastNotificationSent[tokenOrStockCode].anchorPrice
             : true
+        const experimentMode = window.idaStockVision.settings[tokenOrStockCode].experiment === true
         let currentStatus
         switch (window.idaStockVision.positionIn[tokenOrStockCode]) {
             case true:
@@ -1185,12 +1189,25 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 method: 'POST',
                 mode: 'cors',
             })
-            const localServerRequest = fetch(`${window.idaStockVision.server.localServer}/trader/notify?${queryParams.toString()}`, {
-                method: 'POST',
-                mode: 'cors',
-            })
-            const resp = await Promise.allSettled([cloudServerRequest,localServerRequest])
+            const localServerRequest = () => {
+                if (experimentMode) {
+                    // we do not want to auto trade in experiment mode
+                    return Promise.resolve()
+                }
+                return fetch(`${window.idaStockVision.server.localServer}/trader/notify?${queryParams.toString()}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                })
+            }
+            const resp = await Promise.allSettled([cloudServerRequest,localServerRequest()])
             // const data = await resp[0].value.json()
+            if (experimentMode) {
+                // auto confirm in experiment mode
+                fetch(`${confirmationLink}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                })
+            }
             window.idaStockVision.lastNotificationSent[tokenOrStockCode] = {
                 tokenOrStockCode, 
                 message: messageBody,
@@ -1476,6 +1493,9 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         const nowEpochDate = today.getTime()
         /** @type {IntervalInspection[]} */
         const intervalBagValues = intervalBag.values().toArray()
+        if (intervalBagValues.length === 0) {
+            return
+        }
         const firstIntervalItem = intervalBagValues[0]
         const firstIntervalItemDate = new Date(firstIntervalItem.epochDate)
         const [startHour, startMinute, startSeconds] = window.idaStockVision.tradingStartTime
@@ -3135,12 +3155,14 @@ let stockVisionTrade = function () {
     /**
      * 
      * @param {string} link 
-     * @param {number} sharesQuantity 
+     * @param {number | undefined} sharesQuantity 
      */
     const confirmOrderWithLink = (link, sharesQuantity) => {
         try {
             const url = new URL(link)
-            url.searchParams.set('quantity', sharesQuantity.toString())
+            if(sharesQuantity !== undefined) {
+                url.searchParams.set('quantity', sharesQuantity.toString())
+            }
             fetch(`${url.toString()}`, {
                 method: 'GET',
                 mode: 'cors',
