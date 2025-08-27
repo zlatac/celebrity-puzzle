@@ -224,7 +224,12 @@ export interface IQuestradeOrdersResponse {
 export interface IQuestradeSubmitResponse {
   orderUuid: string;
 }
-export interface IQuestradeSubmitErrorResponse {}
+export interface IQuestradeSubmitErrorResponse {
+  code: string; //http status code
+  message: string; // reason for error
+  resource: string;
+  timestamp: string;
+}
 export interface ITradeCheckResponse extends ICboeQuoteResponse {
   code: string;
   primaryCode: string;

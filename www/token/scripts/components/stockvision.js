@@ -11,7 +11,7 @@
  * 
  * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
  * @typedef { import("token").ICboeQuoteResponse } CboeQuoteResponse
- * @typedef { import("token").IQuestradeSubmitResponse } QuestradeSubmitResponse
+ * @typedef { import("token").IQuestradeSubmitResponse |  import("token").IQuestradeSubmitErrorResponse} QuestradeSubmitResponse
  * @typedef { import("token").IQuestradeOrdersResponse } QuestradeOrdersResponse
  * @typedef { import("token").IQuestradeOrder } QuestradeOrder
  */
@@ -3032,7 +3032,7 @@ let stockVisionTrade = function () {
                     // backup order data in localstorage
                     backUp()
                 } else {
-                    throw new Error(`no orderId returned - ${order.code} - ${resFormatted.toString()}`)
+                    throw new Error(`no orderId returned - ${order.code} - ${JSON.stringify(resFormatted)}`)
                 }
 
             } catch (error) {
@@ -3128,7 +3128,7 @@ let stockVisionTrade = function () {
                             order.checkCount++
                             break
                         default:
-                            throw new Error(`order status is bad - ${orderId} - - ${formattedRes.toString()}`)
+                            throw new Error(`order status is bad - ${orderId} - - ${JSON.stringify(formattedRes)}`)
                         
                     }
                 } catch (error) {
@@ -3230,7 +3230,10 @@ let stockVisionTrade = function () {
                     // backup order data in localstorage
                     backUp()
                 } else {
-                    throw new Error(`MODIFY ORDERS - no orderId returned - ${order.code} - ${formattedRes.toString()}`)
+                    // most likely has executed already so let it go through another investigation cycle
+                    order.checkCount = 0
+                    order.modify = false
+                    throw new Error(`MODIFY ORDERS - no orderId returned - ${order.code} - ${JSON.stringify(formattedRes)}`)
                 }
 
             } catch (error) {
