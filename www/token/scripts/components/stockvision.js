@@ -6,7 +6,9 @@
  * @typedef { import("token").ICurrentPrice } CurrentPrice
  * @typedef { import("token").IPosition } Position
  * @typedef { import("token").INTERVAL_FLAGS } IntervalFlags
- * @typedef { import("token").IIntervalInspection } IntervalInspection
+ * @typedef { import("token").TRADING_FLAGS } TradingFlags
+ * @typedef { import("token").ITradingIntervalInspection } TradingIntervalInspection
+ * @typedef { import("token").IPrecisionIntervalInspection } PrecisionIntervalInspection
  * @typedef { import("token").PriceAnalysis } IPriceAnalysis
  * 
  * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
@@ -25,9 +27,10 @@
  * @param {number} entryPercentage 
  * @param {number} exitPercentage 
  * @param {IntervalFlags} tradingInterval 
+ * @param {IntervalFlags} precisionInterval 
  * @returns {MutationCallback}
  */
-let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage, tradingInterval = '1hour') {
+let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage, tradingInterval = '1hour', precisionInterval = '5min') {
     // Use sessionStorage to separate concern for a stock code browser session
     // Use localStorage to share data between multiple tabs/windows of the same domain
     /** livecoinwatch.com */
@@ -43,7 +46,6 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
     /** @type {IPriceAnalysis} */
     class PriceAnalysis {
         _peakValleyHistory;
-        /** @type {Price} */
         _currentPrice;
         _currentPosition;
         /** @type {boolean} _isCrypto */
@@ -69,6 +71,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             threeMinute: '3min',
             fiveMinute: '5min',
             sevenMinute: '7min',
+            tenMinute: '10min',
             fifteenMinute: '15min',
             twentySevenMinute: '27min',
             thirtyMinute: '30min',
@@ -84,6 +87,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             [PriceAnalysis.TRADING_INTERVAL.threeMinute]: 3 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.fiveMinute]: 5 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.sevenMinute]: 7 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
+            [PriceAnalysis.TRADING_INTERVAL.tenMinute]: 10 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.fifteenMinute]: 15 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.twentySevenMinute]: 27 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
             [PriceAnalysis.TRADING_INTERVAL.thirtyMinute]: 30 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
@@ -96,6 +100,14 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             setFutureInterval: `${PriceAnalysis.PROJECT_NAME}_setFutureInterval`
         }
 
+        /** @type {{[key: string]: TradingFlags}} TRADING_FLAGS */
+        static TRADING_FLAGS = {
+            REGULAR: 'regular',
+            PRECISION: 'precision',
+        }
+
+        static entryExitPricePrecisionThreshold = 0.12
+
         /**
          * 
          * @param {PriceHistory[]} history 
@@ -105,8 +117,9 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
          * @param {number} entryThreshold 
          * @param {number} exitThreshold 
          * @param {IntervalFlags} priceTradingInterval 
+         * @param {IntervalFlags} pricePrecisionInterval 
          */
-        constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval) {
+        constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval, pricePrecisionInterval) {
             try {
                 const now = Date.now()
                 this._isCrypto = isCrypto
@@ -345,6 +358,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             if (isStuckCheck === true 
                 && slopeOfCurrentPriceFromPeak !== undefined 
                 && slopeOfCurrentPriceFromRecentPosition !== undefined 
+                // we do not want precision interval getting us into a stuck state prematurely
+                && this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
                 && slopeOfCurrentPriceFromPeak.negative 
                 && slopeOfCurrentPriceFromRecentPosition.negative
             ) {
@@ -705,6 +720,18 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         
         return Math.abs(percentage)
     }
+
+    const numberIsWithinOneDirectionalRange = (first, second, percentageLimit, directionPositive = true) => {
+        const delta = Number(percentageDelta(first, second, true).toFixed(2))
+        const absolutePercentageLimit = Math.abs(percentageLimit)
+
+        if (!directionPositive) {
+            return delta <= 0 && delta >= -1 * absolutePercentageLimit
+        }
+
+        return delta >= 0 && delta <= absolutePercentageLimit
+    }
+
     /**
      * 
      * @param {PriceHistory | undefined} anchor 
@@ -765,7 +792,6 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 priceStore.previousLastPrice = undefined
                 // TO-DO run for all codes since this is setup only one time regardless of multiple codes initialized
                 window.dispatchEvent(new Event(PriceAnalysis.EVENT_NAMES.setFutureInterval))
-                // setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[settings[code].tradingInterval], startTime[0], startTime[1], startTime[2], true)
             }
         } catch (error) {
             console.log('Ida Trader Bot - UPLOAD TODAYS PRICE HISTORY', error)
@@ -982,6 +1008,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                     currentPosition: {},
                     analysis: {},
                     priceTimeIntervalsToday: {},
+                    precisionTimeIntervalsToday: {},
                     uploadTodaysPriceTime: undefined,
                 },
                 tools: {
@@ -1068,17 +1095,20 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             window.idaStockVision.tools[`watch_${code}`] = watch
             window.idaStockVision.settings[code] = {
                 tradingInterval,
+                precisionInterval,
                 experiment: false,
             }
-            setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
+            setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
             const setFutureIntervalListener = () => {
-                setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2], true)
+                setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2], true)
             }
             window.addEventListener(PriceAnalysis.EVENT_NAMES.setFutureInterval, setFutureIntervalListener)
             window.addEventListener(PriceAnalysis.EVENT_NAMES.destroyCode, (/** @type{CustomEvent} */customEvent) => {
                 const eventCode = customEvent.detail.code
                 if (eventCode === code) {
-                    window.idaStockVision.mutationObservers[code].disconnect()
+                    if (window.idaStockVision.mutationObservers[code].disconnect) {
+                        window.idaStockVision.mutationObservers[code].disconnect()
+                    }
                     delete window.idaStockVision.positionIn[code]
                     window.removeEventListener(PriceAnalysis.EVENT_NAMES.setFutureInterval, setFutureIntervalListener)
                     clearInterval(window.idaStockVision.intervalInspectorInstance[code])
@@ -1244,7 +1274,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             }
 
             if (peakValleyDetected !== undefined) {
-                addIntervalFlagToPeakValleyDetected(code, peakValleyDetected, intervalFlag)
+                addIntervalFlagToPeakValleyDetectedOrCurrentPrice(code, peakValleyDetected, intervalFlag)
                 priceStore.peakValleyHistory.push(peakValleyDetected)
             }
         } catch (error) {
@@ -1321,7 +1351,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
     /**
       * 
       * @param {number[]} intervals 
-      * @returns {Map<string, IntervalInspection>}
+      * @returns {Map<string, TradingIntervalInspection>}
       */
     const tradingTimeIntervalForPeakDetection = (intervals) => {
         let timeKeysWithFlags = new Map()
@@ -1346,64 +1376,99 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
     }
 
     /**
+      * 
+      * @param {number[]} intervals 
+      * @returns {Map<string, PrecisionIntervalInspection>}
+      */
+    const precisionTimeIntervalForPricePrecision = (intervals) => {
+        let timeKeysWithFlags = new Map()
+        intervals.forEach((item, index) => {
+            const hourMinuteString = PriceAnalysis.hourMinuteStringFormat(item)
+            timeKeysWithFlags.set(hourMinuteString, {
+                currentPriceExecuted: false,
+                epochDate: item,
+                // 1 minute after interval time
+                inspectionEpochDate: item + PriceAnalysis.TRADING_INTERVAL_SECONDS[PriceAnalysis.TRADING_INTERVAL.oneMinute], 
+                hourMinute: hourMinuteString,
+                index,
+                currentPrice: undefined,
+            })
+        })
+
+        return timeKeysWithFlags
+    }
+
+    /**
       *  
       * @param {string} code 
-      * @param {number | undefined} intervalInSeconds 
+      * @param {number | undefined} tradingIntervalInSeconds 
+      * @param {number | undefined} precisionIntervalInSeconds 
       * @param {number} startHour 
       * @param {number} startMinute 
       * @param {number} startSeconds 
       * @param {boolean} forTomorrow 
       */
-    const setTradingTimeInterval = (code, intervalInSeconds, startHour, startMinute, startSeconds, forTomorrow = false) => {
-        let intervalsBag = []
-        tradingTimeInterval(code, intervalsBag, intervalInSeconds, startHour, startMinute, startSeconds, forTomorrow)
-        window.idaStockVision.priceStore.priceTimeIntervalsToday[code] = tradingTimeIntervalForPeakDetection(intervalsBag)
+    const setTradingTimeInterval = (code, tradingIntervalInSeconds, precisionIntervalInSeconds, startHour, startMinute, startSeconds, forTomorrow = false) => {
+        let tradingIntervalsBag = []
+        let precisionIntervalsBag = []
+        tradingTimeInterval(code, tradingIntervalsBag, tradingIntervalInSeconds, startHour, startMinute, startSeconds, forTomorrow)
+        tradingTimeInterval(code, precisionIntervalsBag, precisionIntervalInSeconds, startHour, startMinute, startSeconds, forTomorrow)
+        window.idaStockVision.priceStore.priceTimeIntervalsToday[code] = tradingTimeIntervalForPeakDetection(tradingIntervalsBag)
+        window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] = precisionTimeIntervalForPricePrecision(precisionIntervalsBag)
     }
 
     /**
       * 
       * @param {string} code 
-      * @param {PriceHistory | CurrentPrice} peakValleyDetected 
+      * @param {PriceHistory | CurrentPrice} peakValleyDetectedOrCurrentPrice 
       * @param {IntervalFlags} intervalFlag
       */
-    const addIntervalFlagToPeakValleyDetected = (code, peakValleyDetected, intervalFlag) => {
+    const addIntervalFlagToPeakValleyDetectedOrCurrentPrice = (code, peakValleyDetectedOrCurrentPrice, intervalFlag) => {
         if (PriceAnalysis.TRADING_INTERVAL_SECONDS[intervalFlag] === undefined) {
             return
         }
         const priceStore = window.idaStockVision.priceStore
-        const isPeakValley = 'type' in peakValleyDetected && ['peak','valley'].includes(peakValleyDetected.type)
-        const timeFormatString = PriceAnalysis.hourMinuteStringFormat(peakValleyDetected.date)
-        const peakValleyMatchTradingInterval = priceStore.priceTimeIntervalsToday[code].has(timeFormatString)
-        if (peakValleyMatchTradingInterval === true) {
-            const intervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
-            // if (!('flags' in peakValleyDetected)) {
-            //     peakValleyDetected.flags = []
-            // }
+        const isPeakValley = 'type' in peakValleyDetectedOrCurrentPrice && ['peak','valley'].includes(peakValleyDetectedOrCurrentPrice.type)
+        const timeFormatString = PriceAnalysis.hourMinuteStringFormat(peakValleyDetectedOrCurrentPrice.date)
+        const tradingIntervalMatch = priceStore.priceTimeIntervalsToday[code].has(timeFormatString)
+        const precisionIntervalMatch = priceStore.precisionTimeIntervalsToday[code].has(timeFormatString)
+        if (tradingIntervalMatch === true) {
+            const tradngIntervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
             
             if (isPeakValley) {
-                switch(peakValleyDetected.type) {
+                switch(peakValleyDetectedOrCurrentPrice.type) {
                     case 'peak':
-                        if (!intervalSettings.peakCaptured) {
-                            peakValleyDetected.flags.push(intervalFlag)
-                            intervalSettings.peakCaptured = true
-                            intervalSettings.peakPrice = peakValleyDetected.price
+                        if (!tradngIntervalSettings.peakCaptured) {
+                            peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag)
+                            tradngIntervalSettings.peakCaptured = true
+                            tradngIntervalSettings.peakPrice = peakValleyDetectedOrCurrentPrice.price
                         }
                         break;
                     case 'valley':
-                        if (!intervalSettings.valleyCaptured) {
-                            peakValleyDetected.flags.push(intervalFlag)
-                            intervalSettings.valleyCaptured = true
-                            intervalSettings.valleyPrice = peakValleyDetected.price
+                        if (!tradngIntervalSettings.valleyCaptured) {
+                            peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag)
+                            tradngIntervalSettings.valleyCaptured = true
+                            tradngIntervalSettings.valleyPrice = peakValleyDetectedOrCurrentPrice.price
                         }
                         break;
                     default:
                 }
             }
 
-            if (!isPeakValley && !intervalSettings.currentPriceExecuted) {
-                peakValleyDetected.flags.push(intervalFlag)
-                intervalSettings.currentPriceExecuted = true
-                intervalSettings.currentPrice = peakValleyDetected.price
+            if (!isPeakValley && !tradngIntervalSettings.currentPriceExecuted) {
+                peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, PriceAnalysis.TRADING_FLAGS.REGULAR)
+                tradngIntervalSettings.currentPriceExecuted = true
+                tradngIntervalSettings.currentPrice = peakValleyDetectedOrCurrentPrice
+            }
+        }
+
+        if (precisionIntervalMatch === true && !isPeakValley) {
+            const precisionIntervalSettings = priceStore.precisionTimeIntervalsToday[code].get(timeFormatString)
+
+            if (!precisionIntervalSettings.currentPriceExecuted) {
+                peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, PriceAnalysis.TRADING_FLAGS.PRECISION)
+                precisionIntervalSettings.currentPriceExecuted = true
+                precisionIntervalSettings.currentPrice = peakValleyDetectedOrCurrentPrice
             }
         }
     }
@@ -1411,7 +1476,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
     /**
       * 
       * @param {string} code 
-      * @param {Map<string, IntervalInspection>} intervalBag 
+      * @param {Map<string, TradingIntervalInspection>} intervalBag 
       * @param {number} intervalSeconds  
       */
     const tradingIntervalInspector = (code, intervalBag, intervalSeconds) => {
@@ -1480,10 +1545,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
     /**
       * 
       * @param {string} code 
-      * @param {Map<string, IntervalInspection>} intervalBag 
-      * @param {number} intervalSeconds 
+      * @param {Map<string, TradingIntervalInspection>} tradingIntervalBag 
+      * @param {number} tradingIntervalSeconds 
+      * @param {Map<string, PrecisionIntervalInspection>} precisionIntervalBag 
+      * @param {number} precisionIntervalSeconds 
       */
-    const runTradingIntervalInspector = (code, intervalBag, intervalSeconds) => {
+    const runTradingIntervalInspector = (code, tradingIntervalBag, tradingIntervalSeconds, precisionIntervalBag, precisionIntervalSeconds) => {
         // check date and time
         // make sure now is not beyond trading end time
         // find/get closest time > now that needs to be checked
@@ -1491,8 +1558,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         // setTimeout with the seconds needed
         const today = new Date()
         const nowEpochDate = today.getTime()
-        /** @type {IntervalInspection[]} */
-        const intervalBagValues = intervalBag.values().toArray()
+        /** @type {TradingIntervalInspection[]} */
+        const intervalBagValues = tradingIntervalBag.values().toArray()
         if (intervalBagValues.length === 0) {
             return
         }
@@ -1501,7 +1568,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         const [startHour, startMinute, startSeconds] = window.idaStockVision.tradingStartTime
         // check the interval bag has todays date and reset the interval bag otherwise (after weekend, public holidays, etc)
         if (firstIntervalItemDate.getDate() !== today.getDate()) {
-            setTradingTimeInterval(code, intervalSeconds, startHour, startMinute, startSeconds)
+            setTradingTimeInterval(code, tradingIntervalSeconds, precisionIntervalSeconds, startHour, startMinute, startSeconds)
             return
         }
 
@@ -1516,7 +1583,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const timeDifference = inspectionTime - nowEpochDate
             console.log(inspectionTime)
             window.idaStockVision.timeoutInspectorInstance[code] = window.setTimeout(() => {
-                tradingIntervalInspector(code, intervalBag, intervalSeconds)
+                tradingIntervalInspector(code, tradingIntervalBag, tradingIntervalSeconds)
             }, timeDifference)
         }
 
@@ -1542,7 +1609,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const priceStore = window.idaStockVision.priceStore
             /** @type {CurrentPrice} */
             const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: decimalConvert(targetValue), flags: []}
-            addIntervalFlagToPeakValleyDetected(code, currentPrice, tradingInterval)
+            addIntervalFlagToPeakValleyDetectedOrCurrentPrice(code, currentPrice, tradingInterval)
             if (inspectorTrigger === true) {
                 currentPrice.flags.push(tradingInterval)
             }
@@ -1554,12 +1621,13 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             /** @type {number | string} */
             let anchorPrice = ''
             let notificationBody = ''
+            let onlyPrecisionFlagExistsOnCurrentPrice = false
             const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
             if (autoEntryExitMode) {
                 const currentPosition = priceStore.currentPosition[code]
                 const peakValleyDetected = peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                 updatePrices(currentPrice, peakValleyDetected, tradingInterval)
-                analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage, tradingInterval)
+                analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage, tradingInterval, precisionInterval)
                 priceStore.analysis[code] = analysis
                 entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentage, exitPercentage)
                 exitPrice = analysis.isCurrentPositionStuck ? currentPrice.price : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
@@ -1570,7 +1638,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 priceStore.todaysPeakValleySnapshot[code] = analysis.todaysPeakValleySnapshot
                 anchor = analysis.findAnchor()
                 anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
-                runTradingIntervalInspector(code, priceStore.priceTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval])
+                // should be set after all flags have been possibly set
+                onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.PRECISION) 
+                    && !currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
+                runTradingIntervalInspector(code, priceStore.priceTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], priceStore.precisionTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval])
                 const timeToUpload = setUploadPricesTimeout(isCrypto,priceStore.uploadTodaysPriceTime,uploadTodaysPriceHistory)
                 if (typeof timeToUpload === 'number') {
                     priceStore.uploadTodaysPriceTime = timeToUpload
@@ -1592,8 +1663,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 exit: currentPrice.price >= exitPrice,
             }
             const stockSurfDecision = {
-                enter: currentPrice.price >= entryPrice,
-                exit: currentPrice.price <= exitPrice,
+                enter: onlyPrecisionFlagExistsOnCurrentPrice 
+                    ? numberIsWithinOneDirectionalRange(entryPrice,currentPrice.price,PriceAnalysis.entryExitPricePrecisionThreshold) 
+                    : currentPrice.price >= entryPrice,
+                exit: onlyPrecisionFlagExistsOnCurrentPrice 
+                    ? numberIsWithinOneDirectionalRange(exitPrice,currentPrice.price,PriceAnalysis.entryExitPricePrecisionThreshold,false) 
+                    : currentPrice.price <= exitPrice,
             }
             const enterDecision = !autoEntryExitMode ? stockRangeDecision.enter : stockSurfDecision.enter
             const exitDecision = !autoEntryExitMode ? stockRangeDecision.exit : stockSurfDecision.exit

@@ -1,6 +1,7 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
 export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' | '15min' | '27min' | '30min' | '45min' | '1hour' | 'none'
+export type TRADING_FLAGS = 'regular' | 'precision'
 
 export interface IPrice {
   price: number;
@@ -10,11 +11,11 @@ export interface IPrice {
 
 export interface IPriceHistory extends IPrice {
   type: PEAK | VALLEY;
-  flags: INTERVAL_FLAGS[]; 
+  flags: Array<INTERVAL_FLAGS|TRADING_FLAGS>; 
 }
 
 export interface ICurrentPrice extends IPrice {
-  flags: INTERVAL_FLAGS[]; 
+  flags: Array<INTERVAL_FLAGS|TRADING_FLAGS>; 
 }
 
 export interface IPosition extends IPrice {
@@ -22,7 +23,7 @@ export interface IPosition extends IPrice {
   positionAnchor?: number;
 }
 
-export interface IIntervalInspection {
+export interface ITradingIntervalInspection {
    peakCaptured: boolean;
    valleyCaptured: boolean;
    currentPriceExecuted: boolean;
@@ -32,7 +33,16 @@ export interface IIntervalInspection {
    hourMinute: string;
    peakPrice: number;
    valleyPrice: number;
-   currentPrice: number;
+   currentPrice: ICurrentPrice;
+}
+
+export interface IPrecisionIntervalInspection {
+   currentPriceExecuted: boolean;
+   epochDate: number;
+   inspectionEpochDate: number;
+   index: number;
+   hourMinute: string;
+   currentPrice: ICurrentPrice;
 }
 
 export interface PriceAnalysis {
@@ -78,7 +88,8 @@ export interface IPriceStore {
   todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};
   currentPosition: {[key: string]: IPosition};
   analysis: {[key: string]: InstanceType<PriceAnalysis>};
-  priceTimeIntervalsToday: {[key: string]: Map<string, IIntervalInspection>;};
+  priceTimeIntervalsToday: {[key: string]: Map<string, ITradingIntervalInspection>;};
+  precisionTimeIntervalsToday: {[key: string]: Map<string, IPrecisionIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
 }
 
@@ -116,6 +127,7 @@ export interface IStockVision {
   settings: {
     [key:string]: {
       tradingInterval: INTERVAL_FLAGS;
+      precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
     };
   };
