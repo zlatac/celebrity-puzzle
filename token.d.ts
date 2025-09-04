@@ -42,7 +42,7 @@ export interface IPrecisionIntervalInspection {
    inspectionEpochDate: number;
    index: number;
    hourMinute: string;
-   currentPrice: ICurrentPrice;
+   currentPrices: ICurrentPrice[];
 }
 
 export interface PriceAnalysis {

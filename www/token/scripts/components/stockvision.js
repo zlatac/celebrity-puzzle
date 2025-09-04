@@ -1381,6 +1381,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
       * @returns {Map<string, PrecisionIntervalInspection>}
       */
     const precisionTimeIntervalForPricePrecision = (intervals) => {
+        /** @type {Map<string, PrecisionIntervalInspection>} */
         let timeKeysWithFlags = new Map()
         intervals.forEach((item, index) => {
             const hourMinuteString = PriceAnalysis.hourMinuteStringFormat(item)
@@ -1391,7 +1392,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 inspectionEpochDate: item + PriceAnalysis.TRADING_INTERVAL_SECONDS[PriceAnalysis.TRADING_INTERVAL.oneMinute], 
                 hourMinute: hourMinuteString,
                 index,
-                currentPrice: undefined,
+                currentPrices: [],
             })
         })
 
@@ -1463,13 +1464,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         }
 
         if (precisionIntervalMatch === true && !isPeakValley) {
+            // Allow all price movements within the minute of the interval match to maximize chances of having precision execution
             const precisionIntervalSettings = priceStore.precisionTimeIntervalsToday[code].get(timeFormatString)
 
-            if (!precisionIntervalSettings.currentPriceExecuted) {
-                peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, PriceAnalysis.TRADING_FLAGS.PRECISION)
-                precisionIntervalSettings.currentPriceExecuted = true
-                precisionIntervalSettings.currentPrice = peakValleyDetectedOrCurrentPrice
-            }
+            peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, PriceAnalysis.TRADING_FLAGS.PRECISION)
+            precisionIntervalSettings.currentPriceExecuted = true
+            precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
         }
     }
 
@@ -2999,6 +2999,27 @@ let stockVisionTrade = function () {
 
     /**
      * 
+     * @param {number|string} num 
+     * @param {number} decimalPlaces 
+     * @returns {number|string}
+     */
+    const decimalPrecision = (num, decimalPlaces = 2) => {
+        // this only work for normal currency numbers. really small numbers very close to 0 become zero or exponential eg 0.005 || 0.00000005
+        if (!['string', 'number'].includes(typeof num) || Number.isNaN(num)) {
+            return num
+        }
+        const numberString = num.toString()
+        const [first, second] = numberString.split('.')
+
+        if (second === undefined) {
+            return num
+        }
+        
+        return Number(`${first}.${second.substring(0, decimalPlaces)}`)
+    }
+
+    /**
+     * 
      * @param {string} last 
      * @param {string} bid 
      * @param {string} ask 
@@ -3011,12 +3032,12 @@ let stockVisionTrade = function () {
         const bidPrice = Number(bid)
         const askPrice = Number(ask)
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
-        const midAskBidPrice = Number(((bidPrice + askPrice)/2).toPrecision(4))
+        const midAskBidPrice = decimalPrecision((bidPrice + askPrice)/2)
         if (!missingBidOrAskPrice && !lastPriceInMiddle) {
             return midAskBidPrice
         }
 
-        return last
+        return decimalPrecision(last) // decimal places from cboe is more than 2
     }
 
     /**
@@ -3344,6 +3365,7 @@ let stockVisionTrade = function () {
                     modify: modifyOrders,
                     api: constants.questrade.tradeProcess,
                     priceDecision,
+                    decimalPrecision,
                     sharesAmount,
                     getAccessToken,
                     notify,
