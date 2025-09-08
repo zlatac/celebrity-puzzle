@@ -2790,7 +2790,7 @@ let stockVisionTrade = function () {
         },
         pingPongInterval: 1000*5,
         orderInspectionDelay: 1000*60*1,
-        modifyThreshold: 60/5, // keep within 1 minute for now
+        modifyThreshold: (60/5) * 2, // keep within 1 minute for now
         questrade: {
             firstElement: () => document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('app-bottom-tabs-section > div > app-tabs > div > qt-trad-carousel > section > ul > li:nth-child(1) > div > span'),
             secondElement: () => document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('app-bottom-tabs-section > div > app-tabs > div > qt-trad-carousel > section > ul > li:nth-child(2) > div > span'),
@@ -3303,6 +3303,11 @@ let stockVisionTrade = function () {
                     order.accepted = true
                     order.executed = true
                     throw new Error(`MODIFY ORDERS - no quantity to process - ${order.code}`)
+                }
+                if (newPrice === order.priceSubmitted) {
+                    order.checkCount = 0
+                    order.modify = false
+                    return
                 }
                 const accessToken = getAccessToken(brokerageName)
                 const now = new Date().toISOString()
