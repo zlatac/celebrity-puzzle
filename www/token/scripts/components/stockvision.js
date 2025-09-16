@@ -43,6 +43,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
     // idaStockVision.priceStore.currentPosition.TSLA = {price: 396, date: new Date().toISOString(), position: true}; idaStockVision.positionIn.TSLA = true
     const code = codeInput.toUpperCase()
     const projectParameters = arguments
+    const candleStickMode = manualEntryPrice === 0 && manualExitPrice === 0
     /** @type {IPriceAnalysis} */
     class PriceAnalysis {
         _peakValleyHistory;
@@ -618,14 +619,15 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         /**
          * 
          * @param {boolean} isCrypto 
+         * @param {number} minuteOffset 
          * @returns {number[]}
          */
-        static tradingStartTime (isCrypto = false) {
+        static tradingStartTime (isCrypto = false, minuteOffset = 1) {
             // Hour, Minute, Seconds
             // Add 1 minute to the minute time to have the close price of that minute
             return isCrypto 
-                ? [0, 0 + 1, 0] 
-                : [9, 30 + 1, 0]
+                ? [0, 0 + minuteOffset, 0] 
+                : [9, 30 + minuteOffset, 0]
         }
         
         /**
@@ -976,6 +978,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
       * @param {string} code 
       */
     const traderSetUp = async (code) => {
+        const startTImeOffset = candleStickMode ? 0 : undefined
         if (!('idaStockVision' in window)) {
             window.idaStockVision = {
                 positionIn: {},
@@ -993,7 +996,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 timeoutInspectorInstance: {},
                 serverUrl: '',
                 notificationServerUrl: '',
-                tradingStartTime: PriceAnalysis.tradingStartTime(isCrypto),
+                tradingStartTime: PriceAnalysis.tradingStartTime(isCrypto, startTImeOffset),
                 tradingEndTime: PriceAnalysis.tradingEndTime(isCrypto),
                 priceStore: {
                     lastPrice: undefined,
@@ -1467,6 +1470,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
 
             peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, PriceAnalysis.TRADING_FLAGS.PRECISION)
             precisionIntervalSettings.currentPriceExecuted = true
+            const precisionCurrentPricesLength = precisionIntervalSettings.currentPrices.length
+            peakValleyDetectedOrCurrentPrice.index = precisionCurrentPricesLength
             precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
         }
     }
@@ -1661,6 +1666,127 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                     ? notificationBody.concat(`Stuck: true \r\n`)
                     : notificationBody
             }
+
+            if (candleStickMode) {
+                // check 25% time after interval match to know if its full green candle and flag it
+                // when its full green candle determine the entry price
+                // use epoch time for extending time
+                // price changes direction comparison, [O-H](delta) > [O-L](delta) and slope between [O - currentPrice] is positive
+                runTradingIntervalInspector(code, priceStore.priceTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], priceStore.precisionTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval])
+                const timeFormatString = PriceAnalysis.hourMinuteStringFormat(nowDateISOString)
+                const precisionIntervalMatch = priceStore.precisionTimeIntervalsToday[code].has(timeFormatString)
+                const precisionIntervalSettings = priceStore.precisionTimeIntervalsToday[code].get(timeFormatString)
+                const currentPosition = priceStore.currentPosition[code]
+                entryPrice = Infinity
+                exitPrice = -Infinity
+                if (precisionIntervalMatch) {
+                    if (precisionIntervalSettings.fullIntervalsAdded === undefined) {
+                        const minutesToAdd = PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval]/PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS
+                        const decisionTrigger = Math.round(minutesToAdd*0.75)
+                        const [hour, minutes] = timeFormatString.split(':')
+                        precisionIntervalSettings.isFullGreenCandle = false
+                        precisionIntervalSettings.isPartialGreenCandle = false
+                        precisionIntervalSettings.priceChangePositive = 0
+                        precisionIntervalSettings.priceChangeNegative = 0
+                        for(let i = 1; i < minutesToAdd; i++) {
+                            let hourToUse = Number(hour)
+                            let minuteToUse = Number(minutes) + i              
+                            const details = {
+                                parent: precisionIntervalSettings,
+                                // this is hear for things to not break with adding flags in the add flag function
+                                currentPrices: precisionIntervalSettings.currentPrices,
+                                fullIntervalsAdded: true,
+                                child: {
+                                   makeDecision: false 
+                                }
+                            }
+                            if (decisionTrigger - 1 === i) {
+                                details.child.makeDecision = true
+                            }
+                            if (minuteToUse > 59) {
+                                minuteToUse = minuteToUse - 60
+                                hourToUse++
+                            }
+                            priceStore.precisionTimeIntervalsToday[code].set(`${hourToUse}:${minuteToUse}`, details)
+                        }
+                        precisionIntervalSettings.fullIntervalsAdded = true
+                    }
+
+                    if (currentPrice.index >= 1) {
+                        const lastPrice = precisionIntervalSettings.currentPrices.at(currentPrice.index - 1)
+                        const priceChange = percentageDelta(lastPrice.price, currentPrice.price, true)
+                        if (precisionIntervalSettings.parent) {
+                            priceChange >= 0 ? precisionIntervalSettings.parent.priceChangePositive++ : precisionIntervalSettings.parent.priceChangeNegative++
+                        } else {
+                            priceChange >= 0 ? precisionIntervalSettings.priceChangePositive++ : precisionIntervalSettings.priceChangeNegative++
+                        }
+                    }
+
+                    if (precisionIntervalSettings.child && precisionIntervalSettings.child.makeDecision) {
+                        // use epochdate time to make a decision and flag that a decision has been made
+                        const openPrice = precisionIntervalSettings.parent.currentPrices.at(0)
+                        const lowestPrice = Math.min(...precisionIntervalSettings.parent.currentPrices.map(item => item.price))
+                        const highestPrice = Math.max(...precisionIntervalSettings.parent.currentPrices.map(item => item.price))
+                        const isPositivePriceDirection = precisionIntervalSettings.parent.priceChangePositive > precisionIntervalSettings.parent.priceChangeNegative
+                        const openHighIsGreaterThanOpenLow = openPrice !== undefined 
+                            ? percentageDelta(openPrice.price, highestPrice) > percentageDelta(openPrice.price, lowestPrice)
+                            : false
+                        const positiveDistanceBetweenOpenAndCurrentPrice = openPrice !== undefined 
+                            ? percentageDelta(openPrice.price, currentPrice.price, true) > 0
+                            : false
+                            
+                        precisionIntervalSettings.parent.isFullGreenCandle = openPrice !== undefined 
+                            ? openPrice.price <= lowestPrice
+                            : false
+                        precisionIntervalSettings.parent.isPartialGreenCandle = openPrice !== undefined 
+                            ? isPositivePriceDirection && openHighIsGreaterThanOpenLow && positiveDistanceBetweenOpenAndCurrentPrice
+                            : false
+                    }
+
+                    if (precisionIntervalSettings.parent && precisionIntervalSettings.parent.isFullGreenCandle) {
+                        const openPrice = precisionIntervalSettings.parent.currentPrices.at(0)
+                        const highestPrice = Math.max(...precisionIntervalSettings.parent.currentPrices.map(item => item.price))
+                        const meetsTargetProfit = openPrice !== undefined 
+                            ? percentageDelta(openPrice.price, highestPrice) >= 0.1 
+                            : false
+                        const intervalEndEpochDate = precisionIntervalSettings.parent.epochDate + PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval] - 500
+
+                        if (!window.idaStockVision.positionIn[code]) {
+                            entryPrice = meetsTargetProfit ? currentPrice.price : entryPrice
+                            anchorPrice = openPrice.price
+                            if (anchorPrice !== ''){
+                                notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
+                            }
+                            window.setTimeout(() => {
+                                const last = precisionIntervalSettings.currentPrices.at(-1)
+                                const record = {
+                                    target: {
+                                        nodeValue: String(last.price)
+                                    }
+                                }
+                                mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                            }, intervalEndEpochDate - nowEpochDate)
+                        }
+
+                        if (window.idaStockVision.positionIn[code] && inspectorTrigger === true) {
+                            exitPrice = currentPrice.price
+                            anchorPrice = highestPrice
+                            if (anchorPrice !== ''){
+                                notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
+                            }
+                            notificationBody = window.idaStockVision.positionIn[code] 
+                                ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice.price, true)} \r\n`)
+                                : notificationBody
+                            notificationBody = percentageDelta(currentPosition.price, currentPrice.price, true) < 0
+                                ? notificationBody.concat(`Stuck: true \r\n`)
+                                : notificationBody
+                        }
+
+                    }
+                    
+                }
+                
+            }
             const stockRangeDecision = {
                 // No need for <= to logic since probability of exact match is very low
                 enter: currentPrice.price < entryPrice,
@@ -1674,8 +1800,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                     ? numberIsWithinOneDirectionalRange(exitPrice,currentPrice.price,PriceAnalysis.entryExitPricePrecisionThreshold,false) 
                     : currentPrice.price <= exitPrice,
             }
-            const enterDecision = !autoEntryExitMode ? stockRangeDecision.enter : stockSurfDecision.enter
-            const exitDecision = !autoEntryExitMode ? stockRangeDecision.exit : stockSurfDecision.exit
+            const enterDecision = !autoEntryExitMode && !candleStickMode ? stockRangeDecision.enter : stockSurfDecision.enter
+            const exitDecision = !autoEntryExitMode && !candleStickMode ? stockRangeDecision.exit : stockSurfDecision.exit
             
             let color = 'red'
             let message = `[${code}] DO NOTHING AT ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
