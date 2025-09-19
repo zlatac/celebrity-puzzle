@@ -1672,7 +1672,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 // when its full green candle determine the entry price
                 // use epoch time for extending time
                 // price changes direction comparison, [O-H](delta) > [O-L](delta) and slope between [O - currentPrice] is positive
-                runTradingIntervalInspector(code, priceStore.priceTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], priceStore.precisionTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval])
+                // runTradingIntervalInspector(code, priceStore.priceTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], priceStore.precisionTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval])
                 const timeFormatString = PriceAnalysis.hourMinuteStringFormat(nowDateISOString)
                 const precisionIntervalMatch = priceStore.precisionTimeIntervalsToday[code].has(timeFormatString)
                 const precisionIntervalSettings = priceStore.precisionTimeIntervalsToday[code].get(timeFormatString)
@@ -1682,11 +1682,14 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 if (precisionIntervalMatch) {
                     if (precisionIntervalSettings.fullIntervalsAdded === undefined) {
                         const minutesToAdd = PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval]/PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS
-                        const decisionTrigger = Math.round(minutesToAdd*0.75)
+                        const decisionStartTime = precisionIntervalSettings.epochDate + (PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval] * 0.25)
+                        const decisionEndTime = decisionStartTime + PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS
                         const [hour, minutes] = timeFormatString.split(':')
                         precisionIntervalSettings.isFullGreenCandle = false
                         precisionIntervalSettings.isPartialGreenCandle = false
                         precisionIntervalSettings.priceChangePositive = 0
+                        precisionIntervalSettings.decisionTimeRange = [decisionStartTime, decisionEndTime]
+                        precisionIntervalSettings.priceChangeNegative = 0
                         precisionIntervalSettings.priceChangeNegative = 0
                         for(let i = 1; i < minutesToAdd; i++) {
                             let hourToUse = Number(hour)
@@ -1697,12 +1700,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                                 currentPrices: precisionIntervalSettings.currentPrices,
                                 fullIntervalsAdded: true,
                                 child: {
-                                   makeDecision: false 
+                                   madeDecision: false 
                                 }
                             }
-                            if (decisionTrigger - 1 === i) {
-                                details.child.makeDecision = true
-                            }
+
                             if (minuteToUse > 59) {
                                 minuteToUse = minuteToUse - 60
                                 hourToUse++
@@ -1722,7 +1723,9 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                         }
                     }
 
-                    if (precisionIntervalSettings.child && precisionIntervalSettings.child.makeDecision) {
+                    if (precisionIntervalSettings.parent 
+                        && (nowEpochDate >= precisionIntervalSettings.parent.decisionTimeRange[0] && nowEpochDate <= precisionIntervalSettings.parent.decisionTimeRange[1])
+                    ) {
                         // use epochdate time to make a decision and flag that a decision has been made
                         const openPrice = precisionIntervalSettings.parent.currentPrices.at(0)
                         const lowestPrice = Math.min(...precisionIntervalSettings.parent.currentPrices.map(item => item.price))
@@ -1741,18 +1744,19 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                         precisionIntervalSettings.parent.isPartialGreenCandle = openPrice !== undefined 
                             ? isPositivePriceDirection && openHighIsGreaterThanOpenLow && positiveDistanceBetweenOpenAndCurrentPrice
                             : false
+                        precisionIntervalSettings.child.madeDecision = true
                     }
 
                     if (precisionIntervalSettings.parent && precisionIntervalSettings.parent.isFullGreenCandle) {
                         const openPrice = precisionIntervalSettings.parent.currentPrices.at(0)
-                        const highestPrice = Math.max(...precisionIntervalSettings.parent.currentPrices.map(item => item.price))
-                        const meetsTargetProfit = openPrice !== undefined 
-                            ? percentageDelta(openPrice.price, highestPrice) >= 0.1 
-                            : false
-                        const intervalEndEpochDate = precisionIntervalSettings.parent.epochDate + PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval] - 500
+                        // const meetsTargetProfit = openPrice !== undefined 
+                        //     ? percentageDelta(openPrice.price, highestPrice) >= 0.1 
+                        //     : false
+                        const intervalEndEpochDate = precisionIntervalSettings.parent.epochDate + PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval] - 1_000
 
                         if (!window.idaStockVision.positionIn[code]) {
-                            entryPrice = meetsTargetProfit ? currentPrice.price : entryPrice
+                            // entryPrice = meetsTargetProfit ? currentPrice.price : entryPrice
+                            entryPrice = currentPrice.price
                             anchorPrice = openPrice.price
                             if (anchorPrice !== ''){
                                 notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
@@ -1768,20 +1772,21 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                             }, intervalEndEpochDate - nowEpochDate)
                         }
 
-                        if (window.idaStockVision.positionIn[code] && inspectorTrigger === true) {
-                            exitPrice = currentPrice.price
-                            anchorPrice = highestPrice
-                            if (anchorPrice !== ''){
-                                notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
-                            }
-                            notificationBody = window.idaStockVision.positionIn[code] 
-                                ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice.price, true)} \r\n`)
-                                : notificationBody
-                            notificationBody = percentageDelta(currentPosition.price, currentPrice.price, true) < 0
-                                ? notificationBody.concat(`Stuck: true \r\n`)
-                                : notificationBody
-                        }
+                    }
 
+                    if (inspectorTrigger === true) {
+                        const highestPrice = Math.max(...precisionIntervalSettings.parent.currentPrices.map(item => item.price))
+                        exitPrice = currentPrice.price
+                        anchorPrice = highestPrice
+                        if (anchorPrice !== ''){
+                            notificationBody = notificationBody.concat(`Anchor Price: ${anchorPrice} \r\n`)
+                        }
+                        notificationBody = window.idaStockVision.positionIn[code] 
+                            ? notificationBody.concat(`Gross Profit(%): ${percentageDelta(currentPosition.price, currentPrice.price, true)} \r\n`)
+                            : notificationBody
+                        notificationBody = percentageDelta(currentPosition.price, currentPrice.price, true) < 0
+                            ? notificationBody.concat(`Stuck: true \r\n`)
+                            : notificationBody
                     }
                     
                 }
