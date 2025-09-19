@@ -447,6 +447,8 @@ const trader = {
         OUT: 'out',
         LOCAL_SERVER: 'local',
         CLOUD_SERVER: 'cloud',
+        tradingStartTime: [9,30,0],
+        tradingEndTime: [16,0,0]
     },
     asyncOperation: {
         historyTimeout: undefined,
@@ -455,6 +457,7 @@ const trader = {
         confirm: [],
         ordersToExecute: [],
         notificationOrders: [],
+        pingPongTracker: {},
     },
     methods: {
         checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE) => {
@@ -522,6 +525,34 @@ const trader = {
             } catch (error) {
                 console.log(error)
             }
+        },
+        checkWebBrowserCrashed: async (brokerageName) => {
+            const brokerageNameExists = brokerageName in trader.asyncOperation.pingPongTracker
+            if (!brokerageNameExists) {
+                trader.asyncOperation.pingPongTracker[brokerageName] = {timeoutInstance: undefined}
+            }
+
+            const brokerageObject = trader.asyncOperation.pingPongTracker[brokerageName]
+            const oneMinute = 1000 * 60
+            clearTimeout(brokerageObject.timeoutInstance)
+            brokerageObject.timeoutInstance = setTimeout(async () => {
+                const now = new Date()
+                const nowEpochDate = now.getTime()
+                const startTime = now.setHours(...trader.constants.tradingStartTime)
+                const endTime = now.setHours(...trader.constants.tradingEndTime)
+                if (nowEpochDate >= startTime && nowEpochDate <= endTime) {
+                    try {
+                        const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
+                            subject: `[LS] NOTIFICATION (${brokerageName})`,
+                            message: `Browser tab has crashed. Please investigate`,
+                        }) 
+                    } catch (error) {
+                        console.log(error)
+                    }
+                }
+            }, oneMinute * 5)
+
+
         }
 
     }
@@ -723,6 +754,7 @@ app.get('/trader/tradeCheck', async function(req,res) {
         const ordersToSend = trader.asyncOperation.ordersToExecute.filter((order) => !order.seenByBrokerage.includes(brokerageName))
         res.status(200)
         res.send(ordersToSend)
+        trader.methods.checkWebBrowserCrashed(brokerageName)
         ordersToSend.forEach((order) => order.seenByBrokerage.push(brokerageName))
     } catch (error) {
         res.status(404)

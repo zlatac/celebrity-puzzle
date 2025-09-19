@@ -1266,9 +1266,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             // Reduce market noise from outlier price trades(pre-market & after market hours especially)
             const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice.price >= low && currentPrice.price <= high) : true
 
-            if (priceStore.lastPrice?.price !== currentPrice.price 
-                && isCurrentPriceWithinMarketRange
-            ) {
+            if (priceStore.lastPrice?.price !== currentPrice.price) {
                 priceStore.previousLastPrice = priceStore.lastPrice
                 priceStore.lastPrice = currentPrice
             }
@@ -1490,7 +1488,6 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 return 
             }
             const intervalKey = intervalForNow.hourMinute
-            console.log(intervalKey)
             const lastPrice = window.idaStockVision.priceStore.lastPrice
             const interval = intervalBag.get(intervalKey)
             const peakValleyCaptured = [interval.peakCaptured, interval.valleyCaptured].every((item) => item === true)
@@ -1501,8 +1498,14 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 const closestPeakValleyToNow = window.idaStockVision.priceStore.peakValleyHistory.filter((item) => {
                     return 'epochDate' in item && item.epochDate < now
                 })
-                const lastTwoItems = [closestPeakValleyToNow.at(-2), closestPeakValleyToNow.at(-1)]
-                lastTwoItems.forEach((item) => {
+                const closestPeaksToNow = closestPeakValleyToNow.filter((item) => {
+                    return item.type === PriceAnalysis.PEAK
+                })
+                const closestValleysToNow = closestPeakValleyToNow.filter((item) => {
+                    return item.type === PriceAnalysis.VALLEY
+                })
+                const peakAndValleyToUse = [closestPeaksToNow.at(-1), closestValleysToNow.at(-1)]
+                peakAndValleyToUse.forEach((item) => {
                     // const flagExists = 'flags' in item
                     // if (!flagExists) {
                     //     item.flags = []
