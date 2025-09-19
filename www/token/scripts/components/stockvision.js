@@ -1496,7 +1496,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             
             if (!peakValleyCaptured) {
                 const closestPeakValleyToNow = window.idaStockVision.priceStore.peakValleyHistory.filter((item) => {
-                    return 'epochDate' in item && item.epochDate < now
+                    return 'epochDate' in item && (item.epochDate < interval.inspectionEpochDate) && (item.epochDate >= interval.epochDate)
                 })
                 const closestPeaksToNow = closestPeakValleyToNow.filter((item) => {
                     return item.type === PriceAnalysis.PEAK
@@ -1504,8 +1504,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 const closestValleysToNow = closestPeakValleyToNow.filter((item) => {
                     return item.type === PriceAnalysis.VALLEY
                 })
-                const peakAndValleyToUse = [closestPeaksToNow.at(-1), closestValleysToNow.at(-1)]
-                peakAndValleyToUse.forEach((item) => {
+                const firstPeakAndValley = [closestPeaksToNow.at(0), closestValleysToNow.at(0)]
+                firstPeakAndValley.forEach((item) => {
                     // const flagExists = 'flags' in item
                     // if (!flagExists) {
                     //     item.flags = []
@@ -1513,6 +1513,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                     if (item && !item.flags.includes(tradingInterval)) {
                         item.flags.push(tradingInterval)
                         interval[`${item.type}Captured`] = true
+                        interval[`${item.type}Price`] = item.price
                         console.log(`inspector: closest ${item.type} flagged`)
                     }
                 })
