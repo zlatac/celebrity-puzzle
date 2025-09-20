@@ -2796,8 +2796,9 @@ let stockVisionTrade = function () {
         orderInspectionDelay: 1000*60*1,
         modifyThreshold: (60/5) * 2, // keep within 1 minute for now
         questrade: {
-            firstElement: () => document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('app-bottom-tabs-section > div > app-tabs > div > qt-trad-carousel > section > ul > li:nth-child(1) > div > span'),
-            secondElement: () => document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('app-bottom-tabs-section > div > app-tabs > div > qt-trad-carousel > section > ul > li:nth-child(2) > div > span'),
+            // Make sure the element(s) are not triggering network events to not crash the browser eg menu buttons, page scroll, etc
+            firstElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
+            secondElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
             trade: {
                 buy: 'Buy',
                 sell: 'Sell',
