@@ -699,7 +699,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
      */
     const sanitizePrice = (val) => {
         if (typeof val === 'string') {
-            return val.replace('$', '')
+            return val.replace(/[\$\,cadusd]/g,'')
         }
 
         return val
@@ -1614,10 +1614,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const nowDateFullString = new Date(nowEpochDate).toString()
             const nowDateISOString = new Date(nowEpochDate).toISOString()
             const lastRecord = mutationArray[mutationArray.length - 1]
-            const targetValue = lastRecord.target.nodeValue.replace('$','')
+            const targetValue = decimalConvert(sanitizePrice(lastRecord.target.nodeValue))
             const priceStore = window.idaStockVision.priceStore
             /** @type {CurrentPrice} */
-            const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: decimalConvert(targetValue), flags: []}
+            const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
             addIntervalFlagToPeakValleyDetectedOrCurrentPrice(code, currentPrice, tradingInterval)
             if (inspectorTrigger === true) {
                 currentPrice.flags.push(tradingInterval)
