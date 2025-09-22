@@ -2794,7 +2794,7 @@ let stockVisionTrade = function () {
         },
         pingPongInterval: 1000*5,
         orderInspectionDelay: 1000*60*1,
-        modifyThreshold: (60/5) * 2, // keep within 1 minute for now
+        modifyThreshold: (60/5) * 0.25, // keep within 1 minute for now
         questrade: {
             // Make sure the element(s) are not triggering network events to not crash the browser eg menu buttons, page scroll, etc
             firstElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
@@ -3312,7 +3312,7 @@ let stockVisionTrade = function () {
                 if (newPrice === order.priceSubmitted) {
                     order.checkCount = 0
                     order.modify = false
-                    return
+                    continue
                 }
                 const accessToken = getAccessToken(brokerageName)
                 const now = new Date().toISOString()
