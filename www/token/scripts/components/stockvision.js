@@ -3036,8 +3036,12 @@ let stockVisionTrade = function () {
         const lastPrice = Number(last)
         const bidPrice = Number(bid)
         const askPrice = Number(ask)
+        const parametersHasZero = [lastPrice, bidPrice, askPrice].some((price) => price === 0)
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
         const midAskBidPrice = decimalPrecision((bidPrice + askPrice)/2)
+        if (parametersHasZero) {
+            throw new Error('zero value exists for at least one of the parameters')
+        }
         if (!missingBidOrAskPrice && !lastPriceInMiddle) {
             return midAskBidPrice
         }
