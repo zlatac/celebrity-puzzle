@@ -3528,3 +3528,19 @@ let stockVisionTrade = function () {
     setUp()
 
 }
+
+exports.milk = class Milk {
+    constructor(){}
+
+    static sanitizePrice = (val) => {
+        if (typeof val === 'string') {
+            return val.replace(/[\$\,cadusd]/g,'')
+        }
+
+        return val
+    }
+
+    static projectVision() {
+        return Milk.sanitizePrice('$120,000')
+    }
+}
