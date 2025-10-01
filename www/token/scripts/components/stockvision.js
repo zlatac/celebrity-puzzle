@@ -308,6 +308,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         //     return newPeakValleyHistory
         // }
 
+        /** @returns {boolean} */
+        get onlyPrecisionFlagOnCurrentPrice() {
+            return this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.PRECISION) 
+                && !this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
+        }
+
         get isCurrentPositionStuck() {
             const isStuckMaxPeak = this.findAnchorPeak(true)
             if (this._currentPosition === undefined
@@ -324,12 +330,29 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const stuckThreshold = 1 // 100%
             const stuckFromExitThreshold = this._exitThreshold*stuckThreshold
             const stuckFromExitThresholdPrice = PriceAnalysis.percentageFinalAmount(isStuckMaxPeak.price, stuckFromExitThreshold, true)
-            const isCurrentPriceLessThanStuckFromExitThresholdPrice = this._currentPrice.price <= stuckFromExitThresholdPrice
+            let isCurrentPriceLessThanStuckFromExitThresholdPrice = this._currentPrice.price <= stuckFromExitThresholdPrice
+            if (this.onlyPrecisionFlagOnCurrentPrice) {
+                isCurrentPriceLessThanStuckFromExitThresholdPrice =
+                    numberIsWithinOneDirectionalRange(stuckFromExitThresholdPrice, this._currentPrice.price, 0.06, false)
+            }
             // Goal is to have the right amount of loss threshold to give us enough room for having more long term wins than losses
             const positionIsStuck = isCurrentPriceLessThanStuckFromExitThresholdPrice
             
             return positionIsStuck
 
+        }
+
+        targetedProfitAcquired(code) {
+            const profitThreshold = window.idaStockVision.settings[code].profitThreshold
+            if (typeof profitThreshold !== 'number' 
+                || this._currentPosition === undefined 
+                || this._currentPosition.position !== PriceAnalysis.IN
+                || !this.dateExistsForCurrrentPosition
+            ) {
+                return false
+            }
+
+            return percentageDelta(this._currentPosition.price, this._currentPrice.price, true) >= profitThreshold
         }
 
         /** 
@@ -359,7 +382,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 && slopeOfCurrentPriceFromPeak !== undefined 
                 && slopeOfCurrentPriceFromRecentPosition !== undefined 
                 // we do not want precision interval getting us into a stuck state prematurely
-                && this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
+                // && this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
                 && slopeOfCurrentPriceFromPeak.negative 
                 && slopeOfCurrentPriceFromRecentPosition.negative
             ) {
@@ -620,12 +643,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
          * @param {boolean} isCrypto 
          * @returns {number[]}
          */
-        static tradingStartTime (isCrypto = false) {
+        static tradingStartTime (isCrypto = false, minuteOffset = 1) {
             // Hour, Minute, Seconds
             // Add 1 minute to the minute time to have the close price of that minute
             return isCrypto 
-                ? [0, 0 + 1, 0] 
-                : [9, 30 + 1, 0]
+                ? [0, 0 + minuteOffset, 0] 
+                : [9, 30 + minuteOffset, 0]
         }
         
         /**
@@ -697,7 +720,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
      */
     const sanitizePrice = (val) => {
         if (typeof val === 'string') {
-            return val.replace('$', '')
+            return val.replace(/[\$\,cadusd]/g, '')
         }
 
         return val
@@ -721,6 +744,14 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         return Math.abs(percentage)
     }
 
+    /**
+     * 
+     * @param {number} first 
+     * @param {number} second 
+     * @param {number} percentageLimit 
+     * @param {boolean} directionPositive 
+     * @returns {boolean}
+     */
     const numberIsWithinOneDirectionalRange = (first, second, percentageLimit, directionPositive = true) => {
         const delta = Number(percentageDelta(first, second, true).toFixed(2))
         const absolutePercentageLimit = Math.abs(percentageLimit)
@@ -1097,6 +1128,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 tradingInterval,
                 precisionInterval,
                 experiment: false,
+                profitThreshold: undefined,
             }
             setTradingTimeInterval(code, PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
             const setFutureIntervalListener = () => {
@@ -1609,10 +1641,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const nowDateFullString = new Date(nowEpochDate).toString()
             const nowDateISOString = new Date(nowEpochDate).toISOString()
             const lastRecord = mutationArray[mutationArray.length - 1]
-            const targetValue = lastRecord.target.nodeValue.replace('$','')
+            const targetValue =  decimalConvert(sanitizePrice(lastRecord.target.nodeValue))
             const priceStore = window.idaStockVision.priceStore
             /** @type {CurrentPrice} */
-            const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: decimalConvert(targetValue), flags: []}
+            const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
             addIntervalFlagToPeakValleyDetectedOrCurrentPrice(code, currentPrice, tradingInterval)
             if (inspectorTrigger === true) {
                 currentPrice.flags.push(tradingInterval)
@@ -1634,7 +1666,9 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage, tradingInterval, precisionInterval)
                 priceStore.analysis[code] = analysis
                 entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentage, exitPercentage)
-                exitPrice = analysis.isCurrentPositionStuck ? currentPrice.price : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
+                exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(code)
+                    ? currentPrice.price 
+                    : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentage, exitPercentage)
                 priceStore.peakValleyHistory = analysis.peakValleySizeManagement !== undefined 
                     ? analysis.peakValleySizeManagement
                     : priceStore.peakValleyHistory
@@ -3327,6 +3361,7 @@ let stockVisionTrade = function () {
                     // reset order details for next investigation
                     order.accepted = true
                     order.timeSubmitted = now
+                    order.priceSubmitted = newPrice
                     order.rootOrderId = order.orderId
                     order.orderId = formattedRes[constants[brokerageName].trade.orderId]
                     order.quantity = quantity

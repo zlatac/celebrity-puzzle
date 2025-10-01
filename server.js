@@ -526,6 +526,18 @@ const trader = {
                 console.log(error)
             }
         },
+        notify: async (subject = '', message, brokerageName = '') => {
+            try {
+                let subjectPrefix = '[LS] NOTIFICATION'
+                subjectPrefix = brokerageName !== '' ? `${subjectPrefix} (${brokerageName})` : subjectPrefix
+                const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
+                    subject: `${subjectPrefix} ${subject}`,
+                    message: `${message}`,
+                }) 
+            } catch (error) {
+                console.log(error)
+            }
+        },
         checkWebBrowserCrashed: async (brokerageName) => {
             const brokerageNameExists = brokerageName in trader.asyncOperation.pingPongTracker
             if (!brokerageNameExists) {
@@ -541,14 +553,7 @@ const trader = {
                 const startTime = now.setHours(...trader.constants.tradingStartTime)
                 const endTime = now.setHours(...trader.constants.tradingEndTime)
                 if (nowEpochDate >= startTime && nowEpochDate <= endTime) {
-                    try {
-                        const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
-                            subject: `[LS] NOTIFICATION (${brokerageName})`,
-                            message: `Browser tab has crashed. Please investigate`,
-                        }) 
-                    } catch (error) {
-                        console.log(error)
-                    }
+                    trader.methods.notify(undefined, 'Browser tab stopped pinging, possibly crashed. Please investigate', brokerageName)
                 }
             }, oneMinute * 5)
 
@@ -579,6 +584,7 @@ app.post('/trader/notify', async function(req,res){
         } catch (error) {
             res.status(404)
             res.send(`${error.toString()}`)
+            trader.methods.notify(undefined, error.toString(), req.query.primaryCode)
         }
     }
 

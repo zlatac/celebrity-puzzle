@@ -129,6 +129,7 @@ export interface IStockVision {
       tradingInterval: INTERVAL_FLAGS;
       precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
+      profitThreshold: undefined | number;
     };
   };
   server: {[key:string]: string};
