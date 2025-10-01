@@ -245,23 +245,6 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             // Have a recent position info to make it very accurate regardless of implementation
 
             return this.findOptimalClosestHighestPeak()
-            // if ([this.closestPeakToToday, this.highestPeakToday].every((value) => value === undefined)) {
-            //     return
-            // }
-
-            // if (this.closestPeakToToday === undefined) {
-            //     return this.highestPeakToday
-            // }
-            // if (this.highestPeakToday === undefined) {
-            //     return this.closestPeakToToday
-            // }
-
-            // if (this.closestPeakToToday.price > this.highestPeakToday.price) {
-            //     return this.closestPeakToToday
-            // }
-
-            // return this.highestPeakToday
-
         }
 
         get peakValleyBeforeToday() {
@@ -371,7 +354,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             }
 
             const peaks = this.peakOnlyProgressionOrder
-                .filter((item) => (item.epochDate >= this._currentPosition.epochDate && item.epochDate < this._currentPrice.epochDate))
+                .filter((item) => (this.dateIsGreaterThanOrEqual(item.epochDate, this._currentPosition.epochDate) && item.epochDate < this._currentPrice.epochDate))
             const prices = peaks.map((item) => item.price)
             const maxPrice = Math.max(...prices)
             const maxPriceIndex = prices.lastIndexOf(maxPrice)
@@ -414,7 +397,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             }
             const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
             const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => {
-                return (item.epochDate > this.closestHighestPeak.epochDate) && (item.epochDate >= currentPositionDate)
+                return (item.epochDate > this.closestHighestPeak.epochDate) && this.dateIsGreaterThanOrEqual(item.epochDate, currentPositionDate)
             })
             const prices = valleysFromClosestHighestPeak.map((item) => item.price)
             const lowestPrice = Math.min(...prices)
@@ -578,6 +561,39 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             }, 0)
 
             return totalSum/firstTwoHundredPriceHistory.length
+        }
+
+        /**
+         * 
+         * @param {number} leftEpochDate 
+         * @param {number} rightEpochDate 
+         * @param {boolean} forceEqualMinute 
+         * @returns {boolean}
+         */
+        dateIsGreaterThanOrEqual(leftEpochDate, rightEpochDate, forceEqualMinute = true, reverse = false) {
+            // force equal minute only in situations where needed logic wise
+            if (!([leftEpochDate, rightEpochDate].every(i => typeof i === 'number'))) {
+                throw new Error('need all dates as epoch date number')
+            }
+
+            const defaultLogic = leftEpochDate >= rightEpochDate
+            const reverserDefaultLogic = leftEpochDate <= rightEpochDate
+
+            if (forceEqualMinute) {
+                const leftDateAtExactMinute = new Date(leftEpochDate).setSeconds(0,0)
+                const rightDateAtExactMinute = new Date(rightEpochDate).setSeconds(0,0)
+
+                if (reverse) {
+                    return reverserDefaultLogic || leftDateAtExactMinute === rightDateAtExactMinute
+                }
+                return defaultLogic || leftDateAtExactMinute === rightDateAtExactMinute
+            }
+
+            if (reverse) {
+                return reverserDefaultLogic
+            }
+
+            return defaultLogic 
         }
 
         /**
