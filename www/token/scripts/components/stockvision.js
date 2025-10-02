@@ -2917,10 +2917,27 @@ let stockVisionTrade = function () {
         const storage = getBrokerageVariables()
         storage.orders = idaStockVisionTrade.orders
         storage.orderHistory = idaStockVisionTrade.orderHistory
+        storage.codes = idaStockVisionTrade.codes
         storage.securities = idaStockVisionTrade.securities
 
         storeBrokerageVariables(storage)
 
+    }
+
+    /**
+     * 
+     * @param {string} code 
+     * @param {number} capital 
+     * @param {number} highRiskThreshold 
+     */
+    const setCodeSettings = (code, capital = 5000, highRiskThreshold = 0.5) => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        idaStockVisionTrade.codes[code.toUpperCase()] = {
+            capital,
+            highRiskThreshold
+        }
+
+        backUp()
     }
 
     /**
@@ -3154,7 +3171,7 @@ let stockVisionTrade = function () {
                 const action = order.position === true ? constants[brokerageName].trade.buy : constants[brokerageName].trade.sell
                 const price = priceDecision(order.last, order.bid_price, order.ask_price)
                 const quantity = order.position === true 
-                    ? sharesAmount(price, stockVisionTrade.securities[order.primaryCode].capital) 
+                    ? sharesAmount(price, stockVisionTrade.codes[order.code].capital) 
                     : getLatestOrderedQuantity(order.code)
                 const securityId = stockVisionTrade.securities[order.primaryCode].securityId
                 if (quantity === undefined) {
@@ -3356,7 +3373,7 @@ let stockVisionTrade = function () {
                 const newPriceJson = await newPricesResponse.json()
                 const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price)
                 const quantity = order.position === true 
-                    ? sharesAmount(newPrice, stockVisionTrade.securities[order.primaryCode].capital) 
+                    ? sharesAmount(newPrice, stockVisionTrade.codes[order.code].capital) 
                     : getLatestOrderedQuantity(order.code)
                 if (quantity === undefined) {
                     order.accepted = true
@@ -3421,6 +3438,7 @@ let stockVisionTrade = function () {
                 keepAwakeInstances: [],
                 orders: [],
                 orderHistory: {},
+                codes: {},
                 tools: {
                     start: pollLocalServer,
                     stop: stopPollLocalServer,
@@ -3436,10 +3454,12 @@ let stockVisionTrade = function () {
                     notify,
                     keepAwake,
                     backUp,
+                    setCodeSettings,
                 },
                 ...brokerageVariables,
             }
             window.addEventListener('beforeunload', () => {
+                // To-do swap beforunload even before deprecation - https://developer.chrome.com/docs/web-platform/page-lifecycle-api#testing_your_app_in_the_frozen_and_discarded_states
                 const message = `Browser tab has been closed. Please investigate`
                 notify(message, undefined, brokerageVariables.brokerage.name)
             })

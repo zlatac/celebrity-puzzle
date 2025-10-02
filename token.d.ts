@@ -279,13 +279,22 @@ export interface IStockVisionTrade {
     name: 'questrade' | 'ibkr';
   };
   accountId: string;
-  securities: {[key: string]: {
-    securityId: string;
-    capital: number
-  }};
+  securities: {
+    [key: string]: {
+      securityId: string;
+    }
+  };
+  codes: {
+    [key: string]: {
+      capital: number;
+      highRiskThreshold: number;
+    }
+  };
   orders: ITradeOrder[];
-  orderHistory: {[key:string]: {
-    quantity: number;
-    orderId: string;
-  }};
+  orderHistory: {
+    [key:string]: {
+      quantity: number;
+      orderId: string;
+    }
+  };
 }
