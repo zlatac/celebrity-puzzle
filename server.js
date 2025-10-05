@@ -458,6 +458,7 @@ const trader = {
         ordersToExecute: [],
         notificationOrders: [],
         pingPongTracker: {},
+        ordersPreparationRetry: {}
     },
     methods: {
         checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE) => {
@@ -558,6 +559,46 @@ const trader = {
             }, oneMinute * 5)
 
 
+        },
+        orderPreparation: async (req, res, retry = false) => {
+            const primaryCode = req.query.primaryCode
+            const code = req.query.code
+            try {
+                if (!retry) {
+                    trader.asyncOperation.ordersPreparationRetry[code] = 0
+                }
+                if (retry) {
+                    trader.asyncOperation.ordersPreparationRetry[code]++
+                }
+                const prepareOrder = {
+                    primaryCode: req.query.primaryCode,
+                    code: req.query.code,
+                    position: req.query.action === trader.constants.IN ? true : false,
+                    confirmationLink: req.query.confirmationLink,
+                    // observationPrice: req.query.currentPrice,
+                    seenByBrokerage: [],
+                }
+                const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
+                if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
+                    throw new Error('cannot retrieve price')
+                }
+                trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
+                if (!retry) {
+                    res.sendStatus(200)
+                }
+            } catch (error) {
+                if (!retry) {
+                    res.status(404)
+                    res.send(`${error.toString()}`)
+                }
+                setTimeout(() => {
+                    if (trader.asyncOperation.ordersPreparationRetry[code] >= 4) {
+                        trader.methods.notify(undefined, error.toString(), code)
+                        return
+                    }
+                    trader.methods.orderPreparation(req, res, true)
+                }, 3000)      
+            }
         }
 
     }
@@ -566,26 +607,7 @@ const trader = {
 app.post('/trader/notify', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
     if (process.env.SERVER_NAME === trader.constants.LOCAL_SERVER) {
-        try {
-            const prepareOrder = {
-                primaryCode: req.query.primaryCode,
-                code: req.query.code,
-                position: req.query.action === trader.constants.IN ? true : false,
-                confirmationLink: req.query.confirmationLink,
-                // observationPrice: req.query.currentPrice,
-                seenByBrokerage: [],
-            }
-            const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
-            if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
-                throw new Error('cannot retrieve price')
-            }
-            trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
-            res.sendStatus(200)
-        } catch (error) {
-            res.status(404)
-            res.send(`${error.toString()}`)
-            trader.methods.notify(undefined, error.toString(), req.query.primaryCode)
-        }
+        trader.methods.orderPreparation(req, res)
     }
 
     if (process.env.SERVER_NAME === trader.constants.CLOUD_SERVER) {

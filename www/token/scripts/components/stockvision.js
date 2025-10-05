@@ -12,6 +12,7 @@
  * @typedef { import("token").PriceAnalysis } IPriceAnalysis
  * 
  * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
+ * @typedef { import("token").ITradeOrder } TradeOrder
  * @typedef { import("token").ICboeQuoteResponse } CboeQuoteResponse
  * @typedef { import("token").IQuestradeSubmitResponse |  import("token").IQuestradeSubmitErrorResponse} QuestradeSubmitResponse
  * @typedef { import("token").IQuestradeOrdersResponse } QuestradeOrdersResponse
@@ -1232,6 +1233,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         const sameActionAsLast = 'action' in window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
             ? window.idaStockVision.lastNotificationSent[tokenOrStockCode].action === action 
             : false
+        // only useful when doing manual buy/sell execution
         const percentageThresholdReached = priceDifferencePercentage >= percentageThreshold
         const sameAnchorPriceAsLastNotificationAnchorPrice = 'anchorPrice' in window.idaStockVision.lastNotificationSent[tokenOrStockCode]
             ? anchorPrice === window.idaStockVision.lastNotificationSent[tokenOrStockCode].anchorPrice
@@ -1249,7 +1251,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
 
         if (window.idaStockVision.notificationInProgress[tokenOrStockCode] 
             || sameActionAsCurrentStatus
-            || (sameActionAsLast && sameAnchorPriceAsLastNotificationAnchorPrice && !percentageThresholdReached)
+            || sameActionAsLast
         ) {
             return
         }
@@ -3150,6 +3152,39 @@ let stockVisionTrade = function () {
         }
     }
 
+    /**
+     * 
+     * @param {TradeOrder[]} orders 
+     * @param {string[]} specificCodes 
+     * 
+     */
+    const getProfitLossReturn = (orders = [], specificCodes = []) => {
+        let profitLossAmount = 0
+        let profitLossPercentage = 0
+        const breakDown = []
+        /** @type {{[key:string]: TradeOrder}} */
+        const orderIdMap = orders.reduce((previousValue, currentValue,) => {
+            previousValue[currentValue.orderId] = currentValue
+            return previousValue
+        }, {})
+
+        orders
+            .filter((order) => order.position === false && (specificCodes.length === 0 || specificCodes.includes(order.code)))
+            .forEach((order) => {
+                const entryPrice = Number(orderIdMap[order.entryOrderId].priceSubmitted)
+                const exitPrice = Number(order.priceSubmitted)
+                const entryCost = entryPrice * order.quantity
+                const exitIncome = exitPrice * order.quantity
+                const percentageDifference = ((exitPrice - entryPrice)/entryPrice) * 100
+
+                profitLossAmount += (exitIncome - entryCost)
+                profitLossPercentage += percentageDifference
+                breakDown.push([`${percentageDifference}%`, profitLossAmount])
+            })
+        
+        return {profitLossAmount, profitLossPercentage, breakDown}
+    }
+
     const processOrderQueue = async () => {
         //always store orders in localstorage as backup in case of forced logout
         const stockVisionTrade = window.idaStockVisionTrade
@@ -3280,6 +3315,9 @@ let stockVisionTrade = function () {
                         case orderStatuses.executed:
                             order.executed = true
                             confirmOrderWithLink(order.confirmationLink, order.quantity)
+                            if (order.position === false) {
+                                order.entryOrderId = stockVisionTrade.orderHistory[order.code]?.orderId
+                            }
                             break
                         case orderStatuses.partial:
                             order.partialExecution = true
@@ -3455,6 +3493,7 @@ let stockVisionTrade = function () {
                     keepAwake,
                     backUp,
                     setCodeSettings,
+                    getProfitLossReturn,
                 },
                 ...brokerageVariables,
             }

@@ -263,6 +263,7 @@ export interface ITradeOrder extends ITradeCheckResponse {
   filledQuantity: number;
   timeSubmitted?: string;
   priceSubmitted?: string|number;
+  entryOrderId?: string | undefined
 }
 
 export interface IStockVisionTrade {
