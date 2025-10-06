@@ -3162,6 +3162,7 @@ let stockVisionTrade = function () {
         let profitLossAmount = 0
         let profitLossPercentage = 0
         const breakDown = []
+        const specificCodesUppercase = specificCodes.map(i => i.toUpperCase())
         /** @type {{[key:string]: TradeOrder}} */
         const orderIdMap = orders.reduce((previousValue, currentValue,) => {
             previousValue[currentValue.orderId] = currentValue
@@ -3169,17 +3170,22 @@ let stockVisionTrade = function () {
         }, {})
 
         orders
-            .filter((order) => order.position === false && (specificCodes.length === 0 || specificCodes.includes(order.code)))
+            .filter((order) => order.position === false && (specificCodes.length === 0 || specificCodesUppercase.includes(order.code)))
             .forEach((order) => {
-                const entryPrice = Number(orderIdMap[order.entryOrderId].priceSubmitted)
+                const entryOrder = orders.filter(i => i.code === order.code && Date.parse(i.timeSubmitted) < Date.parse(order.timeSubmitted)).at(-1)
+                if (!entryOrder) {
+                    return
+                }
+                const entryPrice = Number(entryOrder.priceSubmitted)
                 const exitPrice = Number(order.priceSubmitted)
                 const entryCost = entryPrice * order.quantity
                 const exitIncome = exitPrice * order.quantity
                 const percentageDifference = ((exitPrice - entryPrice)/entryPrice) * 100
+                const profitLoss = exitIncome - entryCost
 
-                profitLossAmount += (exitIncome - entryCost)
+                profitLossAmount += profitLoss
                 profitLossPercentage += percentageDifference
-                breakDown.push([`${percentageDifference}%`, profitLossAmount])
+                breakDown.push([`${percentageDifference.toFixed(2)}%`, profitLoss.toFixed(2), order.code])
             })
         
         return {profitLossAmount, profitLossPercentage, breakDown}
@@ -3232,6 +3238,9 @@ let stockVisionTrade = function () {
                     order.executed = false
                     order.modify = false
                     order.partialExecution = false
+                    if (order.position === false) {
+                        order.entryOrderId = stockVisionTrade.orderHistory[order.code]?.orderId
+                    }
                     stockVisionTrade.orderHistory[order.code] = {
                         quantity,
                         orderId: order.orderId
@@ -3315,9 +3324,6 @@ let stockVisionTrade = function () {
                         case orderStatuses.executed:
                             order.executed = true
                             confirmOrderWithLink(order.confirmationLink, order.quantity)
-                            if (order.position === false) {
-                                order.entryOrderId = stockVisionTrade.orderHistory[order.code]?.orderId
-                            }
                             break
                         case orderStatuses.partial:
                             order.partialExecution = true
