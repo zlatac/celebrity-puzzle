@@ -162,7 +162,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 }
                 const flagsEmpty = item.flags.length === 0
 
-                return item.flags.includes(this._priceTradingInterval) || flagsEmpty && item.epochDate < this.todaysDateMidnight
+                return item.flags.includes(this._priceTradingInterval) || (flagsEmpty && item.epochDate < this.todaysDateMidnight)
             })
             .sort((a,b) => {
                 // ascending date
@@ -258,8 +258,9 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
 
         get todaysPeakValleySnapshot() {
             // since peak and valley alternate in pattern they will always be side by side in progression order
-            const openPeakValley = this.peakValleyToday.slice(0,2)
-            const closePeakValley = this.peakValleyToday.slice(-2,undefined)
+            const openPeakValley = this.peakValleyToday.slice(0, 2)
+            const closePeakValley = this.peakValleyToday.slice(-2, undefined)
+            const lastSixPeakValley = this.peakValleyToday.slice(-4*2, -2)
             /* Nice to have the deepest valley before the end of the day when the lowest valley
                 of the day comes before the highest peak of the day (steep slope price increase edge case) */
             const lowestValleyAfterHighestPeakToday = []
@@ -599,6 +600,55 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
 
         /**
          * 
+         * @param {PriceHistory[]} onlyPeaks 
+         * @returns {boolean}
+         */
+        downwardVolatility(onlyPeaks = this.peakOnlyProgressionOrder) {
+            // make sure it is deep cloned so we do not overwrite a peak type to valley type carelessly
+            // reverse the array to easily loop from the top
+            // the first result of a valley after a peak should break out of the loop and return outcome of slope calculation
+            /** @type {PriceHistory[]}*/
+            const onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
+            onlyPeaksCloned.reverse()
+            const mostRecentPeak = onlyPeaksCloned.at(0)
+            const aggregateValley = []
+            const aggregatePeak = []
+
+            for(let i = 0; i < onlyPeaksCloned.length; i++) {
+                const current = onlyPeaksCloned[i + 2]
+                const last = onlyPeaksCloned[i + 1]
+                const previousLast = onlyPeaksCloned[i + 0]
+                const outcome = PriceAnalysis.peakValleyDetection(current, last, previousLast)
+
+                if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
+                    aggregateValley.push(outcome)
+                    console.log(outcome)
+                }
+
+                if (outcome !== undefined && outcome.type === PriceAnalysis.PEAK) {
+                    aggregatePeak.push(outcome)
+                    console.log(outcome)
+                }
+
+                if (aggregatePeak.length === 1 && aggregateValley.length === 1) {
+                    break
+                }
+            }
+
+            if (aggregateValley.at(0) !== undefined && aggregateValley.at(0).type === PriceAnalysis.VALLEY) {
+                const slope = this.priceSlope(aggregateValley.at(0), mostRecentPeak)
+                console.log(slope)
+                if (slope !== undefined) {
+                    return slope.negative || slope.value === 0
+                }
+            }
+
+            return false
+
+        }
+
+        /**
+         * 
          * @param {number} epochDate 
          * @param {number} daysNumber 
          * @param {boolean} skipWeekend 
@@ -699,6 +749,35 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         */
         static primaryCode(code) {
             return code.split('_')[0]
+        }
+
+        /**
+         * 
+         * @param {CurrentPrice} currentPrice 
+         * @param {Price} lastPrice 
+         * @param {Price} previousLastPrice 
+         * @returns {undefined | PriceHistory}
+         */
+        static peakValleyDetection(currentPrice, lastPrice, previousLastPrice) {
+            if (lastPrice !== undefined && previousLastPrice !== undefined && currentPrice !== undefined) {
+                const payload = {
+                    date: lastPrice.date,
+                    epochDate: lastPrice.epochDate,
+                    price: lastPrice.price,
+                    type: undefined,
+                    flags: [],
+                }
+                if (lastPrice.price >= previousLastPrice.price && lastPrice.price > currentPrice.price) {
+                    payload.type = 'peak'
+                    return payload
+                }
+                if (lastPrice.price <= previousLastPrice.price && lastPrice.price < currentPrice.price) {
+                    payload.type = 'valley'
+                    return payload
+                }
+            }
+
+            return
         }
         
     }
@@ -1329,34 +1408,6 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             console.log('Ida Trader Bot - UPDATE PRICES', error)
         }
     }
-    /**
-      * 
-      * @param {CurrentPrice} currentPrice 
-      * @param {Price} lastPrice 
-      * @param {Price} previousLastPrice 
-      * @returns {undefined | PriceHistory}
-      */
-    const peakValleyDetection = (currentPrice, lastPrice, previousLastPrice) => {
-        if (lastPrice !== undefined && previousLastPrice !== undefined) {
-            const payload = {
-                date: lastPrice.date,
-                epochDate: lastPrice.epochDate,
-                price: lastPrice.price,
-                type: undefined,
-                flags: [],
-            }
-            if (lastPrice.price >= previousLastPrice.price && lastPrice.price > currentPrice.price) {
-                payload.type = 'peak'
-                return payload
-            }
-            if (lastPrice.price <= previousLastPrice.price && lastPrice.price < currentPrice.price) {
-                payload.type = 'valley'
-                return payload
-            }
-        }
-
-        return
-    }
 
     /**
       * 
@@ -1545,9 +1596,21 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const tradingInterval = window.idaStockVision.settings[code].tradingInterval
             
             if (!peakValleyCaptured) {
-                const closestPeakValleyToNow = window.idaStockVision.priceStore.peakValleyHistory.filter((item) => {
-                    return 'epochDate' in item && (item.epochDate < interval.inspectionEpochDate) && (item.epochDate >= interval.epochDate)
+                const closestPeakValleyToNow = window.idaStockVision.priceStore.peakValleyHistory
+                .filter((item) => {
+                    return 'epochDate' in item  && (item.epochDate >= interval.epochDate)
+                }).sort((a,b) => {
+                    // ascending date
+                    if (a.epochDate < b.epochDate) {
+                        return -1
+                    }
+                    if (a.epochDate === b.epochDate) {
+                        return 0
+                    }
+                    return 1
                 })
+
+                
                 const closestPeaksToNow = closestPeakValleyToNow.filter((item) => {
                     return item.type === PriceAnalysis.PEAK
                 })
@@ -1555,17 +1618,38 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                     return item.type === PriceAnalysis.VALLEY
                 })
                 const firstPeakAndValley = [closestPeaksToNow.at(0), closestValleysToNow.at(0)]
+                const allItemsAreUndefined = firstPeakAndValley.every(item => item === undefined)
+                const someItemsAreUndefined = firstPeakAndValley.some(item => item === undefined)
+                // if peak & valley is empty retry again in one minute
+                // if one or the other is empty, clone it for the one thats missing
+                if (allItemsAreUndefined) {
+                    // explore using the current price executed at the time of the interval if this does not work well
+                    window.setTimeout(() => {
+                        tradingIntervalInspector(code, intervalBag, intervalSeconds)
+                    }, PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
+
+                    return
+                }
+
+                if (!allItemsAreUndefined && someItemsAreUndefined) {
+                    const anchorNotEmpty = firstPeakAndValley.filter(item => item !== undefined)
+                    const localTypeToClone = anchorNotEmpty[0].type === PriceAnalysis.PEAK ? PriceAnalysis.VALLEY : PriceAnalysis.PEAK
+                    const clone = JSON.parse(JSON.stringify(anchorNotEmpty[0]))
+                    clone.type = localTypeToClone
+                    window.idaStockVision.priceStore.peakValleyHistory.push(clone)
+                    firstPeakAndValley.push(clone)
+                }
                 firstPeakAndValley.forEach((item) => {
-                    // const flagExists = 'flags' in item
-                    // if (!flagExists) {
-                    //     item.flags = []
-                    // }
+                    if (item === undefined) {
+                        console.log('peak or valley is undefined')
+                        return
+                    }
                     if (item && !item.flags.includes(tradingInterval)) {
                         item.flags.push(tradingInterval)
-                        interval[`${item.type}Captured`] = true
-                        interval[`${item.type}Price`] = item.price
-                        console.log(`inspector: closest ${item.type} flagged`)
                     }
+                    interval[`${item.type}Captured`] = true
+                    interval[`${item.type}Price`] = item.price
+                    console.log(`inspector: closest ${item.type} flagged`)
                 })
             }
 
@@ -1679,7 +1763,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
             if (autoEntryExitMode) {
                 const currentPosition = priceStore.currentPosition[code]
-                const peakValleyDetected = peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
+                const peakValleyDetected = PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                 updatePrices(currentPrice, peakValleyDetected, tradingInterval)
                 analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentage, exitPercentage, tradingInterval, precisionInterval)
                 priceStore.analysis[code] = analysis
