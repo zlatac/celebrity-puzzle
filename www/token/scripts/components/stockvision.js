@@ -150,6 +150,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         /** @returns {PriceHistory[]} peakValleyProgressionOrder */
         get peakValleyProgressionOrder() {
             return this._peakValleyHistory.map((item) => {
+                // To-do refactor to a reduce that also removes duplicates within the peak/valley using type and epoch date in the map
                 if (!('epochDate' in item)) {
                     // Needed for manual addition of price histories without epochDate
                     item.epochDate = this.transformDateToEpochMiliseconds(item.date)
@@ -508,7 +509,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 // remove today for more accurate valley anchor in edge case
                 daysToProcess.splice(0,1)
             }
-            
+
             let tracker = new Map()
             // console.log(daysToProcess)
             daysToProcess.forEach((day, index) => {
@@ -609,8 +610,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             // reverse the array to easily loop from the top
             // the first result of a valley after a peak should break out of the loop and return outcome of slope calculation
             /** @type {PriceHistory[]}*/
-            const onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
+            let onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
             onlyPeaksCloned.reverse()
+            const removeDuplicates = new Map()
+            onlyPeaksCloned.forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
+            onlyPeaksCloned = removeDuplicates.values().toArray()
+            // console.log(onlyPeaksCloned)
             const mostRecentPeak = onlyPeaksCloned.at(0)
             const aggregateValley = []
             const aggregatePeak = []
@@ -642,7 +647,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             if (brokeOutOfLoop === true && aggregateValley.at(-1) !== undefined && aggregateValley.at(-1).type === PriceAnalysis.VALLEY) {
                 const slope = this.priceSlope(aggregateValley.at(-1), mostRecentPeak)
                 if (slope !== undefined) {
-                    // console.log(aggregateValley.at(-1), aggregatePeak.at(0), slope)
+                    console.log(aggregateValley.at(-1), aggregatePeak.at(0), slope)
                     return slope.negative || slope.value === 0
                 }
             }
@@ -3210,10 +3215,12 @@ let stockVisionTrade = function () {
      * @param {string} last 
      * @param {string} bid 
      * @param {string} ask 
+     * @param {TradeOrder} order
      * @returns {string|number}
      */
-    const priceDecision = (last, bid, ask) => {
+    const priceDecision = (last, bid, ask, order) => {
         // seems like askPrice and Bid price from cboe might not always be available. plan for edge case
+        const isTinyOrder = order.code.includes('_TINY')
         const missingBidOrAskPrice = [ask, bid].some((price) => price === undefined)
         const lastPrice = Number(last)
         const bidPrice = Number(bid)
@@ -3223,6 +3230,13 @@ let stockVisionTrade = function () {
         const midAskBidPrice = decimalPrecision((bidPrice + askPrice)/2)
         if (parametersHasZero) {
             throw new Error('zero value exists for at least one of the parameters')
+        }
+        if (isTinyOrder) {
+            if (!order.position) {
+                return decimalPrecision(Math.max(askPrice,bidPrice))
+            }
+
+            return decimalPrecision(Math.min(askPrice,bidPrice))
         }
         if (!missingBidOrAskPrice && !lastPriceInMiddle) {
             return midAskBidPrice
@@ -3323,7 +3337,7 @@ let stockVisionTrade = function () {
         for(const order of orders) {
             try {
                 const action = order.position === true ? constants[brokerageName].trade.buy : constants[brokerageName].trade.sell
-                const price = priceDecision(order.last, order.bid_price, order.ask_price)
+                const price = priceDecision(order.last, order.bid_price, order.ask_price, order)
                 const defaultCapital = stockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * stockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
@@ -3453,7 +3467,9 @@ let stockVisionTrade = function () {
                         case orderStatuses.pending:
                         case orderStatuses.queued:
                         case orderStatuses.activated:
-                            if (order.checkCount >= constants.modifyThreshold) {
+                            const isTinyCode = order.code.includes('_TINY')
+                            const localModifyThreshold = isTinyCode ? (60/5) * 2 : constants.modifyThreshold
+                            if (order.checkCount >= localModifyThreshold) {
                                 order.modify = true
                                 orderToModifyExist = true
                             }
@@ -3531,7 +3547,7 @@ let stockVisionTrade = function () {
                 const newPricesResponse = await priceCheck(order.primaryCode)
                 /** @type {CboeQuoteResponse} */
                 const newPriceJson = await newPricesResponse.json()
-                const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price)
+                const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price, order)
                 const defaultCapital = stockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * stockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
