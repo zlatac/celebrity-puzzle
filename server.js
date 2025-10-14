@@ -575,6 +575,7 @@ const trader = {
                     code: req.query.code,
                     position: req.query.action === trader.constants.IN ? true : false,
                     confirmationLink: req.query.confirmationLink,
+                    downwardVolatility: Boolean(req.query.downwardVolatility),
                     // observationPrice: req.query.currentPrice,
                     seenByBrokerage: [],
                 }

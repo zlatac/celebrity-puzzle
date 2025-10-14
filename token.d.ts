@@ -248,6 +248,7 @@ export interface ITradeCheckResponse extends ICboeQuoteResponse {
   primaryCode: string;
   confirmationLink: string;
   position: boolean;
+  downwardVolatility: boolean;
 }
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;

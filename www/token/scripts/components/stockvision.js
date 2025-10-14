@@ -260,7 +260,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             // since peak and valley alternate in pattern they will always be side by side in progression order
             const openPeakValley = this.peakValleyToday.slice(0, 2)
             const closePeakValley = this.peakValleyToday.slice(-2, undefined)
-            const lastSixPeakValley = this.peakValleyToday.slice(-4*2, -2)
+            const lastTenInBetweenPeakValleys = this.peakValleyToday.slice(-2*6, -2) // results in 10 data points (-12 + 2)
             /* Nice to have the deepest valley before the end of the day when the lowest valley
                 of the day comes before the highest peak of the day (steep slope price increase edge case) */
             const lowestValleyAfterHighestPeakToday = []
@@ -279,7 +279,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 }
             }
 
-            return Array.from(this.highestPeakAndLowestValleyToday).concat(openPeakValley,lowestValleyAfterHighestPeakToday,closePeakValley)
+            return Array.from(this.highestPeakAndLowestValleyToday)
+                .concat(openPeakValley,lowestValleyAfterHighestPeakToday,closePeakValley,lastTenInBetweenPeakValleys)
         }
 
         /** @returns {undefined} */
@@ -601,7 +602,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
         /**
          * 
          * @param {PriceHistory[]} onlyPeaks 
-         * @returns {boolean}
+         * @returns {boolean|undefined}
          */
         downwardVolatility(onlyPeaks = this.peakOnlyProgressionOrder) {
             // make sure it is deep cloned so we do not overwrite a peak type to valley type carelessly
@@ -613,6 +614,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const mostRecentPeak = onlyPeaksCloned.at(0)
             const aggregateValley = []
             const aggregatePeak = []
+            let brokeOutOfLoop = false
 
             for(let i = 0; i < onlyPeaksCloned.length; i++) {
                 const current = onlyPeaksCloned[i + 2]
@@ -622,28 +624,30 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
 
                 if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
                     aggregateValley.push(outcome)
-                    console.log(outcome)
                 }
 
                 if (outcome !== undefined && outcome.type === PriceAnalysis.PEAK) {
                     aggregatePeak.push(outcome)
-                    console.log(outcome)
                 }
 
-                if (aggregatePeak.length === 1 && aggregateValley.length === 1) {
+                if (aggregatePeak.length === 1 && aggregateValley.length >= 1 
+                    && aggregateValley.at(-1).epochDate < aggregatePeak.at(0).epochDate
+                ) {
+                    // its possible that we run out of data points without breaking out of loop 
+                    brokeOutOfLoop = true
                     break
                 }
             }
 
-            if (aggregateValley.at(0) !== undefined && aggregateValley.at(0).type === PriceAnalysis.VALLEY) {
-                const slope = this.priceSlope(aggregateValley.at(0), mostRecentPeak)
-                console.log(slope)
+            if (brokeOutOfLoop === true && aggregateValley.at(-1) !== undefined && aggregateValley.at(-1).type === PriceAnalysis.VALLEY) {
+                const slope = this.priceSlope(aggregateValley.at(-1), mostRecentPeak)
                 if (slope !== undefined) {
+                    // console.log(aggregateValley.at(-1), aggregatePeak.at(0), slope)
                     return slope.negative || slope.value === 0
                 }
             }
 
-            return false
+            return undefined
 
         }
 
@@ -1300,9 +1304,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
       * @param {string} action 
       * @param {number | string} anchorPrice 
       * @param {string} confirmationLink 
+      * @param {{[key: string]: string|boolean} | {}} otherQueryParams 
       * @returns {Promise<void>}
       */
-    const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink) => {
+    const sendNotification =  async (tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink, otherQueryParams = {}) => {
         const priceDifferencePercentage = 'currentPrice' in window.idaStockVision.lastNotificationSent[tokenOrStockCode] 
             ? percentageDelta(window.idaStockVision.lastNotificationSent[tokenOrStockCode].currentPrice, currentPrice) 
             : 0
@@ -1344,6 +1349,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             queryParams.append('action', action)
             queryParams.append('currentPrice', currentPrice.toString())
             queryParams.append('confirmationLink', confirmationLink)
+            Object.entries(otherQueryParams).forEach((item) => queryParams.append(item[0], String(item[1])))
+
             const cloudServerRequest = fetch(`${window.idaStockVision.serverUrl}/trader/notify?${queryParams.toString()}`, {
                 method: 'POST',
                 mode: 'cors',
@@ -1760,6 +1767,9 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             let anchorPrice = ''
             let notificationBody = ''
             let onlyPrecisionFlagExistsOnCurrentPrice = false
+            /** @type {undefined | boolean} */
+            let downwardVolatilityTrail = undefined
+            const otherNotificationQueryParams = {}
             const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
             if (autoEntryExitMode) {
                 const currentPosition = priceStore.currentPosition[code]
@@ -1781,6 +1791,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 // should be set after all flags have been possibly set
                 onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.PRECISION) 
                     && !currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
+                downwardVolatilityTrail = analysis.downwardVolatility()
                 runTradingIntervalInspector(code, priceStore.priceTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[tradingInterval], priceStore.precisionTimeIntervalsToday[code], PriceAnalysis.TRADING_INTERVAL_SECONDS[precisionInterval])
                 const timeToUpload = setUploadPricesTimeout(isCrypto,priceStore.uploadTodaysPriceTime,uploadTodaysPriceHistory)
                 if (typeof timeToUpload === 'number') {
@@ -1796,6 +1807,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 notificationBody = analysis.isCurrentPositionStuck
                     ? notificationBody.concat(`Stuck: true \r\n`)
                     : notificationBody
+                notificationBody =  notificationBody.concat(`Downward volatility: ${downwardVolatilityTrail} \r\n`)
+                otherNotificationQueryParams.downwardVolatility = downwardVolatilityTrail === true
             }
             const stockRangeDecision = {
                 // No need for <= to logic since probability of exact match is very low
@@ -1803,7 +1816,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 exit: currentPrice.price >= exitPrice,
             }
             const stockSurfDecision = {
-                enter: onlyPrecisionFlagExistsOnCurrentPrice 
+                enter: onlyPrecisionFlagExistsOnCurrentPrice && downwardVolatilityTrail !== true
                     ? numberIsWithinOneDirectionalRange(entryPrice,currentPrice.price,PriceAnalysis.entryExitPricePrecisionThreshold) 
                     : currentPrice.price >= entryPrice,
                 exit: onlyPrecisionFlagExistsOnCurrentPrice 
@@ -1832,7 +1845,15 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 color = 'green'
                 confirmationQueryParams.append('position', 'in')
                 notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
-                sendNotification(code, notificationBody, currentPrice.price, 'in', anchorPrice, `${confirmationLink}${confirmationQueryParams.toString()}`)
+                sendNotification(
+                    code, 
+                    notificationBody, 
+                    currentPrice.price, 
+                    'in', 
+                    anchorPrice, 
+                    `${confirmationLink}${confirmationQueryParams.toString()}`,
+                    otherNotificationQueryParams
+                )
                 if (window.idaStockVision.positionIn[code]) {
                     message = `[${code}] YOU ARE IN ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     color = 'blue'
@@ -1843,7 +1864,15 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 color = 'orange'
                 confirmationQueryParams.append('position', 'out')
                 notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
-                sendNotification(code, notificationBody, currentPrice.price, 'out', anchorPrice, `${confirmationLink}${confirmationQueryParams.toString()}`)
+                sendNotification(
+                    code,
+                    notificationBody,
+                    currentPrice.price,
+                    'out',
+                    anchorPrice,
+                    `${confirmationLink}${confirmationQueryParams.toString()}`,
+                    otherNotificationQueryParams
+                )
                 if (!window.idaStockVision.positionIn[code]) {
                     message = `[${code}] YOU ARE OUT ALREADY ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     color = 'blue'
@@ -3295,8 +3324,11 @@ let stockVisionTrade = function () {
             try {
                 const action = order.position === true ? constants[brokerageName].trade.buy : constants[brokerageName].trade.sell
                 const price = priceDecision(order.last, order.bid_price, order.ask_price)
+                const defaultCapital = stockVisionTrade.codes[order.code].capital
+                const lowRiskCapital = defaultCapital * stockVisionTrade.codes[order.code].highRiskThreshold
+                const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
                 const quantity = order.position === true 
-                    ? sharesAmount(price, stockVisionTrade.codes[order.code].capital) 
+                    ? sharesAmount(price, realCapital) 
                     : getLatestOrderedQuantity(order.code)
                 const securityId = stockVisionTrade.securities[order.primaryCode].securityId
                 if (quantity === undefined) {
@@ -3500,8 +3532,11 @@ let stockVisionTrade = function () {
                 /** @type {CboeQuoteResponse} */
                 const newPriceJson = await newPricesResponse.json()
                 const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price)
+                const defaultCapital = stockVisionTrade.codes[order.code].capital
+                const lowRiskCapital = defaultCapital * stockVisionTrade.codes[order.code].highRiskThreshold
+                const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
                 const quantity = order.position === true 
-                    ? sharesAmount(newPrice, stockVisionTrade.codes[order.code].capital) 
+                    ? sharesAmount(newPrice, realCapital) 
                     : getLatestOrderedQuantity(order.code)
                 if (quantity === undefined) {
                     order.accepted = true
