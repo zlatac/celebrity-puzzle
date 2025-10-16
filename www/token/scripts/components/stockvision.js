@@ -317,11 +317,12 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
             const stuckThreshold = 1 // 100%
             const stuckFromExitThreshold = this._exitThreshold*stuckThreshold
             const stuckFromExitThresholdPrice = PriceAnalysis.percentageFinalAmount(isStuckMaxPeak.price, stuckFromExitThreshold, true)
-            let isCurrentPriceLessThanStuckFromExitThresholdPrice = this._currentPrice.price <= stuckFromExitThresholdPrice
-            if (this.onlyPrecisionFlagOnCurrentPrice) {
-                isCurrentPriceLessThanStuckFromExitThresholdPrice =
-                    numberIsWithinOneDirectionalRange(stuckFromExitThresholdPrice, this._currentPrice.price, 0.06, false)
-            }
+            const isCurrentPriceLessThanStuckFromExitThresholdPrice = this._currentPrice.price <= stuckFromExitThresholdPrice
+            // commented out this block as it is indeed causing us to get out just as we entered and not worth the loss saving we get while loosing out on a real profit upward path
+            // if (this.onlyPrecisionFlagOnCurrentPrice) {
+            //     isCurrentPriceLessThanStuckFromExitThresholdPrice =
+            //         numberIsWithinOneDirectionalRange(stuckFromExitThresholdPrice, this._currentPrice.price, 0.06, false)
+            // }
             // Goal is to have the right amount of loss threshold to give us enough room for having more long term wins than losses
             const positionIsStuck = isCurrentPriceLessThanStuckFromExitThresholdPrice
             
@@ -369,7 +370,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 && slopeOfCurrentPriceFromPeak !== undefined 
                 && slopeOfCurrentPriceFromRecentPosition !== undefined 
                 // we do not want precision interval getting us into a stuck state prematurely
-                // && this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
+                && this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
                 && slopeOfCurrentPriceFromPeak.negative 
                 && slopeOfCurrentPriceFromRecentPosition.negative
             ) {
