@@ -636,8 +636,8 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                     aggregatePeak.push(outcome)
                 }
 
-                if (aggregatePeak.length === 1 && aggregateValley.length >= 1 
-                    && aggregateValley.at(-1).epochDate < aggregatePeak.at(0).epochDate
+                if (aggregatePeak.length === 2 && aggregateValley.length >= 1 
+                    && aggregatePeak.at(-1).epochDate < aggregatePeak.at(0).epochDate
                 ) {
                     // its possible that we run out of data points without breaking out of loop 
                     brokeOutOfLoop = true
@@ -645,10 +645,10 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 }
             }
 
-            if (brokeOutOfLoop === true && aggregateValley.at(-1) !== undefined && aggregateValley.at(-1).type === PriceAnalysis.VALLEY) {
-                const slope = this.priceSlope(aggregateValley.at(-1), mostRecentPeak)
+            if (brokeOutOfLoop === true && aggregatePeak.at(-1) !== undefined && aggregatePeak.at(-1).type === PriceAnalysis.PEAK) {
+                const slope = this.priceSlope(aggregatePeak.at(-1), mostRecentPeak)
                 if (slope !== undefined) {
-                    console.log(aggregateValley.at(-1), aggregatePeak.at(0), slope)
+                    // console.log(aggregatePeak.at(-1), aggregatePeak.at(0), slope)
                     return slope.negative || slope.value === 0
                 }
             }
@@ -3220,17 +3220,21 @@ let stockVisionTrade = function () {
      * @returns {string|number}
      */
     const priceDecision = (last, bid, ask, order) => {
-        // seems like askPrice and Bid price from cboe might not always be available. plan for edge case
+        // seems like askPrice and Bid price from cboe might not always be available. plan for edge cases
+        // in the beiginning of the trading day the last price of a CDR can be 0
         const isTinyOrder = order.code.includes('_TINY')
         const missingBidOrAskPrice = [ask, bid].some((price) => price === undefined)
-        const lastPrice = Number(last)
+        let lastPrice = Number(last)
         const bidPrice = Number(bid)
         const askPrice = Number(ask)
-        const parametersHasZero = [lastPrice, bidPrice, askPrice].some((price) => price === 0)
+        const parametersHasZero = [bidPrice, askPrice].some((price) => price === 0)
+        if (lastPrice === 0) {
+            lastPrice = bidPrice
+        }
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
         const midAskBidPrice = decimalPrecision((bidPrice + askPrice)/2)
         if (parametersHasZero) {
-            throw new Error('zero value exists for at least one of the parameters')
+            throw new Error('zero value exists for at least one of the parameters (bidPrice, askPrice)')
         }
         if (isTinyOrder) {
             if (!order.position) {
@@ -3243,7 +3247,7 @@ let stockVisionTrade = function () {
             return midAskBidPrice
         }
 
-        return decimalPrecision(last) // decimal places from cboe is more than 2
+        return decimalPrecision(lastPrice) // decimal places from cboe is more than 2
     }
 
     /**
@@ -3310,10 +3314,20 @@ let stockVisionTrade = function () {
                 const exitIncome = exitPrice * order.quantity
                 const percentageDifference = ((exitPrice - entryPrice)/entryPrice) * 100
                 const profitLoss = exitIncome - entryCost
+                const date = new Date(order.timeSubmitted)
+                const dateDisplay = 
+                    `${date.getDay()}/${date.getMonth()} ${date.getHours()}:${date.getMinutes()}`
+                const capitalUtilization = entryOrder.downwardVolatility ? 'half' : 'full'
 
                 profitLossAmount += profitLoss
                 profitLossPercentage += percentageDifference
-                breakDown.push([`${percentageDifference.toFixed(2)}%`, profitLoss.toFixed(2), order.code])
+                breakDown.push([
+                    `${percentageDifference.toFixed(2)}%`,
+                    profitLoss.toFixed(2),
+                    order.code,
+                    dateDisplay,
+                    capitalUtilization
+                ])
             })
         
         return {profitLossAmount, profitLossPercentage, breakDown}
@@ -3469,7 +3483,7 @@ let stockVisionTrade = function () {
                         case orderStatuses.queued:
                         case orderStatuses.activated:
                             const isTinyCode = order.code.includes('_TINY')
-                            const localModifyThreshold = isTinyCode ? (60/5) * 2 : constants.modifyThreshold
+                            const localModifyThreshold = isTinyCode ? (60/5) * 60 : constants.modifyThreshold
                             if (order.checkCount >= localModifyThreshold) {
                                 order.modify = true
                                 orderToModifyExist = true
