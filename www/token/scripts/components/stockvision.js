@@ -1822,7 +1822,7 @@ let projectStockVision = function (codeInput, manualEntryPrice, manualExitPrice,
                 exit: currentPrice.price >= exitPrice,
             }
             const stockSurfDecision = {
-                enter: onlyPrecisionFlagExistsOnCurrentPrice && downwardVolatilityTrail !== true
+                enter: onlyPrecisionFlagExistsOnCurrentPrice
                     ? numberIsWithinOneDirectionalRange(entryPrice,currentPrice.price,PriceAnalysis.entryExitPricePrecisionThreshold) 
                     : currentPrice.price >= entryPrice,
                 exit: onlyPrecisionFlagExistsOnCurrentPrice 
