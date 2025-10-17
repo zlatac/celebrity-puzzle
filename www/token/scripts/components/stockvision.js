@@ -1997,7 +1997,7 @@ class ProjectStockVision {
      * @returns {string}
      */
     static visionSmall(code, entry, exit, experiment = false, profit, loss) {
-        return ProjectStockVision.visionLarge(code, entry, exit, experiment, profit, loss)
+        return ProjectStockVision.visionLarge(`${code}_short`, entry, exit, experiment, profit, loss)
     }
 
     /**
@@ -2012,7 +2012,7 @@ class ProjectStockVision {
      * @returns {string}
      */
     static visionTiny(code, entry = 0.2, exit = 0.2, experiment = false, profit = 0.3, loss = 0.3, tradingInterval = '15min') {
-        return ProjectStockVision.visionLarge(code, entry, exit, experiment, profit, loss, tradingInterval)
+        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, experiment, profit, loss, tradingInterval)
     }
 
     /**
