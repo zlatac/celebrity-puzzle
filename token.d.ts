@@ -130,6 +130,11 @@ export interface IStockVision {
       precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
       profitThreshold: undefined | number;
+      lossThreshold: undefined | number;
+      entryPercentageThreshold: undefined | number;
+      exitPercentageThreshold: undefined | number;
+      manualEntryPriceThreshold: undefined | number;
+      manualExitPriceThreshold: undefined | number;
     };
   };
   server: {[key:string]: string};
