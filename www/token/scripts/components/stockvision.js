@@ -1830,7 +1830,7 @@ class ProjectStockVision {
                     analysis = new PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, entryPercentageThreshold, exitPercentageThreshold, tradingInterval, precisionInterval)
                     priceStore.analysis[code] = analysis
                     entryPrice = applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold)
-                    exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(code)
+                    exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(code) || analysis.targetedLossAcquired(code)
                         ? currentPrice.price 
                         : applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentageThreshold, exitPercentageThreshold)
                     priceStore.peakValleyHistory = analysis.peakValleySizeManagement !== undefined 
