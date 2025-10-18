@@ -1138,7 +1138,7 @@ class ProjectStockVision {
          * 
          * @param {string} code 
          */
-        const traderSetUp = async (code) => {
+        const traderSetUp = async (code) => {          
             if (!('idaStockVision' in window)) {
                 window.idaStockVision = {
                     positionIn: {},
@@ -1278,7 +1278,7 @@ class ProjectStockVision {
                 window.addEventListener(PriceAnalysis.EVENT_NAMES.destroyCode, (/** @type{CustomEvent} */customEvent) => {
                     const eventCode = customEvent.detail.code
                     if (eventCode === code) {
-                        if (window.idaStockVision.mutationObservers[code].disconnect) {
+                        if (window.idaStockVision.mutationObservers[code] && window.idaStockVision.mutationObservers[code].disconnect) {
                             window.idaStockVision.mutationObservers[code].disconnect()
                         }
                         delete window.idaStockVision.positionIn[code]
@@ -1965,12 +1965,12 @@ class ProjectStockVision {
         precisionInterval,
         isCrypto = false
     ) {
+        const codeFormatted = code.toUpperCase()
         try {
             if (typeof ProjectStockVision !== 'function') {
                 throw new Error('No projectVision class on window object')
             }
-    
-            const codeFormatted = code.toUpperCase()
+
             const mutationObserver = ProjectStockVision.vision(codeFormatted, undefined, undefined, isCrypto, entryThreshold, exitThreshold, tradingInterval, precisionInterval)
             if (typeof mutationObserver !== 'function' ) {
                 throw new Error('mutation observer is not returned')
@@ -1980,9 +1980,10 @@ class ProjectStockVision {
             window.idaStockVision.settings[codeFormatted].lossThreshold = lossThreshold
             window.idaStockVision.tools[`watch_${codeFormatted}`].call()
 
-            return 'startup is done'
+            return `startup is done - ${codeFormatted}`
         } catch (error) {
             console.log(error.toString())
+            return `startup failed - ${codeFormatted}`
         }
     }
     
@@ -2022,7 +2023,7 @@ class ProjectStockVision {
      * @param {number} exitManualPrice 
      * @param {boolean} [isCrypto] 
      * @param {boolean} [experiment] 
-     * @returns 
+     * @returns {string}
      */
     static visionManual(code, entryManualPrice, exitManualPrice, isCrypto, experiment = false) {
         const codeFormatted = code.toUpperCase()
@@ -2033,7 +2034,41 @@ class ProjectStockVision {
         window.idaStockVision.settings[codeFormatted].experiment = experiment
         window.idaStockVision.tools[`watch_${codeFormatted}`].call()
 
-        return 'startup is done'
+        return `manual startup is done - ${codeFormatted}`
+    }
+
+    /**
+     * 
+     * @param {string} code 
+     * @param {number} smallEntry 
+     * @param {number} smallExit 
+     * @param {boolean} [smallExperiment] 
+     * @param {number} [tinyEntry]
+     * @param {number} [tinyExit]
+     * @param {boolean} [tinyExperiment]
+     * @returns {string[]}
+     */
+    static visionTinySmallLarge(code, smallEntry, smallExit, smallExperiment, tinyEntry, tinyExit, tinyExperiment) {
+        return [
+            ProjectStockVision.visionLarge(code),
+            ProjectStockVision.visionSmall(code, smallEntry, smallExit, smallExperiment),
+            ProjectStockVision.visionTiny(code, tinyEntry, tinyExit, tinyExperiment)
+        ]
+    }
+
+     /**
+     * 
+     * @param {string} code 
+     * @param {number} [tinyEntry] 
+     * @param {number} [tinyExit]
+     * @param {boolean} [tinyExperiment] 
+     * @returns {string[]}
+     */
+    static visionTinyLarge(code, tinyEntry, tinyExit, tinyExperiment) {
+        return [
+            ProjectStockVision.visionLarge(code),
+            ProjectStockVision.visionTiny(code, tinyEntry, tinyExit, tinyExperiment)
+        ]
     }
 
     static visionTools() {
