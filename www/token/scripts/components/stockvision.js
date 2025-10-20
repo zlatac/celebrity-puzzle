@@ -1102,7 +1102,7 @@ class ProjectStockVision {
                         priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
                         break
                     default:
-                        // add webull, tradingview, google finance
+                        // add tradingview, google finance
                         throw new Error('website css selectors do not exist')
                 }
 
@@ -1121,10 +1121,6 @@ class ProjectStockVision {
         const destroyCode = (code) => {
             const codeUpperCase = code.toUpperCase()
             window.dispatchEvent(new CustomEvent(PriceAnalysis.EVENT_NAMES.destroyCode, {detail: {code: codeUpperCase}}))
-            // window.idaStockVision.mutationObservers[codeUpperCase].disconnect()
-            // delete window.idaStockVision.positionIn[codeUpperCase]
-            // clearInterval(window.idaStockVision.intervalInspectorInstance[codeUpperCase])
-            // clearTimeout(window.idaStockVision.timeoutInspectorInstance[codeUpperCase])
         }
         /**
          * 
@@ -3517,6 +3513,19 @@ let stockVisionTrade = function () {
             })
         
         return {profitLossAmount, profitLossPercentage, breakDown}
+    }
+
+    const fixBrokenOrder = (orderId) => {
+        if (typeof orderId !== 'string' || orderId === '') {
+            throw new Error('not a string')
+        }
+        const order = window.idaStockVisionTrade.orders.find(order => order.orderId === orderId)
+        if (order !== undefined) {
+            order.executed = true
+            return order
+        }
+
+        return
     }
 
     const processOrderQueue = async () => {
