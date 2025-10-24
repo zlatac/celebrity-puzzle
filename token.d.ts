@@ -1,6 +1,7 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
-export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' | '15min' | '27min' | '30min' | '45min' | '1hour' | 'none'
+export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
+  | '15min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | '1day' | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
 
 export interface IPrice {
@@ -107,7 +108,7 @@ export interface IStockVision {
   };
   mutationObservers: {[key:string]: MutationObserver};
   consoleClearInstance: number;
-  windowCloseEventListener: EventListener;
+  // windowCloseEventListener: EventListener;
   code: string;
   statusTimeoutList: number[];
   statusTimeoutInstance: undefined | number;
@@ -139,7 +140,20 @@ export interface IStockVision {
   };
   server: {[key:string]: string};
   cssSelectors: {[key:string]: {[key]: Function}};
-  constants: {}
+  constants: {};
+  reports: {
+    dateIn: string;
+    dateOut: string;
+    code: string;
+    anchorIn: number;
+    anchorOut: number;
+    volatilityIn: boolean;
+    volatilityOut: boolean;
+    priceIn: number;
+    priceOut: number;
+    anchorProfitLoss: number;
+    profitLoss: number;
+  }[];
 }
 
 /** STOCK_VISION_TRADE */
