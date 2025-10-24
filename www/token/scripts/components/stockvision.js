@@ -930,7 +930,7 @@ class ProjectStockVision {
          * @returns {number | undefined}
          */
         static percentageDelta(oldNumber, newNumber, includeSign = false) {
-            if ([oldNumber, newNumber].some((item) => typeof item !== 'number')){
+            if ([oldNumber, newNumber].every((item) => typeof item !== 'number')){
                 return
             }
             const percentage = (newNumber - oldNumber)*100/oldNumber
@@ -1900,7 +1900,7 @@ class ProjectStockVision {
                 }
     
                 idaStockVision.reports.push(report)
-                
+
                 if (!localStorage.hasOwnProperty(localStorageKey)){
                     localStorage.setItem(localStorageKey, JSON.stringify([]))
                 }
