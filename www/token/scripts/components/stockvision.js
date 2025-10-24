@@ -2245,7 +2245,7 @@ class ProjectStockVision {
     }
 }
 
-let stockVisionTrade = function () {
+class StockVisionTrade {
     // should work for both questrade & IBKR
     // get key variables from localstorgae
     // keep screen awake
@@ -2257,7 +2257,9 @@ let stockVisionTrade = function () {
     // save all important information to localStorage cause you can be logged out at anytime
     // send a notification when being sent to the logout page
 
-    const questradeTradeProcess = () => {
+    constructor() {}
+
+    static questradeTradeProcess = () => {
         // access token is needed in the request header
         // use scope to find access token in sessionStorage. access token gets updated frequently
         // request headers can be flaky so make sure you are sending exactly what they are looking for
@@ -3031,7 +3033,7 @@ let stockVisionTrade = function () {
 
     }
 
-    // const ibkrTradeProcess = () => {
+    // static ibkrTradeProcess = () => {
     //     // No need for access token in request header
     //     const order = {
     //         requestType: 'post',
@@ -3301,7 +3303,7 @@ let stockVisionTrade = function () {
     //     }
     // }
 
-    const constants = {
+    static constants = {
         localServer: {
             serverUrl: 'http://localhost:9000'
         },
@@ -3314,6 +3316,7 @@ let stockVisionTrade = function () {
         notification: {
             subjectGeneral: '[BWA] NOTIFICATION',
         },
+        localStorageName: 'stockvisionTrade',
         pingPongInterval: 1000*5,
         orderInspectionDelay: 1000*60*1,
         modifyThreshold: (60/5) * 0.25, // keep within 1 minute for now
@@ -3337,12 +3340,12 @@ let stockVisionTrade = function () {
                     expired: 'Expired',
                 }
             },
-            tradeProcess: questradeTradeProcess(),
+            tradeProcess: this.questradeTradeProcess(),
         },
         ibkr: {}
     }
 
-    const getBrokerageVariables = () => {
+    static getBrokerageVariables = () => {
         // domain/brokername, accountId, keepAwakeXpaths,
         const host = location.host.includes('questrade') ? 'questrade' : 'ibkr'
         const storage = localStorage.getItem('stockvisionTrade') !== null ? JSON.parse(localStorage.getItem('stockvisionTrade')) : undefined
@@ -3358,7 +3361,7 @@ let stockVisionTrade = function () {
      * @param {{[key: string]: {securityId: string; capital: number}}[]} securities 
      * @param {string} accountId 
      */
-    const defaultBrokerageVariables = (securities, accountId) => {
+    static defaultBrokerageVariables = (securities, accountId) => {
         // securityIds, capital, accountId
         const storage = localStorage.getItem('stockvisionTrade') !== null ? JSON.parse(localStorage.getItem('stockvisionTrade')) : {}
         if (accountId) {
@@ -3376,24 +3379,23 @@ let stockVisionTrade = function () {
             storage.securities = Object.fromEntries(entries)
         }
 
-        storeBrokerageVariables(storage)
+        this.storeBrokerageVariables(storage)
     }
 
-    const storeBrokerageVariables = (objectToStore) => {
+    static storeBrokerageVariables = (objectToStore) => {
         localStorage.setItem('stockvisionTrade', JSON.stringify(objectToStore))
     }
 
-    const backUp = () => {
+    static backUp = () => {
         // securities, orders and orderHistory for now
         const idaStockVisionTrade = window.idaStockVisionTrade
-        const storage = getBrokerageVariables()
+        const storage = this.getBrokerageVariables()
         storage.orders = idaStockVisionTrade.orders
         storage.orderHistory = idaStockVisionTrade.orderHistory
         storage.codes = idaStockVisionTrade.codes
         storage.securities = idaStockVisionTrade.securities
 
-        storeBrokerageVariables(storage)
-
+        this.storeBrokerageVariables(storage)
     }
 
     /**
@@ -3402,14 +3404,14 @@ let stockVisionTrade = function () {
      * @param {number} capital 
      * @param {number} highRiskThreshold 
      */
-    const setCodeSettings = (code, capital = 5000, highRiskThreshold = 0.5) => {
+    static setCodeSettings = (code, capital = 5000, highRiskThreshold = 0.5) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
             highRiskThreshold
         }
 
-        backUp()
+        this.backUp()
     }
 
     /**
@@ -3417,11 +3419,12 @@ let stockVisionTrade = function () {
      * @param {string} brokerage 
      * @returns {string | undefined}
      */
-    const getAccessToken = (brokerage) => {
+    static getAccessToken = (brokerage) => {
         let accessToken = undefined
         switch(brokerage) {
             case 'questrade':
-                const tokenObject = Object.values(sessionStorage).find((item) => item.includes(constants.questrade.tradeProcess.scopeToFindAccessToken))
+                const tokenObject = Object.values(sessionStorage)
+                    .find((item) => item.includes(this.constants.questrade.tradeProcess.scopeToFindAccessToken))
                 if (tokenObject) {
                     accessToken = JSON.parse(tokenObject).access_token
                 }
@@ -3439,7 +3442,7 @@ let stockVisionTrade = function () {
      * @param {boolean} stop 
      * @returns {number[]}
      */
-    const keepAwake = (firstElement, secondElement, stop = false) => {
+    static keepAwake = (firstElement, secondElement, stop = false) => {
         // switch between 2 elements to keep browser tab active
         if (!stop && ![firstElement, secondElement].every((element) => element instanceof HTMLElement)) {
             throw new Error('Need all elements to keep tab awake')
@@ -3460,11 +3463,11 @@ let stockVisionTrade = function () {
         return [firstIntervalInstance, secondIntervalInstance]
     }
 
-    const pollLocalServer = () => {
+    static pollLocalServer = () => {
         try {
             const idaStockVisionTrade = window.idaStockVisionTrade
             const brokerageName = idaStockVisionTrade.brokerage.name
-            idaStockVisionTrade.keepAwakeInstances = keepAwake(constants[brokerageName].firstElement(), constants[brokerageName].secondElement())
+            idaStockVisionTrade.keepAwakeInstances = this.keepAwake(this.constants[brokerageName].firstElement(), this.constants[brokerageName].secondElement())
             const intervalCallback = async () => {
                 try {
                     if (idaStockVisionTrade.pollServerInProgress) {
@@ -3473,7 +3476,7 @@ let stockVisionTrade = function () {
                     idaStockVisionTrade.pollServerInProgress = true
                     const payload = new URLSearchParams()
                     payload.set('brokerageName', brokerageName)
-                    const resp = await fetch(`${constants.localServer.serverUrl}/trader/tradeCheck?${payload.toString()}`, {
+                    const resp = await fetch(`${this.constants.localServer.serverUrl}/trader/tradeCheck?${payload.toString()}`, {
                         method: 'GET',
                         mode: 'cors',
                     })
@@ -3482,39 +3485,39 @@ let stockVisionTrade = function () {
                     if (Array.isArray(formattedResp) && formattedResp.length > 0) {
                         window.idaStockVisionTrade.orders.push(...formattedResp)
                         idaStockVisionTrade.pollServerInProgress = false
-                        backUp()
+                        this.backUp()
                         // backup order data in localstorage
                         // start/queue trade operation
-                        processOrderQueue()
+                        this.processOrderQueue()
                         return
                     }
                     if (!idaStockVisionTrade.processOrderQueueInProgress && !idaStockVisionTrade.investigateOrderQueueInProgress) {
-                        investigateOrderQueue()
+                        this.investigateOrderQueue()
                     }
                     
                 } catch (error) {
                     const errorMessage = ['Ida Trader Bot - POLL LOCAL SERVER', error.toString()]
                     console.log(...errorMessage)
                     if (idaStockVisionTrade.pollServerErrorCount === 0) {
-                        notify(errorMessage.join('-'))
+                        this.notify(errorMessage.join('-'))
                         idaStockVisionTrade.pollServerErrorCount++
                     }
                 } finally {
                     idaStockVisionTrade.pollServerInProgress = false
                 }
             }
-            idaStockVisionTrade.pollServerInstance = window.setInterval(intervalCallback, constants.pingPongInterval)
+            idaStockVisionTrade.pollServerInstance = window.setInterval(intervalCallback, this.constants.pingPongInterval)
             
         } catch (error) {
             console.log('Ida Trader Bot - POLL LOCAL SERVER', error)
         }
     }
 
-    const stopPollLocalServer = () => {
+    static stopPollLocalServer = () => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const [first, second] = idaStockVisionTrade.keepAwakeInstances
         clearInterval(window.idaStockVisionTrade.pollServerInstance)
-        keepAwake(first, second, true)
+        this.keepAwake(first, second, true)
     }
 
     /**
@@ -3523,7 +3526,7 @@ let stockVisionTrade = function () {
      * @param {number} capitalAmount 
      * @returns {number}
      */
-    const sharesAmount = (price, capitalAmount) => {
+    static sharesAmount = (price, capitalAmount) => {
         return Math.ceil(capitalAmount / Number(price))
     }
     
@@ -3532,10 +3535,10 @@ let stockVisionTrade = function () {
      * @param {string} primaryCode 
      * @returns {Promise<Response>} 
      */
-    const priceCheck = (primaryCode) => {
+    static priceCheck = (primaryCode) => {
         const payload = new URLSearchParams()
         payload.set('primaryCode', primaryCode)
-        return fetch(`${constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
+        return fetch(`${this.constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
             method: 'GET',
             mode: 'cors',
         })
@@ -3547,7 +3550,7 @@ let stockVisionTrade = function () {
      * @param {number} decimalPlaces 
      * @returns {number|string}
      */
-    const decimalPrecision = (num, decimalPlaces = 2) => {
+    static decimalPrecision = (num, decimalPlaces = 2) => {
         // this only work for normal currency numbers. really small numbers very close to 0 become zero or exponential eg 0.005 || 0.00000005
         if (!['string', 'number'].includes(typeof num) || Number.isNaN(num)) {
             return num
@@ -3570,7 +3573,7 @@ let stockVisionTrade = function () {
      * @param {TradeOrder} order
      * @returns {string|number}
      */
-    const priceDecision = (last, bid, ask, order) => {
+    static priceDecision = (last, bid, ask, order) => {
         // seems like askPrice and Bid price from cboe might not always be available. plan for edge cases
         // in the beiginning of the trading day the last price of a CDR can be 0
         const isTinyOrder = order.code.includes('_TINY')
@@ -3583,22 +3586,22 @@ let stockVisionTrade = function () {
             lastPrice = bidPrice
         }
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
-        const midAskBidPrice = decimalPrecision((bidPrice + askPrice)/2)
+        const midAskBidPrice = this.decimalPrecision((bidPrice + askPrice)/2)
         if (parametersHasZero) {
             throw new Error('zero value exists for at least one of the parameters (bidPrice, askPrice)')
         }
         if (isTinyOrder) {
             if (!order.position) {
-                return decimalPrecision(Math.max(askPrice,bidPrice))
+                return this.decimalPrecision(Math.max(askPrice,bidPrice))
             }
 
-            return decimalPrecision(Math.min(askPrice,bidPrice))
+            return this.decimalPrecision(Math.min(askPrice,bidPrice))
         }
         if (!missingBidOrAskPrice && !lastPriceInMiddle) {
             return midAskBidPrice
         }
 
-        return decimalPrecision(lastPrice) // decimal places from cboe is more than 2
+        return this.decimalPrecision(lastPrice) // decimal places from cboe is more than 2
     }
 
     /**
@@ -3606,10 +3609,10 @@ let stockVisionTrade = function () {
      * @param {string} code 
      * @returns {number | undefined}
      */
-    const getLatestOrderedQuantity = (code) => {
-        const stockVisionTrade = window.idaStockVisionTrade
-        if (code in stockVisionTrade.orderHistory) {
-            return stockVisionTrade.orderHistory[code].quantity
+    static getLatestOrderedQuantity = (code) => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        if (code in idaStockVisionTrade.orderHistory) {
+            return idaStockVisionTrade.orderHistory[code].quantity
         }
 
         return
@@ -3621,13 +3624,13 @@ let stockVisionTrade = function () {
      * @param {string} subject 
      * @param {string} brokerageName 
      */
-    const notify = async (message, subject = constants.notification.subjectGeneral, brokerageName = window.idaStockVisionTrade.brokerage.name) => {
+    static notify = async (message, subject = this.constants.notification.subjectGeneral, brokerageName = window.idaStockVisionTrade.brokerage.name) => {
         try {
             let brokerageSubject = `${subject} (${brokerageName})`
             const queryParams = new URLSearchParams()
             queryParams.set('subject', brokerageSubject)
             queryParams.set('message', message)
-            fetch(`${constants.cloudServer.serverUrl}${constants.serverApi.notify}?${queryParams.toString()}`, {
+            fetch(`${this.constants.cloudServer.serverUrl}${this.constants.serverApi.notify}?${queryParams.toString()}`, {
                 method: 'POST',
             })
         } catch (error) {
@@ -3641,7 +3644,7 @@ let stockVisionTrade = function () {
      * @param {string[]} specificCodes 
      * 
      */
-    const getProfitLossReturn = (orders = [], specificCodes = []) => {
+    static getProfitLossReturn = (orders = [], specificCodes = []) => {
         let profitLossAmount = 0
         let profitLossPercentage = 0
         const breakDown = []
@@ -3684,7 +3687,7 @@ let stockVisionTrade = function () {
         return {profitLossAmount, profitLossPercentage, breakDown}
     }
 
-    const fixBrokenOrder = (orderId) => {
+    static fixBrokenOrder = (orderId) => {
         if (typeof orderId !== 'string' || orderId === '') {
             throw new Error('not a string')
         }
@@ -3697,50 +3700,50 @@ let stockVisionTrade = function () {
         return
     }
 
-    const processOrderQueue = async () => {
+    static processOrderQueue = async () => {
         //always store orders in localstorage as backup in case of forced logout
-        const stockVisionTrade = window.idaStockVisionTrade
-        if (stockVisionTrade.processOrderQueueInProgress) {
-            stockVisionTrade.newOrdersReceived = true
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        if (idaStockVisionTrade.processOrderQueueInProgress) {
+            idaStockVisionTrade.newOrdersReceived = true
             return
         }
-        stockVisionTrade.processOrderQueueInProgress = true
-        const orders = stockVisionTrade.orders.filter((order) => (order.accepted === undefined || order.accepted === false))
-        const brokerageName = stockVisionTrade.brokerage.name
+        idaStockVisionTrade.processOrderQueueInProgress = true
+        const orders = idaStockVisionTrade.orders.filter((order) => (order.accepted === undefined || order.accepted === false))
+        const brokerageName = idaStockVisionTrade.brokerage.name
         if (orders.length === 0) {
-            stockVisionTrade.processOrderQueueInProgress = false
+            idaStockVisionTrade.processOrderQueueInProgress = false
             return 
         }
 
         // sequential promise fulfliment as forEach doe not respect asyc/await
         for(const order of orders) {
             try {
-                const action = order.position === true ? constants[brokerageName].trade.buy : constants[brokerageName].trade.sell
-                const price = priceDecision(order.last, order.bid_price, order.ask_price, order)
-                const defaultCapital = stockVisionTrade.codes[order.code].capital
-                const lowRiskCapital = defaultCapital * stockVisionTrade.codes[order.code].highRiskThreshold
+                const action = order.position === true ? this.constants[brokerageName].trade.buy : this.constants[brokerageName].trade.sell
+                const price = this.priceDecision(order.last, order.bid_price, order.ask_price, order)
+                const defaultCapital = idaStockVisionTrade.codes[order.code].capital
+                const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
                 const quantity = order.position === true 
-                    ? sharesAmount(price, realCapital) 
-                    : getLatestOrderedQuantity(order.code)
-                const securityId = stockVisionTrade.securities[order.primaryCode].securityId
+                    ? this.sharesAmount(price, realCapital) 
+                    : this.getLatestOrderedQuantity(order.code)
+                const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
                 if (quantity === undefined) {
                     throw new Error(`no quantity to process order - ${order.code}`)
                 }
                 if (securityId === undefined) {
                     throw new Error(`no security Id to process order - ${order.code}`)
                 }
-                const accountId = stockVisionTrade.accountId
-                const accessToken = getAccessToken(brokerageName)
+                const accountId = idaStockVisionTrade.accountId
+                const accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
-                const res = await constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
+                const res = await this.constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
                 /** @type {QuestradeSubmitResponse} */
                 const resFormatted = await res.json()
-                if (constants[brokerageName].trade.orderId in resFormatted) {
+                if (this.constants[brokerageName].trade.orderId in resFormatted) {
                     // setup order object with FE default properties it needs later
                     order.accepted = true // assume it's been accepted with the return of an orderId
                     order.timeSubmitted = now
-                    order.orderId = resFormatted[constants[brokerageName].trade.orderId]
+                    order.orderId = resFormatted[this.constants[brokerageName].trade.orderId]
                     order.quantity = quantity
                     order.priceSubmitted = price
                     order.checkCount = 0
@@ -3748,14 +3751,14 @@ let stockVisionTrade = function () {
                     order.modify = false
                     order.partialExecution = false
                     if (order.position === false) {
-                        order.entryOrderId = stockVisionTrade.orderHistory[order.code]?.orderId
+                        order.entryOrderId = idaStockVisionTrade.orderHistory[order.code]?.orderId
                     }
-                    stockVisionTrade.orderHistory[order.code] = {
+                    idaStockVisionTrade.orderHistory[order.code] = {
                         quantity,
                         orderId: order.orderId
                     }
                     // backup order data in localstorage
-                    backUp()
+                    this.backUp()
                 } else {
                     throw new Error(`no orderId returned - ${order.code} - ${JSON.stringify(resFormatted)}`)
                 }
@@ -3763,23 +3766,23 @@ let stockVisionTrade = function () {
             } catch (error) {
                 const errorMessage = ['Ida Trader Bot - PROCESS ORDER QUEUE', error.toString()]
                 console.log(...errorMessage)
-                notify(errorMessage.join('-'))
+                this.notify(errorMessage.join('-'))
                 order.accepted = true
                 order.executed = true
                 // backup order data in localstorage
-                backUp()
+                this.backUp()
                 // notify for manual intervention
             }
         }
 
-        stockVisionTrade.processOrderQueueInProgress = false
+        idaStockVisionTrade.processOrderQueueInProgress = false
 
-        if (stockVisionTrade.newOrdersReceived) {
-            stockVisionTrade.newOrdersReceived = false
-            processOrderQueue()
+        if (idaStockVisionTrade.newOrdersReceived) {
+            idaStockVisionTrade.newOrdersReceived = false
+            this.processOrderQueue()
             return
         }
-        investigateOrderQueue(true)
+        this.investigateOrderQueue(true)
         
     }
 
@@ -3788,22 +3791,22 @@ let stockVisionTrade = function () {
      * @param {boolean} defer 
      * @returns 
      */
-    const investigateOrderQueue = async (defer = false) => {
-        const stockVisionTrade = window.idaStockVisionTrade
-        if (stockVisionTrade.investigateOrderQueueInProgress) {
+    static investigateOrderQueue = async (defer = false) => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        if (idaStockVisionTrade.investigateOrderQueueInProgress) {
             return
         }
 
         if (defer) {
-            window.setTimeout(investigateOrderQueue, constants.orderInspectionDelay)
+            window.setTimeout(this.investigateOrderQueue, this.constants.orderInspectionDelay)
             return
         }
 
-        stockVisionTrade.investigateOrderQueueInProgress = true
-        const orders = stockVisionTrade.orders
+        idaStockVisionTrade.investigateOrderQueueInProgress = true
+        const orders = idaStockVisionTrade.orders
             .filter((order) => (order.accepted === true && order.executed === false && order.modify === false))
         if (orders.length === 0) {
-            stockVisionTrade.investigateOrderQueueInProgress = false
+            idaStockVisionTrade.investigateOrderQueueInProgress = false
             return
         }
 
@@ -3811,15 +3814,15 @@ let stockVisionTrade = function () {
         try {
             let orderToModifyExist = false
             const fromDateISO = orders.at(0).timeSubmitted
-            const brokerageName = stockVisionTrade.brokerage.name
-            const orderStatuses = constants[brokerageName].trade.orderStatus
-            const accessToken = getAccessToken(brokerageName)
-            const res = await constants[brokerageName].tradeProcess.orders.fetch(accessToken,fromDateISO)
+            const brokerageName = idaStockVisionTrade.brokerage.name
+            const orderStatuses = this.constants[brokerageName].trade.orderStatus
+            const accessToken = this.getAccessToken(brokerageName)
+            const res = await this.constants[brokerageName].tradeProcess.orders.fetch(accessToken,fromDateISO)
             /** @type {QuestradeOrdersResponse} */
             const formattedRes = await res.json()
             /** @type {{[key: string]: QuestradeOrder}} */
             const brokerageOrdersObject = formattedRes.data.reduce((previous, current) => {
-                previous[current[constants[brokerageName].trade.orderId]] = current
+                previous[current[this.constants[brokerageName].trade.orderId]] = current
                 return previous
             }, {})
             orders.forEach((order) => {
@@ -3832,7 +3835,7 @@ let stockVisionTrade = function () {
                     switch(orderFromBrokerage.status) {
                         case orderStatuses.executed:
                             order.executed = true
-                            confirmOrderWithLink(order.confirmationLink, order.quantity)
+                            this.confirmOrderWithLink(order.confirmationLink, order.quantity)
                             break
                         case orderStatuses.partial:
                             order.partialExecution = true
@@ -3847,7 +3850,7 @@ let stockVisionTrade = function () {
                         case orderStatuses.queued:
                         case orderStatuses.activated:
                             const isTinyCode = order.code.includes('_TINY')
-                            const localModifyThreshold = isTinyCode ? (60/5) * 60 : constants.modifyThreshold
+                            const localModifyThreshold = isTinyCode ? (60/5) * 60 : this.constants.modifyThreshold
                             if (order.checkCount >= localModifyThreshold) {
                                 order.modify = true
                                 orderToModifyExist = true
@@ -3863,19 +3866,19 @@ let stockVisionTrade = function () {
                 }
             })
             // backup order data in localstorage
-            backUp()
+            this.backUp()
             
-            stockVisionTrade.investigateOrderQueueInProgress = false
+            idaStockVisionTrade.investigateOrderQueueInProgress = false
             if (orderToModifyExist) {
-                modifyOrders()
+                this.modifyOrders()
             }
             // you can trigger modifying orders around here
             // polling will trigger this function
         } catch (error) {
             const errorMessage = ['Ida Trader Bot - INVESTIGATE ORDER QUEUE', error.toString()]
             console.log(...errorMessage)
-            notify(errorMessage.join('-'))
-            stockVisionTrade.investigateOrderQueueInProgress = false
+            this.notify(errorMessage.join('-'))
+            idaStockVisionTrade.investigateOrderQueueInProgress = false
         }
     }
 
@@ -3884,7 +3887,7 @@ let stockVisionTrade = function () {
      * @param {string} link 
      * @param {number | undefined} sharesQuantity 
      */
-    const confirmOrderWithLink = (link, sharesQuantity) => {
+    static confirmOrderWithLink = (link, sharesQuantity) => {
         try {
             const url = new URL(link)
             if(sharesQuantity !== undefined) {
@@ -3897,42 +3900,42 @@ let stockVisionTrade = function () {
         } catch (error) {
             const errorMessage = ['Ida Trader Bot - CONFIRM ORDER WITH LINK', error.toString()]
             console.log(...errorMessage)
-            notify(errorMessage.join('-'))
+            this.notify(errorMessage.join('-'))
         }
     }
 
-    const modifyOrders = async () => {
+    static modifyOrders = async () => {
         // get list of orders to modify
         // price check each
         // send modify request
         // update orderId
         // reset order details to be picked up for later investigation
         // investigate
-        const stockVisionTrade = window.idaStockVisionTrade
-        if (stockVisionTrade.modifyOrderQueueInProgress) {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        if (idaStockVisionTrade.modifyOrderQueueInProgress) {
             return
         }
-        stockVisionTrade.modifyOrderQueueInProgress = true
-        const orders = stockVisionTrade.orders
+        idaStockVisionTrade.modifyOrderQueueInProgress = true
+        const orders = idaStockVisionTrade.orders
             .filter((order) => (order.accepted === true && order.executed === false && order.modify === true))
-        const brokerageName = stockVisionTrade.brokerage.name
+        const brokerageName = idaStockVisionTrade.brokerage.name
         if (orders.length === 0) {
-            stockVisionTrade.modifyOrderQueueInProgress = false
+            idaStockVisionTrade.modifyOrderQueueInProgress = false
             return
         }
 
         for(const order of orders) {
             try {
-                const newPricesResponse = await priceCheck(order.primaryCode)
+                const newPricesResponse = await this.priceCheck(order.primaryCode)
                 /** @type {CboeQuoteResponse} */
                 const newPriceJson = await newPricesResponse.json()
-                const newPrice = priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price, order)
-                const defaultCapital = stockVisionTrade.codes[order.code].capital
-                const lowRiskCapital = defaultCapital * stockVisionTrade.codes[order.code].highRiskThreshold
+                const newPrice = this.priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price, order)
+                const defaultCapital = idaStockVisionTrade.codes[order.code].capital
+                const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
                 const quantity = order.position === true 
-                    ? sharesAmount(newPrice, realCapital) 
-                    : getLatestOrderedQuantity(order.code)
+                    ? this.sharesAmount(newPrice, realCapital) 
+                    : this.getLatestOrderedQuantity(order.code)
                 if (quantity === undefined) {
                     order.accepted = true
                     order.executed = true
@@ -3943,28 +3946,28 @@ let stockVisionTrade = function () {
                     order.modify = false
                     continue
                 }
-                const accessToken = getAccessToken(brokerageName)
+                const accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
-                const res = await constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, stockVisionTrade.accountId, quantity, newPrice)
+                const res = await this.constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, idaStockVisionTrade.accountId, quantity, newPrice)
                 /** @type {QuestradeSubmitResponse} */
                 const formattedRes = await res.json()
-                if (constants[brokerageName].trade.orderId in formattedRes) {
+                if (this.constants[brokerageName].trade.orderId in formattedRes) {
                     // reset order details for next investigation
                     order.accepted = true
                     order.timeSubmitted = now
                     order.priceSubmitted = newPrice
                     order.rootOrderId = order.orderId
-                    order.orderId = formattedRes[constants[brokerageName].trade.orderId]
+                    order.orderId = formattedRes[this.constants[brokerageName].trade.orderId]
                     order.quantity = quantity
                     order.checkCount = 0
                     order.executed = false
                     order.modify = false
-                    stockVisionTrade.orderHistory[order.code] = {
+                    idaStockVisionTrade.orderHistory[order.code] = {
                         quantity,
                         orderId: order.orderId
                     }
                     // backup order data in localstorage
-                    backUp()
+                    this.backUp()
                 } else {
                     // most likely has executed already so let it go through another investigation cycle
                     order.checkCount = 0
@@ -3975,16 +3978,16 @@ let stockVisionTrade = function () {
             } catch (error) {
                 const errorMessage = ['Ida Trader Bot - MODIFY ORDER QUEUE', error.toString()]
                 console.log(...errorMessage)
-                notify(errorMessage.join('-'))
+                this.notify(errorMessage.join('-'))
             }
         }
 
-        stockVisionTrade.modifyOrderQueueInProgress = false
+        idaStockVisionTrade.modifyOrderQueueInProgress = false
     }
 
-    const setUp = () => {
+    static setUp = () => {
         try {
-            const brokerageVariables = getBrokerageVariables()
+            const brokerageVariables = this.getBrokerageVariables()
             window.idaStockVisionTrade = {
                 pollServerInProgress: false,
                 processOrderQueueInProgress: false,
@@ -3998,29 +4001,29 @@ let stockVisionTrade = function () {
                 orderHistory: {},
                 codes: {},
                 tools: {
-                    start: pollLocalServer,
-                    stop: stopPollLocalServer,
-                    define: defaultBrokerageVariables,
-                    process: processOrderQueue,
-                    investigate: investigateOrderQueue,
-                    modify: modifyOrders,
-                    api: constants.questrade.tradeProcess,
-                    priceDecision,
-                    decimalPrecision,
-                    sharesAmount,
-                    getAccessToken,
-                    notify,
-                    keepAwake,
-                    backUp,
-                    setCodeSettings,
-                    getProfitLossReturn,
+                    start: StockVisionTrade.start,
+                    stop: StockVisionTrade.stop,
+                    define: StockVisionTrade.defaultBrokerageVariables,
+                    process: StockVisionTrade.processOrderQueue,
+                    investigate: StockVisionTrade.investigateOrderQueue,
+                    modify: StockVisionTrade.modifyOrders,
+                    api: StockVisionTrade.constants.questrade.tradeProcess,
+                    priceDecision: StockVisionTrade.priceDecision,
+                    decimalPrecision: StockVisionTrade.decimalPrecision,
+                    sharesAmount: StockVisionTrade.sharesAmount,
+                    getAccessToken: StockVisionTrade.getAccessToken,
+                    notify: StockVisionTrade.notify,
+                    keepAwake: StockVisionTrade.keepAwake,
+                    backUp: StockVisionTrade.backUp,
+                    prisetCodeSettingsceDecision: StockVisionTrade.setCodeSettings,
+                    getProfitLossReturn: StockVisionTrade.getProfitLossReturn,
                 },
                 ...brokerageVariables,
             }
             window.addEventListener('beforeunload', () => {
                 // To-do swap beforunload even before deprecation - https://developer.chrome.com/docs/web-platform/page-lifecycle-api#testing_your_app_in_the_frozen_and_discarded_states
                 const message = `Browser tab has been closed. Please investigate`
-                notify(message, undefined, brokerageVariables.brokerage.name)
+                this.notify(message, undefined, brokerageVariables.brokerage.name)
             })
         } catch (error) {
             console.log(`Ida Trader Bot - SETUP - ${error.toString()}`)
@@ -4028,6 +4031,15 @@ let stockVisionTrade = function () {
 
     }
 
-    setUp()
+    static start = (noPolling = false) => {
+        this.setUp()
+        if (!noPolling) {
+            this.pollLocalServer()
+        }
+    }
+
+    static stop = () => {
+        this.stopPollLocalServer()
+    }
 
 }
