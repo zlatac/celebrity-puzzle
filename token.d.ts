@@ -295,7 +295,7 @@ export interface IStockVisionTrade {
   modifyOrderQueueInProgress: boolean;
   newOrdersReceived: boolean;
   keepAwakeInstances: number[];
-  tools: {[key:string]: Function};
+  tools: {[key:string]: Function | Object;};
   brokerage: {
     name: 'questrade' | 'ibkr';
   };
@@ -316,6 +316,6 @@ export interface IStockVisionTrade {
     [key:string]: {
       quantity: number;
       orderId: string;
-    }
+    };
   };
 }

@@ -18,6 +18,7 @@
  * @typedef { import("token").IQuestradeSubmitResponse |  import("token").IQuestradeSubmitErrorResponse} QuestradeSubmitResponse
  * @typedef { import("token").IQuestradeOrdersResponse } QuestradeOrdersResponse
  * @typedef { import("token").IQuestradeOrder } QuestradeOrder
+ * @typedef { import("token").IStockVisionTrade } SVisionTrade
  */
 
 // @ts-ignore
@@ -395,9 +396,10 @@ class ProjectStockVision {
                 /* only precision interval should be used here as thats what happens last & some tradin interval
                  might only have 1 in a trading day */
                 const precisionIntervalExist = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] instanceof Map
+                const profitLossThresholdsDefined = this.profitLossThresholdsExist(code)
                 let lastHourMinute
 
-                if ([precisionIntervalExist, this.profitLossThresholdsExist].some(item => item === false)
+                if ([precisionIntervalExist, profitLossThresholdsDefined].some(item => item === false)
                     || mutationEpochDate === undefined 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
@@ -407,7 +409,7 @@ class ProjectStockVision {
                 }
 
                 switch(true) {
-                    case precisionIntervalExist:
+                    case profitLossThresholdsDefined && precisionIntervalExist:
                         lastHourMinute = Array.from(window.idaStockVision.priceStore.precisionTimeIntervalsToday[code].values()).at(-1)
                         if (lastHourMinute.epochDate <= mutationEpochDate) {
                             return true
@@ -586,15 +588,17 @@ class ProjectStockVision {
                     daysToProcess.splice(0,1)
                 }
 
+                /** @type {Map<number,number>} */
                 let tracker = new Map()
                 // console.log(daysToProcess)
                 daysToProcess.forEach((day, index) => {
+                    /** @type {Map<number,number>} */
                     let basket = new Map()
                     // Ignore today peaks to take advantage of steap slope increase in price
                     peakList.filter((item) => item.epochDate > day && item.epochDate < this.todaysDateMidnight)
                         .forEach((item) => basket.set(item.price, item.epochDate))
                     if (basket.size > 0) {
-                        const prices = basket.keys().toArray()
+                        const prices = Array.from(basket.keys())
                         const maxPrice = Math.max(...prices)
                         const peakDateToTrack = basket.get(maxPrice)
                         if (tracker.has(peakDateToTrack)) {
@@ -608,8 +612,8 @@ class ProjectStockVision {
                     
                 })
                 if (tracker.size > 0) {
-                    const trackerDates = tracker.keys().toArray()
-                    const trackerPoints = tracker.values().toArray()
+                    const trackerDates = Array.from(tracker.keys())
+                    const trackerPoints = Array.from(tracker.values())
                     const maxTrackerPoints = Math.max(...trackerPoints)
                     const maxTrackerPointsIndex = trackerPoints.indexOf(maxTrackerPoints)
                     const dateToUse = trackerDates.at(maxTrackerPointsIndex)
@@ -690,7 +694,7 @@ class ProjectStockVision {
                 onlyPeaksCloned.reverse()
                 const removeDuplicates = new Map()
                 onlyPeaksCloned.forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
-                onlyPeaksCloned = removeDuplicates.values().toArray()
+                onlyPeaksCloned = Array.from(removeDuplicates.values())
                 // console.log(onlyPeaksCloned)
                 const mostRecentPeak = onlyPeaksCloned.at(0)
                 const aggregateValley = []
@@ -732,6 +736,11 @@ class ProjectStockVision {
 
             }
 
+            /**
+             * 
+             * @param {string} code 
+             * @returns {boolean}
+             */
             profitLossThresholdsExist(code) {
                 const profitThresholdExists = typeof window.idaStockVision.settings[code].profitThreshold === 'number'
                 const lossThresholdExists = typeof window.idaStockVision.settings[code].lossThreshold === 'number'
@@ -3345,10 +3354,16 @@ class StockVisionTrade {
         ibkr: {}
     }
 
+    /**
+     * 
+     * @returns {SVisionTrade}
+     */
     static getBrokerageVariables = () => {
         // domain/brokername, accountId, keepAwakeXpaths,
         const host = location.host.includes('questrade') ? 'questrade' : 'ibkr'
-        const storage = localStorage.getItem('stockvisionTrade') !== null ? JSON.parse(localStorage.getItem('stockvisionTrade')) : undefined
+        const storage = localStorage.getItem(this.constants.localStorageName) !== null 
+            ? JSON.parse(localStorage.getItem(this.constants.localStorageName)) 
+            : undefined
         storage.brokerage = {
             name: host,
         }
@@ -3363,7 +3378,9 @@ class StockVisionTrade {
      */
     static defaultBrokerageVariables = (securities, accountId) => {
         // securityIds, capital, accountId
-        const storage = localStorage.getItem('stockvisionTrade') !== null ? JSON.parse(localStorage.getItem('stockvisionTrade')) : {}
+        const storage = localStorage.getItem(this.constants.localStorageName) !== null 
+            ? JSON.parse(localStorage.getItem(this.constants.localStorageName)) 
+            : {}
         if (accountId) {
             storage.accountId = accountId
         }
@@ -3383,7 +3400,7 @@ class StockVisionTrade {
     }
 
     static storeBrokerageVariables = (objectToStore) => {
-        localStorage.setItem('stockvisionTrade', JSON.stringify(objectToStore))
+        localStorage.setItem(this.constants.localStorageName, JSON.stringify(objectToStore))
     }
 
     static backUp = () => {

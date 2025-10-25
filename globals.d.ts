@@ -5,7 +5,6 @@ declare global {
   interface Window {
     idaStockVision: IStockVision;
     idaStockVisionTrade: IStockVisionTrade;
-    stockVisionTrade: Function;
   }
 }
 
