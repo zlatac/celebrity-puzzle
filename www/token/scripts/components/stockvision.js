@@ -750,6 +750,97 @@ class ProjectStockVision {
 
             /**
              * 
+             * @param {PriceHistory[]} onlyPeaks 
+             * @param {number} fromEpochDate 
+             * @returns 
+             */
+            static statistics(onlyPeaks, fromEpochDate = 0) {
+                // we want to know the min, max, median, average and ?mode
+                // use output for defining entry, exit, profit & loss thresholds
+                // create cumulative peak/valley records
+                // then use valley and following peaks to create analysis buckets to be processed
+                // https://www.investopedia.com/terms/s/standarddeviation.asp
+
+                /** @type {PriceHistory[]}*/
+                let onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
+                const removeDuplicates = new Map()
+                onlyPeaksCloned.filter((peak) => fromEpochDate <= peak.epochDate).forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
+                onlyPeaksCloned = Array.from(removeDuplicates.values())
+                // console.log(onlyPeaksCloned)
+                const mostRecentPeak = onlyPeaksCloned.at(0)
+                 /** @type {PriceHistory[]}*/
+                const aggregateValley = []
+                 /** @type {PriceHistory[]}*/
+                const aggregatePeak = []
+                 /** @type {number[][]}*/
+                let rows = []
+                const result = {}
+
+                for(let i = 0; i < onlyPeaksCloned.length; i++) {
+                    const current = onlyPeaksCloned[i + 2]
+                    const last = onlyPeaksCloned[i + 1]
+                    const previousLast = onlyPeaksCloned[i + 0]
+                    const outcome = PriceAnalysis.peakValleyDetection(current, last, previousLast)
+
+                    if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
+                        aggregateValley.push(outcome)
+                    }
+
+                    if (outcome !== undefined && outcome.type === PriceAnalysis.PEAK) {
+                        aggregatePeak.push(outcome)
+                    }
+
+                    if (aggregatePeak.length === 1 && aggregateValley.length === 0) {
+                        // situation where we start off with a peak since we need corresponding valley
+                        aggregateValley.push(undefined)
+                    }
+                }
+
+                aggregateValley.forEach((item, index) => {
+                    if (item === undefined) {
+                        rows.push([undefined, aggregatePeak.at(index).price, NaN, NaN])
+                        return
+                    }
+                    const valley = item.price
+                    const peak = aggregatePeak.at(index) !== undefined ? aggregatePeak.at(index).price : undefined
+                    const previousPeak = aggregatePeak.at(index - 1) !== undefined ? aggregatePeak.at(index - 1).price : undefined
+                    const deltaUp = Vision.percentageDelta(valley, peak)
+                    const deltaDown = previousPeak !== undefined ? Vision.percentageDelta(previousPeak, valley) : undefined
+
+                    rows.push([valley, peak, deltaUp, deltaDown])
+                })
+
+                const upScatterPlot = rows.map(i => i.at(2)).filter(j => !Number.isNaN(j)).sort((a,b) => a - b).map(i => Number(i.toFixed(2)))
+                const downScatterPlot = rows.map(i => i.at(3)).filter(j => !Number.isNaN(j)).sort((a,b) => a - b).map(i => Number(i.toFixed(2)))
+
+                result.up = {
+                    scatterPlot: upScatterPlot,
+                    min: Math.min(...upScatterPlot),
+                    max: Math.max(...upScatterPlot),
+                    average: upScatterPlot.reduce((previous, current) => previous + current, 0) / upScatterPlot.length,
+                    median: upScatterPlot.at(Math.round((upScatterPlot.length/2) - 1))
+                }
+
+                result.down = {
+                    scatterPlot: downScatterPlot,
+                    min: Math.min(...downScatterPlot),
+                    max: Math.max(...downScatterPlot),
+                    average: downScatterPlot.reduce((previous, current) => previous + current, 0) / downScatterPlot.length,
+                    median: downScatterPlot.at(Math.round((downScatterPlot.length/2) - 1))
+                }
+
+                result.up.skewnessTail = result.up.average > result.up.median ? 'right' : 'left'
+                result.up.standardDeviation = Math.sqrt(upScatterPlot.map(i => Math.pow(i - result.up.average, 2)).reduce((previous, current) => previous + current, 0) / (upScatterPlot.length - 1))
+                
+                result.down.standardDeviation = Math.sqrt(downScatterPlot.map(i => Math.pow(i - result.down.average, 2)).reduce((previous, current) => previous + current, 0) / (downScatterPlot.length - 1))
+                result.down.skewnessTail = result.down.average > result.down.median ? 'right' : 'left'
+
+                return {rows, result}
+
+            }
+
+            /**
+             * 
              * @param {number} epochDate 
              * @param {number} daysNumber 
              * @param {boolean} skipWeekend 
