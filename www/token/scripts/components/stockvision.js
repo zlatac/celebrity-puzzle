@@ -7,6 +7,7 @@
  * @typedef { import("token").IPosition } Position
  * @typedef { import("token").INTERVAL_FLAGS } IntervalFlags
  * @typedef { import("token").TRADING_FLAGS } TradingFlags
+ * @typedef { import("token").PROFIT_PURSUIT } ProfitPursuit
  * @typedef { import("token").ITradingIntervalInspection } TradingIntervalInspection
  * @typedef { import("token").IPrecisionIntervalInspection } PrecisionIntervalInspection
  * @typedef { import("token").PriceAnalysis } IPriceAnalysis
@@ -58,7 +59,7 @@ class ProjectStockVision {
          * @param {IntervalFlags} [precisionInterval]
          */
         constructor(codeInput, manualEntryPrice, manualExitPrice, isCrypto = false, entryPercentage, exitPercentage, tradingInterval = '1hour', precisionInterval = '5min') {
-            this.#code = codeInput.toUpperCase()
+            this.#code = Vision.PriceAnalysis.codeFormat(codeInput)
             this.#projectParameters = arguments
             this.#manualEntryPrice = manualEntryPrice
             this.#manualExitPrice = manualExitPrice
@@ -135,6 +136,13 @@ class ProjectStockVision {
             static TRADING_FLAGS = {
                 REGULAR: 'regular',
                 PRECISION: 'precision',
+            }
+
+            /** @type {{[key: string]: ProfitPursuit}} PROFIT_PURSUIT */
+            static PROFIT_PURSUIT = {
+                TINY: 'tiny',
+                SMALL: 'small',
+                LARGE: 'large',
             }
 
             static entryExitPricePrecisionThreshold = 0.12
@@ -397,9 +405,11 @@ class ProjectStockVision {
                  might only have 1 in a trading day */
                 const precisionIntervalExist = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] instanceof Map
                 const profitLossThresholdsDefined = this.profitLossThresholdsExist(code)
+                const isTinyProfitPursuit = PriceAnalysis.profitPursuitType(code) === PriceAnalysis.PROFIT_PURSUIT.TINY
                 let lastHourMinute
 
-                if ([precisionIntervalExist, profitLossThresholdsDefined].some(item => item === false)
+                if (!isTinyProfitPursuit
+                    ||[precisionIntervalExist, profitLossThresholdsDefined].some(item => item === false)
                     || mutationEpochDate === undefined 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
@@ -950,6 +960,23 @@ class ProjectStockVision {
             */
             static codeFormat(code) {
                 return code.toUpperCase()
+            }
+
+            /**
+             * 
+             * @param {string} code 
+             */
+            static profitPursuitType(code) {
+                const codeLowerCase = code.toLowerCase()
+                switch (true) {
+                    case codeLowerCase.includes(`_${PriceAnalysis.PROFIT_PURSUIT.SMALL}`):
+                    case codeLowerCase.includes('_short'):
+                        return PriceAnalysis.PROFIT_PURSUIT.SMALL
+                    case codeLowerCase.includes(`_${PriceAnalysis.PROFIT_PURSUIT.TINY}`):
+                        return PriceAnalysis.PROFIT_PURSUIT.TINY
+                    default:
+                        return PriceAnalysis.PROFIT_PURSUIT.LARGE
+                }
             }
 
             /**
@@ -2082,6 +2109,7 @@ class ProjectStockVision {
                 let onlyPrecisionFlagExistsOnCurrentPrice = false
                 /** @type {undefined | boolean} */
                 let downwardVolatilityTrail = undefined
+                let exitByTradingEndTime = false
                 const otherNotificationQueryParams = {}
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
                 if (autoEntryExitMode) {
@@ -2090,8 +2118,9 @@ class ProjectStockVision {
                     this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
                     analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval)
                     priceStore.analysis[this.#code] = analysis
+                    exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
                     entryPrice = Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold)
-                    exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || analysis.exitByTradingEndTime(this.#code, nowEpochDate)
+                    exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
                         ? currentPrice.price 
                         : Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentageThreshold, exitPercentageThreshold)
                     priceStore.peakValleyHistory = analysis.peakValleySizeManagement !== undefined 
@@ -2122,6 +2151,8 @@ class ProjectStockVision {
                         : notificationBody
                     notificationBody =  notificationBody.concat(`Downward volatility: ${downwardVolatilityTrail} \r\n`)
                     otherNotificationQueryParams.downwardVolatility = downwardVolatilityTrail === true
+                    otherNotificationQueryParams.immediateExecution = 
+                        exitByTradingEndTime === true && Vision.PriceAnalysis.profitPursuitType(this.#code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY
                 }
                 const stockRangeDecision = {
                     // No need for <= to logic since probability of exact match is very low
@@ -2278,6 +2309,11 @@ class ProjectStockVision {
      */
     static visionTiny(code, entry = 0.2, exit = 0.2, experiment = false, profit = 0.3, loss = 0.3, tradingInterval = '15min') {
         return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, experiment, profit, loss, tradingInterval)
+    }
+
+    static visionShadow(code) {
+        // make sure we can handle the volume of data points on the backend before using this
+        return ProjectStockVision.visionLarge(`${code}_shadow`, 200, 100, true, undefined, undefined, '5min', 'none')
     }
 
     /**
@@ -3753,6 +3789,7 @@ class StockVisionTrade {
      * 
      */
     static getProfitLossReturn = (orders = [], specificCodes = []) => {
+        // TO-DO switch out profitLoss percentage for geometric mean https://www.investopedia.com/terms/g/geometricmean.asp
         let profitLossAmount = 0
         let profitLossPercentage = 0
         const breakDown = []

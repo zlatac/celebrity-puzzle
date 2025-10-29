@@ -3,6 +3,7 @@ export type VALLEY = 'valley'
 export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
   | '15min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | '1day' | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
+export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
 
 export interface IPrice {
   price: number;
@@ -268,6 +269,7 @@ export interface ITradeCheckResponse extends ICboeQuoteResponse {
   confirmationLink: string;
   position: boolean;
   downwardVolatility: boolean;
+  immediateExecution: boolean;
 }
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;
