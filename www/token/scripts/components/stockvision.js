@@ -398,9 +398,10 @@ class ProjectStockVision {
              * 
              * @param {string} code 
              * @param {number} mutationEpochDate 
+             * @param {boolean} ignorePosition 
              * @returns {boolean}
              */
-            exitByTradingEndTime(code, mutationEpochDate) {
+            exitByTradingEndTime(code, mutationEpochDate, ignorePosition = false) {
                 /* only precision interval should be used here as thats what happens last & some tradin interval
                  might only have 1 in a trading day */
                 const precisionIntervalExist = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] instanceof Map
@@ -412,8 +413,7 @@ class ProjectStockVision {
                     ||[precisionIntervalExist, profitLossThresholdsDefined].some(item => item === false)
                     || mutationEpochDate === undefined 
                     || this._currentPosition === undefined 
-                    || this._currentPosition.position !== PriceAnalysis.IN
-                    || !this.dateExistsForCurrrentPosition
+                    || !ignorePosition && this._currentPosition.position !== PriceAnalysis.IN
                 ) {
                     return false
                 }
@@ -1683,6 +1683,55 @@ class ProjectStockVision {
             !intervals.includes(startTime) ?  intervals.push(startTime) : null
             createTimeIntervals(startTime, stopTime)
 
+            let confirmTodayInDays = (month = 0, daysInterval = 1) => {
+                // relative to the first business day of beginning of the year (mon,tue,wed...)
+                // from that day extract all the business days of the year up to todays month
+                // loop through all the business days with the days interval up to todays month
+                // map the days intervals to be in the format day:month:year
+                // check current day exist in the map
+                // https://www.timeanddate.com/date/workdays.html?d1=1&m1=1&y1=2025&d2=29&m2=11&y2=2025&ti=on&
+                const today = new Date(new Date().setHours(0,0,0,0))
+                const todayFormatString = `${today.getDate()}/${today.getMonth()}/${today.getFullYear()}`
+                const nextMonth = today.setMonth(today.getMonth() + 1)
+                const firstDayOfTheYear = new Date(today.setFullYear(today.getFullYear(), month, 1))
+                let firstBusinessDayOfTheYear, businessDayLoop, businessDaysOfTheYearIntervals
+                const businessDaysOfTheYear = []
+                switch(firstDayOfTheYear.getDay()) {
+                    case 0:
+                        firstBusinessDayOfTheYear = firstDayOfTheYear.setDate(firstDayOfTheYear.getDate() + 1)
+                        break
+                    case 6:
+                        firstBusinessDayOfTheYear = firstDayOfTheYear.setDate(firstDayOfTheYear.getDate() + 2)
+                        break
+                    default:
+                        firstBusinessDayOfTheYear = firstDayOfTheYear.getTime()
+                }
+                businessDayLoop = firstBusinessDayOfTheYear
+                businessDaysOfTheYear.push(businessDayLoop) // start from the first business day
+
+                while(businessDayLoop < nextMonth) {
+                    businessDayLoop += 1000 * 60 * 60 * 24
+                    if ([6, 0].includes(new Date(businessDayLoop).getDay())) {   
+                        continue
+                    }
+                    
+                    businessDaysOfTheYear.push(businessDayLoop)
+                }
+
+                businessDaysOfTheYearIntervals = businessDaysOfTheYear.reduce((previous, current, index) => {
+                    if ((index + 1) % daysInterval === 0) {
+                        const date = new Date(current)
+                        previous.push(`${date.getDate()}/${date.getMonth()}/${date.getFullYear()}`)
+                    }
+
+                    return previous
+                }, [])
+
+                console.log(new Date(firstBusinessDayOfTheYear), businessDayLoop, businessDaysOfTheYear, businessDaysOfTheYearIntervals)
+
+                return businessDaysOfTheYearIntervals.includes(todayFormatString)
+            }
+
         }
 
         /**
@@ -2110,6 +2159,7 @@ class ProjectStockVision {
                 /** @type {undefined | boolean} */
                 let downwardVolatilityTrail = undefined
                 let exitByTradingEndTime = false
+                let shouldBeExitingByTradingEndTime = false
                 const otherNotificationQueryParams = {}
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
                 if (autoEntryExitMode) {
@@ -2119,7 +2169,10 @@ class ProjectStockVision {
                     analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval)
                     priceStore.analysis[this.#code] = analysis
                     exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
-                    entryPrice = Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold)
+                    shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate, true)
+                    entryPrice = !shouldBeExitingByTradingEndTime
+                        ? Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold)
+                        : undefined
                     exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
                         ? currentPrice.price 
                         : Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentageThreshold, exitPercentageThreshold)
