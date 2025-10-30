@@ -1820,40 +1820,44 @@ class ProjectStockVision {
             const tradingIntervalMatch = priceStore.priceTimeIntervalsToday[code].has(timeFormatString)
             const precisionIntervalMatch = priceStore.precisionTimeIntervalsToday[code].has(timeFormatString)
             if (tradingIntervalMatch === true) {
-                const tradngIntervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
+                const tradingIntervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
                 
                 if (isPeakValley) {
                     switch(peakValleyDetectedOrCurrentPrice.type) {
                         case 'peak':
-                            if (!tradngIntervalSettings.peakCaptured) {
+                            if (!tradingIntervalSettings.peakCaptured) {
                                 peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag)
-                                tradngIntervalSettings.peakCaptured = true
-                                tradngIntervalSettings.peakPrice = peakValleyDetectedOrCurrentPrice.price
+                                tradingIntervalSettings.peakCaptured = true
+                                tradingIntervalSettings.peakPrice = peakValleyDetectedOrCurrentPrice.price
                             }
                             break;
                         case 'valley':
-                            if (!tradngIntervalSettings.valleyCaptured) {
+                            if (!tradingIntervalSettings.valleyCaptured) {
                                 peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag)
-                                tradngIntervalSettings.valleyCaptured = true
-                                tradngIntervalSettings.valleyPrice = peakValleyDetectedOrCurrentPrice.price
+                                tradingIntervalSettings.valleyCaptured = true
+                                tradingIntervalSettings.valleyPrice = peakValleyDetectedOrCurrentPrice.price
                             }
                             break;
                         default:
                     }
                 }
 
-                if (!isPeakValley && !tradngIntervalSettings.currentPriceExecuted) {
+                if (!isPeakValley && !tradingIntervalSettings.currentPriceExecuted) {
+                    // will only execute on trading interval once
                     peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
-                    tradngIntervalSettings.currentPriceExecuted = true
-                    tradngIntervalSettings.currentPrice = peakValleyDetectedOrCurrentPrice
+                    tradingIntervalSettings.currentPriceExecuted = true
+                    tradingIntervalSettings.currentPrice = peakValleyDetectedOrCurrentPrice
                 }
             }
 
             if (precisionIntervalMatch === true && !isPeakValley) {
-                // Allow all price movements within the minute of the interval match to maximize chances of having precision execution
+                // Allow all price movements within the minute of the precision interval match to maximize chances of having precision execution
                 const precisionIntervalSettings = priceStore.precisionTimeIntervalsToday[code].get(timeFormatString)
+                if (precisionIntervalMatch && !tradingIntervalMatch) {
+                    // we do not want precision interval execution within the trading interval time but want to see the current prices data
+                    peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, Vision.PriceAnalysis.TRADING_FLAGS.PRECISION)
+                }
 
-                peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag, Vision.PriceAnalysis.TRADING_FLAGS.PRECISION)
                 precisionIntervalSettings.currentPriceExecuted = true
                 precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
             }
