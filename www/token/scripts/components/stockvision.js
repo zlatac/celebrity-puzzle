@@ -145,6 +145,14 @@ class ProjectStockVision {
                 LARGE: 'large',
             }
 
+            /** @type {{[key: string]: number}} ENTRY_MULTIPLIER */
+            static ENTRY_MULTIPLIER = {
+                [PriceAnalysis.PROFIT_PURSUIT.TINY]: 1,
+                [PriceAnalysis.PROFIT_PURSUIT.SMALL]: 3,
+                [PriceAnalysis.PROFIT_PURSUIT.LARGE]: 3
+                
+            }
+
             static entryExitPricePrecisionThreshold = 0.12
 
             /**
@@ -718,10 +726,15 @@ class ProjectStockVision {
             /**
              * 
              * @param {PriceHistory[]} onlyPeaks 
-             * @param {number} fromEpochDate 
+             * @param {number} [deltaUpOutlier]
+             * @param {number} [deltaDownOutlier] 
+             * @param {number} [fromEpochDate] 
+             * @param {number} [toEpochDate] 
+             * @param {number} [entrySimulation] 
+             * @param {number} [exitSimulation] 
              * @returns 
              */
-            static statistics(onlyPeaks, fromEpochDate = 0) {
+            static statistics(onlyPeaks, fromEpochDate = 0, toEpochDate = Infinity, deltaUpOutlier, deltaDownOutlier, entrySimulation, exitSimulation) {
                 // we want to know the min, max, median, average and ?mode
                 // use output for defining entry, exit, profit & loss thresholds
                 // create cumulative peak/valley records
@@ -731,7 +744,8 @@ class ProjectStockVision {
                 /** @type {PriceHistory[]}*/
                 let onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
                 const removeDuplicates = new Map()
-                onlyPeaksCloned.filter((peak) => fromEpochDate <= peak.epochDate).forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
+                onlyPeaksCloned.filter((peak) => fromEpochDate <= peak.epochDate && toEpochDate >= peak.epochDate)
+                    .forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
                 onlyPeaksCloned = Array.from(removeDuplicates.values())
                 // console.log(onlyPeaksCloned)
                 const mostRecentPeak = onlyPeaksCloned.at(0)
@@ -739,7 +753,7 @@ class ProjectStockVision {
                 const aggregateValley = []
                  /** @type {PriceHistory[]}*/
                 const aggregatePeak = []
-                 /** @type {number[][]}*/
+                 /** @type {[number, number, number, number, number, string, string][]}*/
                 let rows = []
                 const result = {}
 
@@ -748,6 +762,8 @@ class ProjectStockVision {
                     const last = onlyPeaksCloned[i + 1]
                     const previousLast = onlyPeaksCloned[i + 0]
                     const outcome = PriceAnalysis.peakValleyDetection(current, last, previousLast)
+                    // TO-DO use new variable to collect outcomes and also add ISO date string to object to upload to [cs]
+                    // TO-DO collect and return the top 5 cummulative peaks for possible downward volatility analysis
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
                         aggregateValley.push(outcome)
@@ -765,27 +781,37 @@ class ProjectStockVision {
 
                 aggregateValley.forEach((item, index) => {
                     if (item === undefined) {
-                        rows.push([undefined, aggregatePeak.at(index).price, NaN, NaN])
+                        rows.push([undefined, aggregatePeak.at(index).price, NaN, NaN, NaN, undefined, undefined])
                         return
                     }
+                    const dateFormat = 'h:m D/M'
                     const valley = item.price
+                    const valleyDate = PriceAnalysis.dateStringFormat(item.epochDate, dateFormat)
                     const peak = aggregatePeak.at(index) !== undefined ? aggregatePeak.at(index).price : undefined
+                    const peakDate = aggregatePeak.at(index) !== undefined ? PriceAnalysis.dateStringFormat(aggregatePeak.at(index).epochDate, dateFormat) : undefined
                     const previousPeak = aggregatePeak.at(index - 1) !== undefined ? aggregatePeak.at(index - 1).price : undefined
-                    const deltaUp = Vision.percentageDelta(valley, peak)
-                    const deltaDown = previousPeak !== undefined ? Vision.percentageDelta(previousPeak, valley) : undefined
+                    let deltaUp = Vision.percentageDelta(valley, peak)
+                    deltaUp = (deltaUpOutlier !== undefined && deltaUp >= deltaUpOutlier) ? NaN : deltaUp
+                    let deltaDown = previousPeak !== undefined ? Vision.percentageDelta(previousPeak, valley) : undefined
+                    deltaDown = (deltaDownOutlier !== undefined && deltaDown >= deltaDownOutlier) ? NaN : deltaDown
+                    const profit = (entrySimulation && exitSimulation) && entrySimulation < deltaUp 
+                        ? Vision.percentageDelta(PriceAnalysis.percentageFinalAmount(valley, entrySimulation), PriceAnalysis.percentageFinalAmount(peak, exitSimulation, true), true)
+                        : 0
 
-                    rows.push([valley, peak, deltaUp, deltaDown])
+                    rows.push([valley, peak, deltaUp, deltaDown, profit, valleyDate, peakDate])
                 })
 
-                const upScatterPlot = rows.map(i => i.at(2)).filter(j => !Number.isNaN(j)).sort((a,b) => a - b).map(i => Number(i.toFixed(2)))
-                const downScatterPlot = rows.map(i => i.at(3)).filter(j => !Number.isNaN(j)).sort((a,b) => a - b).map(i => Number(i.toFixed(2)))
+                const upScatterPlot = rows.map(i => i[2]).filter(j => Number.isFinite(j)).sort((a,b) => a - b).map(i => Number(i.toFixed(2)))
+                const downScatterPlot = rows.map(i => i[3]).filter(j => Number.isFinite(j)).sort((a,b) => a - b).map(i => Number(i.toFixed(2)))
+                const totalProfit = rows.map(i => i[4]).filter(j => Number.isFinite(j)).reduce((previous, current) => previous + current, 0)
 
                 result.up = {
                     scatterPlot: upScatterPlot,
                     min: Math.min(...upScatterPlot),
                     max: Math.max(...upScatterPlot),
                     average: upScatterPlot.reduce((previous, current) => previous + current, 0) / upScatterPlot.length,
-                    median: upScatterPlot.at(Math.round((upScatterPlot.length/2) - 1))
+                    median: upScatterPlot.at(Math.round((upScatterPlot.length/2) - 1)),
+                    totalProfit
                 }
 
                 result.down = {
@@ -802,8 +828,54 @@ class ProjectStockVision {
                 result.down.standardDeviation = Math.sqrt(downScatterPlot.map(i => Math.pow(i - result.down.average, 2)).reduce((previous, current) => previous + current, 0) / (downScatterPlot.length - 1))
                 result.down.skewnessTail = result.down.average > result.down.median ? 'right' : 'left'
 
+                console.table(rows)
+                console.table(result)
+
                 return {rows, result}
 
+            }
+
+            /**
+             * 
+             * @param {string} rawData 
+             * @param {number} minutesOrDayInterval 
+             * @param {number} daysOfMinutesToAnalyse 
+             * @param {boolean} isDailyInterval 
+             */
+            static prepareForStatistics(rawData, minutesOrDayInterval = 5, daysOfMinutesToAnalyse, isDailyInterval = false) {
+                // copy past raw data from nasdaq into the browser as a string literal https://www.nasdaq.com/market-activity/stocks/tsla/advanced-charting
+                const completePriceHistoryFormat = []
+                const completeIntervalData = []
+                const data = rawData.trim().replaceAll('"', '').split('\n')
+                data.splice(0, 1)
+                data.reverse()
+                const fullDayMinuteIntervalTotal = !isDailyInterval ? 391 : data.length
+                const remainder = !isDailyInterval ? 1 : 0
+                const days = daysOfMinutesToAnalyse !== undefined 
+                    ? daysOfMinutesToAnalyse 
+                    : data.length / fullDayMinuteIntervalTotal
+                if (data.length % fullDayMinuteIntervalTotal !== 0) {
+                    throw new Error('dataset is missing some data')
+                }
+                for(let day = 0; day < days; day++) {
+                    const intervalData = data.splice(0, fullDayMinuteIntervalTotal)
+                        .filter((item, index) => {return (index + 1) % minutesOrDayInterval === remainder})
+                    const priceHistoryFormat = intervalData.map((item) => {
+                        // we use open price by default in daily interval scenario since we observe it that way
+                        const [date, price, ...rest] = item.split(',')
+                        return {
+                            epochDate: Date.parse(date),
+                            price: Number(price),
+                            type: 'peak',
+                            volume: rest.at(-1),
+                        }
+                    })
+                    
+                    completeIntervalData.push(...intervalData)
+                    completePriceHistoryFormat.push(...priceHistoryFormat)
+                }
+
+                return {completeIntervalData, completePriceHistoryFormat}
             }
 
             /**
@@ -1070,15 +1142,16 @@ class ProjectStockVision {
          * @param {PriceHistory | undefined} anchor 
          * @param {number} entryThreshold 
          * @param {number} exitThreshold 
+         * @param {number} [entryMultiplier] 
          * @returns {number | undefined}
          */
-        static applyEntryExitThresholdToAnchor(anchor, entryThreshold, exitThreshold) {
+        static applyEntryExitThresholdToAnchor(anchor, entryThreshold, exitThreshold, entryMultiplier = 1) {
             if (anchor !== undefined && 'price' in anchor && 'type' in anchor) {
                 if (anchor.type === Vision.PriceAnalysis.PEAK) {
                     return Vision.PriceAnalysis.percentageFinalAmount(anchor.price, exitThreshold, true)
                 }
                 if (anchor.type === Vision.PriceAnalysis.VALLEY) {
-                    return Vision.PriceAnalysis.percentageFinalAmount(anchor.price, entryThreshold)
+                    return Vision.PriceAnalysis.percentageFinalAmount(anchor.price, entryThreshold * entryMultiplier)
                 }
             }
 
@@ -1431,6 +1504,7 @@ class ProjectStockVision {
                     experiment: false,
                     entryPercentageThreshold: this.#entryPercentage || undefined,
                     exitPercentageThreshold: this.#exitPercentage || undefined,
+                    entryMultiplier: Vision.PriceAnalysis.ENTRY_MULTIPLIER[Vision.PriceAnalysis.profitPursuitType(code)] || undefined,
                     manualEntryPriceThreshold: this.#manualEntryPrice || undefined,
                     manualExitPriceThreshold: this.#manualExitPrice || undefined,
                     profitThreshold: undefined,
@@ -2155,8 +2229,10 @@ class ProjectStockVision {
                     priceStore.analysis[this.#code] = analysis
                     exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
                     shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate, true)
+                    downwardVolatilityTrail = analysis.downwardVolatility()
+                    const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
                     entryPrice = !shouldBeExitingByTradingEndTime
-                        ? Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold)
+                        ? Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                         : undefined
                     exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
                         ? currentPrice.price 
@@ -2168,7 +2244,6 @@ class ProjectStockVision {
                     // should be set after all flags have been possibly set
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 
                         && !currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
-                    downwardVolatilityTrail = analysis.downwardVolatility()
                     this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
                     const timeToUpload = Vision.setUploadPricesTimeout(this.#isCrypto,priceStore.uploadTodaysPriceTime,Vision.uploadTodaysPriceHistory)
                     if (typeof timeToUpload === 'number') {

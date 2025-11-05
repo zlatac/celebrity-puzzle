@@ -135,6 +135,7 @@ export interface IStockVision {
       lossThreshold: undefined | number;
       entryPercentageThreshold: undefined | number;
       exitPercentageThreshold: undefined | number;
+      entryMultiplier: undefined | number;
       manualEntryPriceThreshold: undefined | number;
       manualExitPriceThreshold: undefined | number;
     };
