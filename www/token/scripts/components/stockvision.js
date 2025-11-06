@@ -434,8 +434,11 @@ class ProjectStockVision {
                     return
                 }
 
+                /* concat current position to the peaks since we will have entry after an anchor
+                with precision interval and need to calculate exit/stuck state from that point as well  */
                 const peaks = this.peakOnlyProgressionOrder
                     .filter((item) => (this.dateIsGreaterThanOrEqual(item.epochDate, this._currentPosition.epochDate) && item.epochDate < this._currentPrice.epochDate))
+                    .concat({type: PriceAnalysis.PEAK, flags: [this._priceTradingInterval], ...this._currentPosition})
                 const prices = peaks.map((item) => item.price)
                 const maxPrice = Math.max(...prices)
                 const maxPriceIndex = prices.lastIndexOf(maxPrice)
@@ -2371,7 +2374,6 @@ class ProjectStockVision {
             }
 
             const visionInstance = new ProjectStockVision.vision(codeFormatted, undefined, undefined, isCrypto, entryThreshold, exitThreshold, tradingInterval, precisionInterval)
-            console.log(typeof visionInstance)
             if (typeof visionInstance !== 'object') {
                 throw new Error('object is not returned')
             }
