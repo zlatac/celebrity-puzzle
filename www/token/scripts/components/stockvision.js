@@ -729,10 +729,10 @@ class ProjectStockVision {
             /**
              * 
              * @param {PriceHistory[]} onlyPeaks 
-             * @param {number} [deltaUpOutlier]
-             * @param {number} [deltaDownOutlier] 
              * @param {number} [fromEpochDate] 
              * @param {number} [toEpochDate] 
+             * @param {number} [deltaUpOutlier]
+             * @param {number} [deltaDownOutlier] 
              * @param {number} [entrySimulation] 
              * @param {number} [exitSimulation] 
              * @returns 
@@ -747,7 +747,10 @@ class ProjectStockVision {
                 /** @type {PriceHistory[]}*/
                 let onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
                 const removeDuplicates = new Map()
-                onlyPeaksCloned.filter((peak) => fromEpochDate <= peak.epochDate && toEpochDate >= peak.epochDate)
+                const toEpochDateEndOfDay = toEpochDate !== Infinity 
+                    ? new Date(toEpochDate).setHours(...PriceAnalysis.tradingEndTime())
+                    : Infinity
+                onlyPeaksCloned.filter((peak) => fromEpochDate <= peak.epochDate && toEpochDateEndOfDay >= peak.epochDate)
                     .forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
                 onlyPeaksCloned = Array.from(removeDuplicates.values())
                 // console.log(onlyPeaksCloned)
@@ -757,42 +760,58 @@ class ProjectStockVision {
                  /** @type {PriceHistory[]}*/
                 const aggregatePeak = []
                  /** @type {[number, number, number, number, number, string, string][]}*/
-                let rows = []
+                const rows = []
                 const result = {}
+                /** This is the non-localized peak/valley movement that has the complete profits and losses that happen */
+                const detectionFlow = []
+                let previousLastSinceNoOutcome
 
                 for(let i = 0; i < onlyPeaksCloned.length; i++) {
                     const current = onlyPeaksCloned[i + 2]
                     const last = onlyPeaksCloned[i + 1]
-                    const previousLast = onlyPeaksCloned[i + 0]
+                    const previousLast = previousLastSinceNoOutcome !== undefined ? previousLastSinceNoOutcome : onlyPeaksCloned[i + 0]
                     const outcome = PriceAnalysis.peakValleyDetection(current, last, previousLast)
                     // TO-DO use new variable to collect outcomes and also add ISO date string to object to upload to [cs]
                     // TO-DO collect and return the top 5 cummulative peaks for possible downward volatility analysis
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
                         aggregateValley.push(outcome)
+                        detectionFlow.push(outcome)
+                        previousLastSinceNoOutcome = undefined
                     }
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.PEAK) {
                         aggregatePeak.push(outcome)
+                        detectionFlow.push(outcome)
+                        previousLastSinceNoOutcome = undefined
                     }
 
                     if (aggregatePeak.length === 1 && aggregateValley.length === 0) {
                         // situation where we start off with a peak since we need corresponding valley
                         aggregateValley.push(undefined)
                     }
+
+                    if ([current?.price, last?.price, previousLast?.price].every(i => Number.isFinite(i)) && outcome === undefined) {
+                        // we do not want localized peaks/valleys but the true peak/valley shape as the price flows
+                        // for better/accurate analysis and simulations
+                        previousLastSinceNoOutcome = previousLast
+                    }
+
+                    // console.assert(outcome !== undefined, 'The value is undefined bro')
                 }
 
-                aggregateValley.forEach((item, index) => {
-                    if (item === undefined) {
-                        rows.push([undefined, aggregatePeak.at(index).price, NaN, NaN, NaN, undefined, undefined])
+                detectionFlow.forEach((item, index) => {
+                    const previousItem = detectionFlow[index - 1]
+                    if (item.type === PriceAnalysis.VALLEY) {
                         return
                     }
+
                     const dateFormat = 'h:m D/M'
-                    const valley = item.price
-                    const valleyDate = PriceAnalysis.dateStringFormat(item.epochDate, dateFormat)
-                    const peak = aggregatePeak.at(index) !== undefined ? aggregatePeak.at(index).price : undefined
-                    const peakDate = aggregatePeak.at(index) !== undefined ? PriceAnalysis.dateStringFormat(aggregatePeak.at(index).epochDate, dateFormat) : undefined
-                    const previousPeak = aggregatePeak.at(index - 1) !== undefined ? aggregatePeak.at(index - 1).price : undefined
+                    const valley = previousItem ? previousItem.price : undefined
+                    const valleyDate = previousItem ? PriceAnalysis.dateStringFormat(previousItem.epochDate, dateFormat) : undefined
+                    const peak = item.price
+                    const peakDate = PriceAnalysis.dateStringFormat(item.epochDate, dateFormat)
+                    const previousPeak = detectionFlow[index - 2] !== undefined ? detectionFlow[index - 2].price : undefined
                     let deltaUp = Vision.percentageDelta(valley, peak)
                     deltaUp = (deltaUpOutlier !== undefined && deltaUp >= deltaUpOutlier) ? NaN : deltaUp
                     let deltaDown = previousPeak !== undefined ? Vision.percentageDelta(previousPeak, valley) : undefined
@@ -819,10 +838,10 @@ class ProjectStockVision {
 
                 result.down = {
                     scatterPlot: downScatterPlot,
-                    min: Math.min(...downScatterPlot),
-                    max: Math.max(...downScatterPlot),
-                    average: downScatterPlot.reduce((previous, current) => previous + current, 0) / downScatterPlot.length,
-                    median: downScatterPlot.at(Math.round((downScatterPlot.length/2) - 1))
+                    min: Math.min(...downScatterPlot) * -1,
+                    max: Math.max(...downScatterPlot) * -1,
+                    average: (downScatterPlot.reduce((previous, current) => previous + current, 0) / downScatterPlot.length) * -1,
+                    median: downScatterPlot.at(Math.round((downScatterPlot.length/2) - 1)) * -1
                 }
 
                 result.up.skewnessTail = result.up.average > result.up.median ? 'right' : 'left'
@@ -831,27 +850,46 @@ class ProjectStockVision {
                 result.down.standardDeviation = Math.sqrt(downScatterPlot.map(i => Math.pow(i - result.down.average, 2)).reduce((previous, current) => previous + current, 0) / (downScatterPlot.length - 1))
                 result.down.skewnessTail = result.down.average > result.down.median ? 'right' : 'left'
 
+                aggregatePeak.sort((a,b) => b.price - a.price)
+                aggregateValley.sort((a,b) => a.price - b.price)
+                // TO-DO develop an inspector method to make sure that valley to peak rows for prices and dates are in expected behaviour
+                // TO-DO develop mode analysis that focuses on the data points between the means and max points
+
                 console.table(rows)
+                console.table(detectionFlow)
                 console.table(result)
 
-                return {rows, result}
+                return {highestPeaks: aggregatePeak.slice(0,5), lowestPeaks: aggregateValley.slice(0,5), rows, result}
 
             }
 
             /**
              * 
-             * @param {string} rawData 
+             * @param {string | string[]} rawData 
              * @param {number} minutesOrDayInterval 
              * @param {number} daysOfMinutesToAnalyse 
              * @param {boolean} isDailyInterval 
              */
             static prepareForStatistics(rawData, minutesOrDayInterval = 5, daysOfMinutesToAnalyse, isDailyInterval = false) {
                 // copy past raw data from nasdaq into the browser as a string literal https://www.nasdaq.com/market-activity/stocks/tsla/advanced-charting
+                // TO-DO in separate method, use file system to get the file that has the raw data to use when rawData is undefined
                 const completePriceHistoryFormat = []
                 const completeIntervalData = []
-                const data = rawData.trim().replaceAll('"', '').split('\n')
-                data.splice(0, 1)
-                data.reverse()
+                let data = []
+                if (Array.isArray(rawData)) {
+                    rawData.forEach((item) => {
+                        const bucket = item.trim().replaceAll('"', '').split('\n')
+                        bucket.splice(0, 1)
+                        bucket.reverse()
+                        data.push(...bucket)
+                    })
+                }
+                if (typeof rawData === 'string') {
+                    data = rawData.trim().replaceAll('"', '').split('\n')
+                    data.splice(0, 1)
+                    data.reverse()
+                }
+                
                 const fullDayMinuteIntervalTotal = !isDailyInterval ? 391 : data.length
                 const remainder = !isDailyInterval ? 1 : 0
                 const days = daysOfMinutesToAnalyse !== undefined 
@@ -863,22 +901,64 @@ class ProjectStockVision {
                 for(let day = 0; day < days; day++) {
                     const intervalData = data.splice(0, fullDayMinuteIntervalTotal)
                         .filter((item, index) => {return (index + 1) % minutesOrDayInterval === remainder})
-                    const priceHistoryFormat = intervalData.map((item) => {
+                    const priceHistoryFormat = intervalData.reduce((previous, current, index) => {
                         // we use open price by default in daily interval scenario since we observe it that way
-                        const [date, price, ...rest] = item.split(',')
-                        return {
+                        const [date, price, ...rest] = current.split(',')
+                        previous.push({
                             epochDate: Date.parse(date),
                             price: Number(price),
                             type: 'peak',
                             volume: rest.at(-1),
-                        }
-                    })
+                            percentageChange: index > 0 ? Vision.percentageDelta(previous[index - 1].price, Number(price), true) : NaN
+                        })
+                        return previous
+                    }, [])
                     
                     completeIntervalData.push(...intervalData)
                     completePriceHistoryFormat.push(...priceHistoryFormat)
                 }
 
-                return {completeIntervalData, completePriceHistoryFormat}
+                const priceChangeData = completePriceHistoryFormat.map(item => item.percentageChange).filter(item => Number.isFinite(item))
+                const priceChangePositive = priceChangeData.filter(item => item >= 0)
+                const priceChangeNegative = priceChangeData.filter(item => item < 0)
+                const priceChangePositiveMean = PriceAnalysis.mean(priceChangePositive)
+                const priceChangePositiveMedian = PriceAnalysis.median(priceChangePositive)
+                const priceChangeNegativeMean = PriceAnalysis.mean(priceChangeNegative)
+                const priceChangeNegativeMedian = PriceAnalysis.median(priceChangeNegative)
+                const priceChangeMax = Math.max(...priceChangeData)
+                const priceChangeMin = Math.min(...priceChangeData)
+
+                return {
+                    completeIntervalData,
+                    completePriceHistoryFormat,
+                    priceChangePositiveMean,
+                    priceChangeNegativeMean,
+                    priceChangePositiveMedian,
+                    priceChangeNegativeMedian,
+                    priceChangeMin,
+                    priceChangeMax
+                }
+            }
+
+            /**
+             * 
+             * @param {number[]} data 
+             * @returns {number}
+             */
+            static mean(data) {
+                const onlyNumbers = data.filter(item => Number.isFinite(item))
+                const output = onlyNumbers.reduce((previous, current) => previous + current, 0) / onlyNumbers.length
+                return output
+            }
+
+            /**
+             * 
+             * @param {number[]} data 
+             * @returns {number}
+             */
+            static median(data) {
+                const output = data.filter(item => Number.isFinite(item)).sort((a,b) => a - b)
+                return output.at(Math.round((output.length/2) - 1))
             }
 
             /**
@@ -975,7 +1055,7 @@ class ProjectStockVision {
             /**
              * 
              * @param {boolean} isCrypto 
-             * @returns {number[]}
+             * @returns {[number, number, number]}
              */
             static tradingEndTime (isCrypto = false) {
                 // Hour, Minute, Seconds
@@ -987,7 +1067,7 @@ class ProjectStockVision {
             /**
              * 
              * @param {boolean} isCrypto 
-             * @returns {number[]}
+             * @returns {[number, number, number]}
              */
             static tradingHistoryUploadTime (isCrypto = false) {
                 // Hour, Minute, Seconds
