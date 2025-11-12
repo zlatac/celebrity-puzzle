@@ -765,6 +765,7 @@ class ProjectStockVision {
                 /** This is the non-localized peak/valley movement that has the complete profits and losses that happen */
                 const detectionFlow = []
                 let previousLastSinceNoOutcome
+                let passedSanityInspection = true
 
                 for(let i = 0; i < onlyPeaksCloned.length; i++) {
                     const current = onlyPeaksCloned[i + 2]
@@ -819,6 +820,19 @@ class ProjectStockVision {
                     const profit = (entrySimulation && exitSimulation) && entrySimulation < deltaUp 
                         ? Vision.percentageDelta(PriceAnalysis.percentageFinalAmount(valley, entrySimulation), PriceAnalysis.percentageFinalAmount(peak, exitSimulation, true), true)
                         : 0
+                    if (passedSanityInspection === true) {
+                        let peakValleyInspection = true
+                        let dateInspection = true
+                        if (Number.isFinite(valley) && Number.isFinite(peak)) {
+                            peakValleyInspection = peak > valley
+                        }
+                        if (Number.isFinite(previousItem?.epochDate) && Number.isFinite(item?.epochDate)) {
+                            dateInspection = item.epochDate > previousItem.epochDate
+                        }
+                        passedSanityInspection = peakValleyInspection && dateInspection
+                        console.assert(passedSanityInspection === true, `${index} index failed sanity inspection`)
+                    }
+                    
 
                     rows.push([valley, peak, deltaUp, deltaDown, profit, valleyDate, peakDate])
                 })
@@ -859,7 +873,7 @@ class ProjectStockVision {
                 console.table(detectionFlow)
                 console.table(result)
 
-                return {highestPeaks: aggregatePeak.slice(0,5), lowestPeaks: aggregateValley.slice(0,5), rows, result}
+                return {highestPeaks: aggregatePeak.slice(0,5), lowestPeaks: aggregateValley.slice(0,5), rows, result, passedSanityInspection}
 
             }
 
@@ -871,7 +885,7 @@ class ProjectStockVision {
              * @param {boolean} isDailyInterval 
              */
             static prepareForStatistics(rawData, minutesOrDayInterval = 5, daysOfMinutesToAnalyse, isDailyInterval = false) {
-                // copy past raw data from nasdaq into the browser as a string literal https://www.nasdaq.com/market-activity/stocks/tsla/advanced-charting
+                // copy paste raw data from nasdaq into the browser as a string literal https://www.nasdaq.com/market-activity/stocks/tsla/advanced-charting
                 // TO-DO in separate method, use file system to get the file that has the raw data to use when rawData is undefined
                 const completePriceHistoryFormat = []
                 const completeIntervalData = []
