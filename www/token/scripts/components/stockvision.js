@@ -2308,6 +2308,13 @@ class ProjectStockVision {
                     const currentPosition = priceStore.currentPosition[this.#code]
                     const peakValleyDetected = Vision.PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                     this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
+                    this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
+                    if (Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval] !== undefined 
+                        && 'flags' in currentPrice 
+                        && !currentPrice.flags.includes(this.#tradingInterval)
+                    ) {
+                        return
+                    }
                     analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval)
                     priceStore.analysis[this.#code] = analysis
                     exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
@@ -2327,7 +2334,6 @@ class ProjectStockVision {
                     // should be set after all flags have been possibly set
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 
                         && !currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
-                    this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
                     const timeToUpload = Vision.setUploadPricesTimeout(this.#isCrypto,priceStore.uploadTodaysPriceTime,Vision.uploadTodaysPriceHistory)
                     if (typeof timeToUpload === 'number') {
                         priceStore.uploadTodaysPriceTime = timeToUpload
@@ -2369,12 +2375,6 @@ class ProjectStockVision {
                 confirmationQueryParams.append('price', String(currentPrice.price))
                 confirmationQueryParams.append('date', nowDateISOString) // will help with scenario where entry is the max peak so the peak is not ignored for exit threshold
 
-                if (Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval] !== undefined 
-                    && 'flags' in currentPrice 
-                    && !currentPrice.flags.includes(this.#tradingInterval)
-                ) {
-                    return
-                }
 
                 if (entryPrice !== undefined && enterDecision) {
                     // No need for equals to logic since probabiloty of exact match is very low
