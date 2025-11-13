@@ -735,9 +735,10 @@ class ProjectStockVision {
              * @param {number} [deltaDownOutlier] 
              * @param {number} [entrySimulation] 
              * @param {number} [exitSimulation] 
+             * @param {number} [profitObservedSimulation] 
              * @returns 
              */
-            static statistics(onlyPeaks, fromEpochDate = 0, toEpochDate = Infinity, deltaUpOutlier, deltaDownOutlier, entrySimulation, exitSimulation) {
+            static statistics(onlyPeaks, fromEpochDate = 0, toEpochDate = Infinity, deltaUpOutlier, deltaDownOutlier, entrySimulation, exitSimulation, profitObservedSimulation) {
                 // we want to know the min, max, median, average and ?mode
                 // use output for defining entry, exit, profit & loss thresholds
                 // create cumulative peak/valley records
@@ -818,7 +819,9 @@ class ProjectStockVision {
                     let deltaDown = previousPeak !== undefined ? Vision.percentageDelta(previousPeak, valley) : undefined
                     deltaDown = (deltaDownOutlier !== undefined && deltaDown >= deltaDownOutlier) ? NaN : deltaDown
                     const profit = (entrySimulation && exitSimulation) && entrySimulation < deltaUp 
-                        ? Vision.percentageDelta(PriceAnalysis.percentageFinalAmount(valley, entrySimulation), PriceAnalysis.percentageFinalAmount(peak, exitSimulation, true), true)
+                        ? profitObservedSimulation > 0 && deltaUp >= (entrySimulation + profitObservedSimulation - entrySimulation)
+                            ? profitObservedSimulation - entrySimulation 
+                            : Vision.percentageDelta(PriceAnalysis.percentageFinalAmount(valley, entrySimulation), PriceAnalysis.percentageFinalAmount(peak, exitSimulation, true), true)
                         : 0
                     if (passedSanityInspection === true) {
                         let peakValleyInspection = true
@@ -860,9 +863,11 @@ class ProjectStockVision {
 
                 result.up.skewnessTail = result.up.average > result.up.median ? 'right' : 'left'
                 result.up.standardDeviation = Math.sqrt(upScatterPlot.map(i => Math.pow(i - result.up.average, 2)).reduce((previous, current) => previous + current, 0) / (upScatterPlot.length - 1))
+                result.up.mode = PriceAnalysis.mode(upScatterPlot, result.up.min, result.up.max)
                 
                 result.down.standardDeviation = Math.sqrt(downScatterPlot.map(i => Math.pow(i - result.down.average, 2)).reduce((previous, current) => previous + current, 0) / (downScatterPlot.length - 1))
                 result.down.skewnessTail = result.down.average > result.down.median ? 'right' : 'left'
+                result.down.mode = PriceAnalysis.mode(downScatterPlot, result.down.min, result.down.max, undefined, true)
 
                 aggregatePeak.sort((a,b) => b.price - a.price)
                 aggregateValley.sort((a,b) => a.price - b.price)
@@ -973,6 +978,33 @@ class ProjectStockVision {
             static median(data) {
                 const output = data.filter(item => Number.isFinite(item)).sort((a,b) => a - b)
                 return output.at(Math.round((output.length/2) - 1))
+            }
+
+            /**
+             * 
+             * @param {number[]} data 
+             * @param {number} rangeStart 
+             * @param {number} rangeEnd 
+             * @param {number} increment 
+             * @param {boolean} includeNegativeSign 
+             * @returns {{[key: string]: number} | {}}
+             */
+            static mode (data, rangeStart = 0, rangeEnd, increment = 0.5, includeNegativeSign = false) {
+                const incrementLimit = 0.01
+                const start = Math.floor(Math.abs(rangeStart))
+                const end = Math.ceil(Math.abs(rangeEnd))
+                const output = {}
+                const range = Array(((end + 1) - start)/increment)
+                const sign = includeNegativeSign ? '(-)' : ''
+                range.fill(0)
+                range.forEach((item, index) => {
+                    const leftRange = index * increment
+                    const rightRange = ((index + 1) * increment) - incrementLimit
+                    const key = `${sign}${leftRange} - ${sign}${rightRange}`
+                    output[key] = data.filter(num => Number.isFinite(num) && num >= leftRange && num <= rightRange).length
+                })
+
+                return output
             }
 
             /**
