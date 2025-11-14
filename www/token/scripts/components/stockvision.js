@@ -2311,6 +2311,22 @@ class ProjectStockVision {
 
         /**
          * 
+         * @param {string} code 
+         * @returns {StockVision['reports']}
+         */
+        static retrieveReports(code) {
+            const formattedCode = Vision.PriceAnalysis.codeFormat(code)
+            const storage = Object.entries(localStorage)
+                .filter(item => item[0].includes(formattedCode))
+                .reduce((previousValue, currentValue) => {
+                    previousValue.push(...JSON.parse(currentValue[1]))
+                    return previousValue
+                }, [])
+            return storage
+        }
+
+        /**
+         * 
          * @param {MutationRecord[]} mutationArray 
          * @param {MutationObserver} observerInstance 
          * @param {boolean} inspectorTrigger
