@@ -667,8 +667,7 @@ class ProjectStockVision {
                 // make sure it is deep cloned so we do not overwrite a peak type to valley type carelessly
                 // reverse the array to easily loop from the top
                 // the second result of a peak should break out of the loop and return outcome of slope calculation
-                /** @type {PriceHistory[]}*/
-                let onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
+                let onlyPeaksCloned = [...onlyPeaks]
                 onlyPeaksCloned.reverse()
                 const removeDuplicates = new Map()
                 onlyPeaksCloned.forEach((peak) => removeDuplicates.set(peak.epochDate, peak))
@@ -745,8 +744,7 @@ class ProjectStockVision {
                 // then use valley and following peaks to create analysis buckets to be processed
                 // https://www.investopedia.com/terms/s/standarddeviation.asp
 
-                /** @type {PriceHistory[]}*/
-                let onlyPeaksCloned = JSON.parse(JSON.stringify(onlyPeaks))
+                let onlyPeaksCloned = [...onlyPeaks]
                 const removeDuplicates = new Map()
                 const toEpochDateEndOfDay = toEpochDate !== Infinity 
                     ? new Date(toEpochDate).setHours(...PriceAnalysis.tradingEndTime())
@@ -2107,7 +2105,7 @@ class ProjectStockVision {
                     if (!allItemsAreUndefined && someItemsAreUndefined) {
                         const anchorNotEmpty = firstPeakAndValley.filter(item => item !== undefined)
                         const localTypeToClone = anchorNotEmpty[0].type === Vision.PriceAnalysis.PEAK ? Vision.PriceAnalysis.VALLEY : Vision.PriceAnalysis.PEAK
-                        const clone = JSON.parse(JSON.stringify(anchorNotEmpty[0]))
+                        const clone = {...anchorNotEmpty[0]}
                         clone.type = localTypeToClone
                         window.idaStockVision.priceStore.peakValleyHistory.push(clone)
                         firstPeakAndValley.push(clone)
