@@ -771,8 +771,9 @@ class ProjectStockVision {
                     const last = onlyPeaksCloned[i + 1]
                     const previousLast = previousLastSinceNoOutcome !== undefined ? previousLastSinceNoOutcome : onlyPeaksCloned[i + 0]
                     const outcome = PriceAnalysis.peakValleyDetection(current, last, previousLast)
-                    // TO-DO use new variable to collect outcomes and also add ISO date string to object to upload to [cs]
-                    // TO-DO collect and return the top 5 cummulative peaks for possible downward volatility analysis
+                    if (outcome !== undefined) {
+                        outcome.date = new Date(outcome.epochDate).toISOString()
+                    }
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
                         aggregateValley.push(outcome)
@@ -824,13 +825,17 @@ class ProjectStockVision {
                     if (passedSanityInspection === true) {
                         let peakValleyInspection = true
                         let dateInspection = true
+                        let previousItemAnchorTypeIsValley = true
                         if (Number.isFinite(valley) && Number.isFinite(peak)) {
                             peakValleyInspection = peak > valley
                         }
                         if (Number.isFinite(previousItem?.epochDate) && Number.isFinite(item?.epochDate)) {
                             dateInspection = item.epochDate > previousItem.epochDate
                         }
-                        passedSanityInspection = peakValleyInspection && dateInspection
+                        if (previousItem !== undefined) {
+                            previousItemAnchorTypeIsValley = previousItem.type === PriceAnalysis.VALLEY
+                        }
+                        passedSanityInspection = peakValleyInspection && dateInspection && previousItemAnchorTypeIsValley
                         console.assert(passedSanityInspection === true, `${index} index failed sanity inspection`)
                     }
                     
@@ -869,8 +874,6 @@ class ProjectStockVision {
 
                 aggregatePeak.sort((a,b) => b.price - a.price)
                 aggregateValley.sort((a,b) => a.price - b.price)
-                // TO-DO develop an inspector method to make sure that valley to peak rows for prices and dates are in expected behaviour
-                // TO-DO develop mode analysis that focuses on the data points between the means and max points
 
                 console.table(rows)
                 console.table(detectionFlow)
@@ -2244,7 +2247,7 @@ class ProjectStockVision {
                 const entry = messageEntry !== undefined ? retrieveData(messageEntry) : idaStockVision.priceStore.currentPosition[exit.code]
                 const anchorIn = 'anchorPrice' in entry ? entry.anchorPrice : undefined
                 const volatilityIn = 'downwardVolatility' in entry ? entry.downwardVolatility : undefined
-                const localStorageKey = `stockvision_${exit.code}`
+                const localStorageKey = `${Vision.PriceAnalysis.PROJECT_NAME}_${exit.code}`
                 const report = {
                     dateIn: entry.date,
                     dateOut: exit.date,
@@ -2311,18 +2314,26 @@ class ProjectStockVision {
 
         /**
          * 
-         * @param {string} code 
-         * @returns {StockVision['reports']}
+         * @returns {{[key:string]: StockVision['reports']} | {}}
          */
-        static retrieveReports(code) {
-            const formattedCode = Vision.PriceAnalysis.codeFormat(code)
-            const storage = Object.entries(localStorage)
-                .filter(item => item[0].includes(formattedCode))
-                .reduce((previousValue, currentValue) => {
-                    previousValue.push(...JSON.parse(currentValue[1]))
-                    return previousValue
-                }, [])
-            return storage
+        static retrieveReports() {
+            const projectName = Vision.PriceAnalysis.PROJECT_NAME
+            const localStorageKeys = Object.keys(localStorage)
+            const codes = localStorageKeys
+                .filter(item => item.includes(projectName))
+                .map(item => Vision.PriceAnalysis.primaryCode(item.replace(`${projectName}_`,'')))
+            const allPrimaryCodes = new Set(codes)
+            const output = {}
+            Array.from(allPrimaryCodes.values()).forEach((primaryCode) => {
+                output[primaryCode] = Object.entries(localStorage)
+                    .filter(item => item[0].includes(projectName) && item[0].includes(primaryCode))
+                    .reduce((previousValue, currentValue) => {
+                        previousValue.push(...JSON.parse(currentValue[1]))
+                        return previousValue
+                    }, [])
+            })
+
+            return output
         }
 
         /**

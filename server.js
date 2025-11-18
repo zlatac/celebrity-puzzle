@@ -670,17 +670,20 @@ app.get('/trader/status', async function(req,res){
     try {
         const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
-        const code = req.query.code.toUpperCase()
+        const code = req.query.code?.toUpperCase()
         const codeExists = code && code in parsedData && parsedData[code]
         res.status(202)
         if (codeExists) {
             const position = parsedData[code].position
+            const allRelatedCodeEntries = Object.entries(parsedData).filter(item => item[0].includes(code.split('_')[0]))
             if (position === 'in') {
                 res.status(201)
             }
             if (position === 'out') {
                 res.status(200)
             }
+            res.send(Object.fromEntries(allRelatedCodeEntries))
+            return
 
         }
         res.send(parsedData)
