@@ -101,6 +101,7 @@ class ProjectStockVision {
                 sevenMinute: '7min',
                 tenMinute: '10min',
                 fifteenMinute: '15min',
+                twentyMinute: '20min',
                 twentySevenMinute: '27min',
                 thirtyMinute: '30min',
                 fourtyFiveMinute: '45min',
@@ -109,7 +110,9 @@ class ProjectStockVision {
                 oneDay: '1day',
                 none: 'none'
             }
+
             static ONE_MINUTE_IN_MILLISECONDS = 1000*60
+
             /** @type {{[key: string]: number}} TRADING_INTERVAL_SECONDS */
             static TRADING_INTERVAL_SECONDS = {
                 [PriceAnalysis.TRADING_INTERVAL.oneMinute]: 1 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
@@ -119,6 +122,7 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.sevenMinute]: 7 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.tenMinute]: 10 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.fifteenMinute]: 15 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
+                [PriceAnalysis.TRADING_INTERVAL.twentyMinute]: 20 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.twentySevenMinute]: 27 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.thirtyMinute]: 30 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.fourtyFiveMinute]: 45 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
@@ -895,18 +899,19 @@ class ProjectStockVision {
                 // TO-DO in separate method, use file system to get the file that has the raw data to use when rawData is undefined
                 const completePriceHistoryFormat = []
                 const completeIntervalData = []
+                const stringToIgnore = 'Date'
                 let data = []
                 if (Array.isArray(rawData)) {
                     rawData.forEach((item) => {
-                        const bucket = item.trim().replaceAll('"', '').split('\n')
-                        bucket.splice(0, 1)
+                        let bucket = item.trim().replaceAll('"', '').split('\n')
+                        bucket = bucket.filter(item => !item.includes(stringToIgnore))
                         bucket.reverse()
                         data.push(...bucket)
                     })
                 }
                 if (typeof rawData === 'string') {
                     data = rawData.trim().replaceAll('"', '').split('\n')
-                    data.splice(0, 1)
+                    data = data.filter(item => !item.includes(stringToIgnore))
                     data.reverse()
                 }
                 
@@ -995,6 +1000,9 @@ class ProjectStockVision {
                 const start = Math.floor(Math.abs(rangeStart))
                 const end = Math.ceil(Math.abs(rangeEnd))
                 const output = {}
+                if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) {
+                    return output
+                }
                 const range = Array(((end + 1) - start)/increment)
                 const sign = includeNegativeSign ? '(-)' : ''
                 range.fill(0)

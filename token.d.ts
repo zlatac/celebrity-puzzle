@@ -1,7 +1,7 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
 export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
-  | '15min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | '1day' | 'none'
+  | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | '1day' | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
 export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
 
@@ -93,6 +93,18 @@ export interface IPriceStore {
   priceTimeIntervalsToday: {[key: string]: Map<string, ITradingIntervalInspection>;};
   precisionTimeIntervalsToday: {[key: string]: Map<string, IPrecisionIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
+}
+
+export interface ICodeBackendSettings {
+  tradingInterval?: string;
+  precisionInterval?: string;
+  autoEntry?: number;
+  autoEntryMultiplier?: number;
+  autoExit?: number;
+  manualEntry?: number;
+  manualExit?: number;
+  profit?: number;
+  loss?: number;
 }
 
 export interface IStockVision {
