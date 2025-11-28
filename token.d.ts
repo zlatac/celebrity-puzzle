@@ -1,7 +1,8 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
+export type INTERVAL_DAY_FLAGS = '1day' | '2day' | '3day' | '4day' | '5day'
 export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
-  | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | '1day' | 'none'
+  | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | INTERVAL_DAY_FLAGS | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
 export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
 
@@ -105,6 +106,7 @@ export interface ICodeBackendSettings {
   manualExit?: number;
   profit?: number;
   loss?: number;
+  leaveProfitBehind?: boolean;
 }
 
 export interface IStockVision {

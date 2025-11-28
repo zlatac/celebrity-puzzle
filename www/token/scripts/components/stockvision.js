@@ -8,6 +8,7 @@
  * @typedef { import("token").INTERVAL_FLAGS } IntervalFlags
  * @typedef { import("token").TRADING_FLAGS } TradingFlags
  * @typedef { import("token").PROFIT_PURSUIT } ProfitPursuit
+ * @typedef { import("token").ICodeBackendSettings } CodeBackendSettings
  * @typedef { import("token").ITradingIntervalInspection } TradingIntervalInspection
  * @typedef { import("token").IPrecisionIntervalInspection } PrecisionIntervalInspection
  * @typedef { import("token").PriceAnalysis } IPriceAnalysis
@@ -36,7 +37,6 @@ class ProjectStockVision {
         /** nasdaq.com */
         // let ob = new MutationObserver(projectStockVision('tsla',undefined,undefined,undefined, 0.1, 0.3))
         // ob.observe(document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'), {subtree: true,characterData: true, characterDataOldValue: true})
-        // idaStockVision.priceStore.currentPosition.TSLA = {price: 396, date: new Date().toISOString(), position: true}; idaStockVision.positionIn.TSLA = true
         #code
         #projectParameters
         #manualEntryPrice
@@ -80,8 +80,6 @@ class ProjectStockVision {
             _isCrypto;
             /** @type {IntervalFlags} _priceTradingInterval */
             _priceTradingInterval;
-            /** @type {number} _twentyFourHoursInMiliSeconds */
-            _twentyFourHoursInMiliSeconds = 1000*60*60*24
             /** @type {true} IN */
             static IN = true
             /** @type {false} OUT */
@@ -108,10 +106,17 @@ class ProjectStockVision {
                 oneHour: '1hour',
                 fourHour: '4hour',
                 oneDay: '1day',
+                twoDay: '2day',
+                threeDay: '3day',
+                fourDay: '4day',
+                fiveDay: '5day',
                 none: 'none'
             }
+            
+            static ONE_MINUTE_IN_MILLISECONDS = 1000 * 60
 
-            static ONE_MINUTE_IN_MILLISECONDS = 1000*60
+            /** @type {number} TWENTYFOUR_HOURS_IN_MILLISECONDS */
+            static TWENTYFOUR_HOURS_IN_MILLISECONDS = PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS * 60 *24
 
             /** @type {{[key: string]: number}} TRADING_INTERVAL_SECONDS */
             static TRADING_INTERVAL_SECONDS = {
@@ -128,7 +133,19 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.fourtyFiveMinute]: 45 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.oneHour]: 60 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS,
                 [PriceAnalysis.TRADING_INTERVAL.fourHour]: 60 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS * 4,
-                [PriceAnalysis.TRADING_INTERVAL.oneDay]: 60 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS * 10,
+                [PriceAnalysis.TRADING_INTERVAL.oneDay]: 1 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
+                [PriceAnalysis.TRADING_INTERVAL.twoDay]: 2 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
+                [PriceAnalysis.TRADING_INTERVAL.threeDay]: 3 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
+                [PriceAnalysis.TRADING_INTERVAL.fourDay]: 4 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
+                [PriceAnalysis.TRADING_INTERVAL.fiveDay]: 5 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
+            }
+
+            static get REVERSED_TRADING_INTERVAL_SECONDS() {
+                return Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS)
+                    .reduce((previous, current) => {
+                        previous[current[1]] = current[0]
+                        return previous
+                    }, {})
             }
 
             static EVENT_NAMES = {
@@ -331,6 +348,14 @@ class ProjectStockVision {
                     && !this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.REGULAR)
             }
 
+            get currentPositionIn() {
+                return this._currentPosition.position === PriceAnalysis.IN
+            }
+
+            get currentPositionOut() {
+                return this._currentPosition.position === PriceAnalysis.OUT
+            }
+
             get isCurrentPositionStuck() {
                 const isStuckMaxPeak = this.findAnchorPeak(true)
                 if (this._currentPosition === undefined
@@ -514,7 +539,8 @@ class ProjectStockVision {
             */
             transformDateToEpochMiliseconds(dateISOString) {
                 /* Make sure that you append stock market closing hour and ISO format [T00:00:00]
-                for non ISO format dates so parse method uses local timezone automatically */
+                for non ISO format dates so parse method uses local timezone automatically
+                https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format */
                 if (dateISOString !== undefined || dateISOString !== '') {
                     return Date.parse(dateISOString)
                 }
@@ -749,6 +775,8 @@ class ProjectStockVision {
                 // https://www.investopedia.com/terms/s/standarddeviation.asp
 
                 let onlyPeaksCloned = [...onlyPeaks]
+                const intervalFlags = onlyPeaksCloned[0].flags
+                const lastIntervalAsPeakAndValley = [{...onlyPeaks.at(-1)}, {...onlyPeaks.at(-1), type: PriceAnalysis.VALLEY}]
                 const removeDuplicates = new Map()
                 const toEpochDateEndOfDay = toEpochDate !== Infinity 
                     ? new Date(toEpochDate).setHours(...PriceAnalysis.tradingEndTime())
@@ -776,7 +804,7 @@ class ProjectStockVision {
                     const previousLast = previousLastSinceNoOutcome !== undefined ? previousLastSinceNoOutcome : onlyPeaksCloned[i + 0]
                     const outcome = PriceAnalysis.peakValleyDetection(current, last, previousLast)
                     if (outcome !== undefined) {
-                        outcome.date = new Date(outcome.epochDate).toISOString()
+                        outcome.flags.push(...intervalFlags)
                     }
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
@@ -878,12 +906,31 @@ class ProjectStockVision {
 
                 aggregatePeak.sort((a,b) => b.price - a.price)
                 aggregateValley.sort((a,b) => a.price - b.price)
+                const highestPeaks = aggregatePeak.slice(0,5)
+                const lowestPeaks = aggregateValley.slice(0,5)
+                /** @type {CodeBackendSettings} */
+                const settings = {
+                    tradingInterval: undefined,
+                    precisionInterval: undefined,
+                    autoEntry: undefined,
+                    autoEntryMultiplier: undefined,
+                    autoExit: undefined,
+                    manualEntry: undefined,
+                    manualExit: undefined,
+                    profit: undefined,
+                    loss: undefined,
+                    leaveProfitBehind: undefined,
+                }
+
+                // Important for accurate continuity when used by Vision. There will be edge cases where a
+                // valley/peak manifests by the next interval
+                detectionFlow.push(...lastIntervalAsPeakAndValley)
 
                 console.table(rows)
-                console.table(detectionFlow)
+                console.table(detectionFlow,['date','price','type','flags'])
                 console.table(result)
 
-                return {highestPeaks: aggregatePeak.slice(0,5), lowestPeaks: aggregateValley.slice(0,5), rows, result, passedSanityInspection}
+                return {highestPeaks, lowestPeaks, rows, result, passedSanityInspection, intervalFlags, detectionFlow, settings}
 
             }
 
@@ -892,14 +939,19 @@ class ProjectStockVision {
              * @param {string | string[]} rawData 
              * @param {number} minutesOrDayInterval 
              * @param {number} daysOfMinutesToAnalyse 
-             * @param {boolean} isDailyInterval 
+             * @param {boolean} rawDataIsDailyInterval 
              */
-            static prepareForStatistics(rawData, minutesOrDayInterval = 5, daysOfMinutesToAnalyse, isDailyInterval = false) {
+            static prepareForStatistics(rawData, minutesOrDayInterval = 5, daysOfMinutesToAnalyse, rawDataIsDailyInterval = false) {
                 // copy paste raw data from nasdaq into the browser as a string literal https://www.nasdaq.com/market-activity/stocks/tsla/advanced-charting
                 // TO-DO in separate method, use file system to get the file that has the raw data to use when rawData is undefined
                 const completePriceHistoryFormat = []
                 const completeIntervalData = []
                 const stringToIgnore = 'Date'
+                const intervalFlag = rawDataIsDailyInterval 
+                    ? PriceAnalysis.REVERSED_TRADING_INTERVAL_SECONDS[minutesOrDayInterval * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS]
+                    : PriceAnalysis.REVERSED_TRADING_INTERVAL_SECONDS[minutesOrDayInterval * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS]
+                /** @type {string[]} */
+                let businessDaysOfTheYearIntervals
                 let data = []
                 if (Array.isArray(rawData)) {
                     rawData.forEach((item) => {
@@ -914,25 +966,40 @@ class ProjectStockVision {
                     data = data.filter(item => !item.includes(stringToIgnore))
                     data.reverse()
                 }
+
+                if (rawDataIsDailyInterval) {
+                    businessDaysOfTheYearIntervals = PriceAnalysis.confirmTodayInMultipleDaysInterval(minutesOrDayInterval).businessDaysOfTheYearIntervals
+                }
                 
-                const fullDayMinuteIntervalTotal = !isDailyInterval ? 391 : data.length
-                const remainder = !isDailyInterval ? 1 : 0
+                const fullDayMinuteIntervalTotal = !rawDataIsDailyInterval ? 391 : data.length
+                const remainder = !rawDataIsDailyInterval ? 1 : 0
                 const days = daysOfMinutesToAnalyse !== undefined 
                     ? daysOfMinutesToAnalyse 
                     : data.length / fullDayMinuteIntervalTotal
                 if (data.length % fullDayMinuteIntervalTotal !== 0) {
                     throw new Error('dataset is missing some data')
                 }
+                data.sort((a, b) => Date.parse(a.split(',')[0]) - Date.parse(b.split(',')[0]))
+
                 for(let day = 0; day < days; day++) {
                     const intervalData = data.splice(0, fullDayMinuteIntervalTotal)
-                        .filter((item, index) => {return (index + 1) % minutesOrDayInterval === remainder})
+                        .filter((item, index) => {
+                            if (rawDataIsDailyInterval) {
+                                const itemDate = new Date(item.split(',')[0])
+                                return businessDaysOfTheYearIntervals.includes(PriceAnalysis.dateStringFormat(itemDate, 'D/M/Y'))
+                            }
+
+                            return (index + 1) % minutesOrDayInterval === remainder
+                        })
                     const priceHistoryFormat = intervalData.reduce((previous, current, index) => {
                         // we use open price by default in daily interval scenario since we observe it that way
                         const [date, price, ...rest] = current.split(',')
                         previous.push({
                             epochDate: Date.parse(date),
+                            date: new Date(date).toISOString(),
                             price: Number(price),
                             type: 'peak',
+                            flags: [intervalFlag],
                             volume: rest.at(-1),
                             percentageChange: index > 0 ? Vision.percentageDelta(previous[index - 1].price, Number(price), true) : NaN
                         })
@@ -1014,6 +1081,32 @@ class ProjectStockVision {
                 })
 
                 return output
+            }
+
+            /**
+             * 
+             * @param {string} code 
+             * @param {PriceHistory[]} history 
+             * @param {number} historyDaysNeeded 
+             */
+            static async updateSettingsAndHistory(code, history, serverUrl, settings = {}, isSettings = false, historyDaysNeeded = 9) {
+                try {
+                    const formatedCode = PriceAnalysis.codeFormat(code)
+                    const businessDaysOfTheYear = PriceAnalysis.confirmTodayInMultipleDaysInterval().businessDaysOfTheYear
+                    const businessDaysBeforeToday = businessDaysOfTheYear.filter(day => day <= Date.now())
+                    // TO-DO explore taking less data for intervals smaller than 30min if needed
+                    const historyToUpload = history.filter(item => item.epochDate >= businessDaysBeforeToday.at(-1 * historyDaysNeeded))
+                        .map((item) => {
+                            const {epochDate, ...rest} = item
+                            return rest
+                        })
+                    console.log(historyToUpload)
+                    await Vision.historyOrSettingsHTTP(formatedCode,historyToUpload,serverUrl,settings,isSettings,{})
+                    console.log('update sent')
+                } catch (error) {
+                    console.log('updateSettingsAndHistory', error.toString())
+                }
+                
             }
 
             /**
@@ -1195,6 +1288,67 @@ class ProjectStockVision {
 
                 return
             }
+
+            /**
+             * 
+             * @param {number} daysInterval
+             * @param {number} month 
+             */
+            static confirmTodayInMultipleDaysInterval(daysInterval = 1, month = 0) {
+                // relative to the first business day of beginning of the year excluding the new year (mon,tue,wed...)
+                // from that day extract all the business days of the year up to todays month
+                // loop through all the business days with the days interval up to todays month
+                // map the days intervals to be in the format day/month/year
+                // check current day exist in the map
+                // remember that the business week is 5 days and not 7 when setting the parameter daysInterval
+                // count weeks in numbers of 5 => 5 days * 2 is 2 weeks
+                // months interval will not work with this logic
+                // https://www.timeanddate.com/date/workdays.html?d1=1&m1=1&y1=2025&d2=29&m2=11&y2=2025&ti=on&
+                const today = new Date(new Date().setHours(0,0,0,0))
+                const todayFormatString = PriceAnalysis.dateStringFormat(today, 'D/M/Y')
+                const nextMonth = today.setMonth(today.getMonth() + 1)
+                const dateAfterNewYear = 2
+                const firstDayOfTheYear = new Date(today.setFullYear(today.getFullYear(), month, dateAfterNewYear))
+                let firstBusinessDayOfTheYear, businessDayLoop, /** @type {string[]} */businessDaysOfTheYearIntervals
+                /** @type {number[]} */
+                const businessDaysOfTheYear = []
+                switch(firstDayOfTheYear.getDay()) {
+                    case 0:
+                        firstBusinessDayOfTheYear = firstDayOfTheYear.setDate(firstDayOfTheYear.getDate() + 1)
+                        break
+                    case 6:
+                        firstBusinessDayOfTheYear = firstDayOfTheYear.setDate(firstDayOfTheYear.getDate() + 2)
+                        break
+                    default:
+                        firstBusinessDayOfTheYear = firstDayOfTheYear.getTime()
+                }
+                businessDayLoop = firstBusinessDayOfTheYear
+                businessDaysOfTheYear.push(businessDayLoop) // start from the first business day
+
+                while(businessDayLoop < nextMonth) {
+                    businessDayLoop += 1000 * 60 * 60 * 24
+                    if ([6, 0].includes(new Date(businessDayLoop).getDay())) {   
+                        continue
+                    }
+                    
+                    businessDaysOfTheYear.push(businessDayLoop)
+                }
+
+                businessDaysOfTheYearIntervals = businessDaysOfTheYear.reduce((previous, current, index) => {
+                    if ((index) % daysInterval === 0) {
+                        const date = new Date(current)
+                        previous.push(PriceAnalysis.dateStringFormat(date, 'D/M/Y'))
+                    }
+
+                    return previous
+                }, [])
+
+                return {
+                    todayConfirmed: businessDaysOfTheYearIntervals.includes(todayFormatString),
+                    businessDaysOfTheYear,
+                    businessDaysOfTheYearIntervals
+                }
+            }
             
         }
         /**
@@ -1368,14 +1522,40 @@ class ProjectStockVision {
         }
         /**
          * @param {string} code
+         * @param {boolean} noHistory
          * @returns {Promise<Response>}
          */
-        static statusHTTP(code) {
+        static statusHTTP(code, noHistory = true) {
             const queryParams = new URLSearchParams()
             queryParams.append('code', code)
+            queryParams.append('noHistory', noHistory === true ? '1' : '0')
             return fetch(`${window.idaStockVision.serverUrl}/trader/status?${queryParams.toString()}`, {
                 method: 'GET',
                 mode: 'cors',
+            })
+        }
+        /**
+         * 
+         * @param {string} code 
+         * @param {PriceHistory[]} snapshotToUpload 
+         * @param {string} serverUrl 
+         * @param {Object<string,string>} additionalPayload 
+         * @param {RequestInit} fetchOptions 
+         * @param {boolean} isSettings
+         * @returns {Promise<Response>}
+         */
+        static historyOrSettingsHTTP(code, snapshotToUpload = [], serverUrl = window.idaStockVision.serverUrl, additionalPayload = {}, isSettings = false, fetchOptions = {}) {
+            const payload = new URLSearchParams()
+            payload.append('code', code)
+            payload.append('primaryCode', Vision.PriceAnalysis.primaryCode(code))
+            payload.append('peakValleyToday', JSON.stringify(snapshotToUpload))
+            Object.entries(additionalPayload).filter(item => item.at(1) !== undefined).forEach(item => payload.append(item[0], item[1]))
+            const service = isSettings ? 'settings' : 'history'
+
+            return fetch(`${serverUrl}/trader/${service}?${payload.toString()}`, {
+                method: 'POST',
+                mode: 'cors',
+                ...fetchOptions
             })
         }
         /**
@@ -1678,7 +1858,7 @@ class ProjectStockVision {
                     : window.idaStockVision.server.developmentNotification
                 window.idaStockVision.notificationInProgress[code] = true
                 const primaryCode = Vision.PriceAnalysis.primaryCode(code)
-                const resp = await Vision.statusHTTP(code)
+                const resp = await Vision.statusHTTP(code, false)
                 const data = await resp.json()
                 switch(resp.status) {
                     case 200:
@@ -1871,58 +2051,22 @@ class ProjectStockVision {
                     createTimeIntervals(interval, stop)
                 }
             }
-            !intervals.includes(startTime) ?  intervals.push(startTime) : null
-            createTimeIntervals(startTime, stopTime)
 
-            let confirmTodayInMultipleDaysInterval = (month = 0, daysInterval = 1) => {
-                // relative to the first business day of beginning of the year (mon,tue,wed...)
-                // from that day extract all the business days of the year up to todays month
-                // loop through all the business days with the days interval up to todays month
-                // map the days intervals to be in the format day:month:year
-                // check current day exist in the map
-                // https://www.timeanddate.com/date/workdays.html?d1=1&m1=1&y1=2025&d2=29&m2=11&y2=2025&ti=on&
-                const today = new Date(new Date().setHours(0,0,0,0))
-                const todayFormatString = `${today.getDate()}/${today.getMonth()}/${today.getFullYear()}`
-                const nextMonth = today.setMonth(today.getMonth() + 1)
-                const firstDayOfTheYear = new Date(today.setFullYear(today.getFullYear(), month, 1))
-                let firstBusinessDayOfTheYear, businessDayLoop, businessDaysOfTheYearIntervals
-                const businessDaysOfTheYear = []
-                switch(firstDayOfTheYear.getDay()) {
-                    case 0:
-                        firstBusinessDayOfTheYear = firstDayOfTheYear.setDate(firstDayOfTheYear.getDate() + 1)
-                        break
-                    case 6:
-                        firstBusinessDayOfTheYear = firstDayOfTheYear.setDate(firstDayOfTheYear.getDate() + 2)
-                        break
-                    default:
-                        firstBusinessDayOfTheYear = firstDayOfTheYear.getTime()
+            if (intervalInSeconds > Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS) {
+                const isWholeNumber = intervalInSeconds % Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS === 0
+                const millisecondsInDays = intervalInSeconds / Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
+                if (!isWholeNumber) {
+                    throw new Error('trading interval must be an absolute day amount in milliseconds')
                 }
-                businessDayLoop = firstBusinessDayOfTheYear
-                businessDaysOfTheYear.push(businessDayLoop) // start from the first business day
-
-                while(businessDayLoop < nextMonth) {
-                    businessDayLoop += 1000 * 60 * 60 * 24
-                    if ([6, 0].includes(new Date(businessDayLoop).getDay())) {   
-                        continue
-                    }
-                    
-                    businessDaysOfTheYear.push(businessDayLoop)
+                const todayIsAnInterval =  Vision.PriceAnalysis.confirmTodayInMultipleDaysInterval(millisecondsInDays).todayConfirmed
+                if (isWholeNumber && todayIsAnInterval) {
+                    intervals.push(startTime)
                 }
-
-                businessDaysOfTheYearIntervals = businessDaysOfTheYear.reduce((previous, current, index) => {
-                    if ((index + 1) % daysInterval === 0) {
-                        const date = new Date(current)
-                        previous.push(`${date.getDate()}/${date.getMonth()}/${date.getFullYear()}`)
-                    }
-
-                    return previous
-                }, [])
-
-                console.log(new Date(firstBusinessDayOfTheYear), businessDayLoop, businessDaysOfTheYear, businessDaysOfTheYearIntervals)
-
-                return businessDaysOfTheYearIntervals.includes(todayFormatString)
+                return
             }
 
+            !intervals.includes(startTime) ?  intervals.push(startTime) : null
+            createTimeIntervals(startTime, stopTime)
         }
 
         /**
@@ -1961,6 +2105,11 @@ class ProjectStockVision {
             /** @type {Map<string, PrecisionIntervalInspection>} */
             let timeKeysWithFlags = new Map()
             intervals.forEach((item, index) => {
+                if (index === 0) {
+                    // we need to exclude all start times to avoid the precision logic happening in the edge case of multiple days interval that has no
+                    // trading interval on a given day or else precision interval will run at 9:31 unhinged for a minute 
+                    return
+                }
                 const hourMinuteString = Vision.PriceAnalysis.dateStringFormat(item)
                 timeKeysWithFlags.set(hourMinuteString, {
                     currentPriceExecuted: false,
@@ -2396,19 +2545,23 @@ class ProjectStockVision {
                     }
                     analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval)
                     priceStore.analysis[this.#code] = analysis
-                    exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
-                    shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate, true)
+                    anchor = analysis.findAnchor()
                     downwardVolatilityTrail = analysis.downwardVolatility()
-                    const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
-                    entryPrice = !shouldBeExitingByTradingEndTime
-                        ? Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorValley(), entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
-                        : undefined
-                    exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
-                        ? currentPrice.price 
-                        : Vision.applyEntryExitThresholdToAnchor(analysis.findAnchorPeak(), entryPercentageThreshold, exitPercentageThreshold)
+                    if (analysis.currentPositionOut) {
+                        shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate, true)
+                        const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
+                        entryPrice = !shouldBeExitingByTradingEndTime
+                            ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
+                            : undefined
+                    }
+                    if (analysis.currentPositionIn) {
+                        exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
+                        exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
+                            ? currentPrice.price 
+                            : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
+                    }
                     priceStore.highestPeakAndLowestValleyToday[this.#code] = analysis.highestPeakAndLowestValleyToday
                     priceStore.todaysPeakValleySnapshot[this.#code] = analysis.todaysPeakValleySnapshot
-                    anchor = analysis.findAnchor()
                     anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
                     // should be set after all flags have been possibly set
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 
@@ -2507,6 +2660,7 @@ class ProjectStockVision {
      * @param {string} code 
      * @param {number} [entryThreshold] 
      * @param {number} [exitThreshold] 
+     * @param {number} [entryMultiplierThreshold]
      * @param {boolean} [experiment] 
      * @param {number} [profitThreshold]
      * @param {number} [lossThreshold]
@@ -2519,6 +2673,7 @@ class ProjectStockVision {
         code,
         entryThreshold = 3,
         exitThreshold = 2,
+        entryMultiplierThreshold,
         experiment = true,
         profitThreshold,
         lossThreshold,
@@ -2539,7 +2694,8 @@ class ProjectStockVision {
             window.idaStockVision.settings[codeFormatted].experiment = experiment
             window.idaStockVision.settings[codeFormatted].profitThreshold = profitThreshold
             window.idaStockVision.settings[codeFormatted].lossThreshold = lossThreshold
-            // window.idaStockVision.tools[`watch_${codeFormatted}`].call()
+            window.idaStockVision.settings[codeFormatted].entryMultiplier = entryMultiplierThreshold
+
             visionInstance.watch()
 
 
@@ -2557,11 +2713,13 @@ class ProjectStockVision {
      * @param {number} exit 
      * @param {boolean} [experiment] 
      * @param {number} [profit] 
-     * @param {number} [loss]
+     * @param {number} [entryMultiplier]
+     * @param {IntervalFlags | undefined} [tradingInterval] 
+     * @param {IntervalFlags | undefined} [precisionInterval]
      * @returns {string}
      */
-    static visionSmall(code, entry, exit, experiment = false, profit, loss) {
-        return ProjectStockVision.visionLarge(`${code}_short`, entry, exit, experiment, profit, loss)
+    static visionSmall(code, entry, exit, entryMultiplier, experiment = false, profit, tradingInterval = '4hour', precisionInterval = '5min') {
+        return ProjectStockVision.visionLarge(`${code}_short`, entry, exit, entryMultiplier, experiment, profit, undefined, tradingInterval, precisionInterval)
     }
 
     /**
@@ -2573,15 +2731,11 @@ class ProjectStockVision {
      * @param {number} [profit] 
      * @param {number} [loss] 
      * @param {IntervalFlags} [tradingInterval]
+     * @param {IntervalFlags} [precisionInterval]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.2, exit = 0.2, experiment = false, profit = 0.3, loss = 0.3, tradingInterval = '15min') {
-        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, experiment, profit, loss, tradingInterval)
-    }
-
-    static visionShadow(code) {
-        // make sure we can handle the volume of data points on the backend before using this
-        return ProjectStockVision.visionLarge(`${code}_shadow`, 200, 100, true, undefined, undefined, '5min', 'none')
+    static visionTiny(code, entry = 0.2, exit = 0.2, experiment = false, profit = 0.3, loss = 0.3, tradingInterval = '15min', precisionInterval) {
+        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval)
     }
 
     /**
@@ -2600,44 +2754,10 @@ class ProjectStockVision {
             throw new Error('object is not returned')
         }
         window.idaStockVision.settings[codeFormatted].experiment = experiment
-        // window.idaStockVision.tools[`watch_${codeFormatted}`].call()
+        
         visionInstance.watch()
 
         return `manual startup is done - ${codeFormatted}`
-    }
-
-    /**
-     * 
-     * @param {string} code 
-     * @param {number} smallEntry 
-     * @param {number} smallExit 
-     * @param {boolean} [smallExperiment] 
-     * @param {number} [tinyEntry]
-     * @param {number} [tinyExit]
-     * @param {boolean} [tinyExperiment]
-     * @returns {string[]}
-     */
-    static visionTinySmallLarge(code, smallEntry, smallExit, smallExperiment, tinyEntry, tinyExit, tinyExperiment) {
-        return [
-            ProjectStockVision.visionLarge(code),
-            ProjectStockVision.visionSmall(code, smallEntry, smallExit, smallExperiment),
-            ProjectStockVision.visionTiny(code, tinyEntry, tinyExit, tinyExperiment)
-        ]
-    }
-
-     /**
-     * 
-     * @param {string} code 
-     * @param {number} [tinyEntry] 
-     * @param {number} [tinyExit]
-     * @param {boolean} [tinyExperiment] 
-     * @returns {string[]}
-     */
-    static visionTinyLarge(code, tinyEntry, tinyExit, tinyExperiment) {
-        return [
-            ProjectStockVision.visionLarge(code),
-            ProjectStockVision.visionTiny(code, tinyEntry, tinyExit, tinyExperiment)
-        ]
     }
 
     static visionTools() {
@@ -4083,7 +4203,7 @@ class StockVisionTrade {
                 const profitLoss = exitIncome - entryCost
                 const date = new Date(order.timeSubmitted)
                 const dateDisplay = 
-                    `${date.getDay()}/${date.getMonth()} ${date.getHours()}:${date.getMinutes()}`
+                    `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`
                 const capitalUtilization = entryOrder.downwardVolatility ? 'half' : 'full'
 
                 profitLossAmount += profitLoss
