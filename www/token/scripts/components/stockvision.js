@@ -776,7 +776,6 @@ class ProjectStockVision {
 
                 let onlyPeaksCloned = [...onlyPeaks]
                 const intervalFlags = onlyPeaksCloned[0].flags
-                const lastIntervalAsPeakAndValley = [{...onlyPeaks.at(-1)}, {...onlyPeaks.at(-1), type: PriceAnalysis.VALLEY}]
                 const removeDuplicates = new Map()
                 const toEpochDateEndOfDay = toEpochDate !== Infinity 
                     ? new Date(toEpochDate).setHours(...PriceAnalysis.tradingEndTime())
@@ -794,7 +793,7 @@ class ProjectStockVision {
                 const rows = []
                 const result = {}
                 /** This is the non-localized peak/valley movement that has the complete profits and losses that happen */
-                const detectionFlow = []
+                const cumulativeFlow = []
                 let previousLastSinceNoOutcome
                 let passedSanityInspection = true
 
@@ -809,13 +808,13 @@ class ProjectStockVision {
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.VALLEY) {
                         aggregateValley.push(outcome)
-                        detectionFlow.push(outcome)
+                        cumulativeFlow.push(outcome)
                         previousLastSinceNoOutcome = undefined
                     }
 
                     if (outcome !== undefined && outcome.type === PriceAnalysis.PEAK) {
                         aggregatePeak.push(outcome)
-                        detectionFlow.push(outcome)
+                        cumulativeFlow.push(outcome)
                         previousLastSinceNoOutcome = undefined
                     }
 
@@ -833,8 +832,8 @@ class ProjectStockVision {
                     // console.assert(outcome !== undefined, 'The value is undefined bro')
                 }
 
-                detectionFlow.forEach((item, index) => {
-                    const previousItem = detectionFlow[index - 1]
+                cumulativeFlow.forEach((item, index) => {
+                    const previousItem = cumulativeFlow[index - 1]
                     if (item.type === PriceAnalysis.VALLEY) {
                         return
                     }
@@ -844,7 +843,7 @@ class ProjectStockVision {
                     const valleyDate = previousItem ? PriceAnalysis.dateStringFormat(previousItem.epochDate, dateFormat) : undefined
                     const peak = item.price
                     const peakDate = PriceAnalysis.dateStringFormat(item.epochDate, dateFormat)
-                    const previousPeak = detectionFlow[index - 2] !== undefined ? detectionFlow[index - 2].price : undefined
+                    const previousPeak = cumulativeFlow[index - 2] !== undefined ? cumulativeFlow[index - 2].price : undefined
                     let deltaUp = Vision.percentageDelta(valley, peak)
                     deltaUp = (deltaUpOutlier !== undefined && deltaUp >= deltaUpOutlier) ? NaN : deltaUp
                     let deltaDown = previousPeak !== undefined ? Vision.percentageDelta(previousPeak, valley) : undefined
@@ -922,15 +921,11 @@ class ProjectStockVision {
                     leaveProfitBehind: undefined,
                 }
 
-                // Important for accurate continuity when used by Vision. There will be edge cases where a
-                // valley/peak manifests by the next interval
-                detectionFlow.push(...lastIntervalAsPeakAndValley)
-
                 console.table(rows)
-                console.table(detectionFlow,['date','price','type','flags'])
+                console.table(cumulativeFlow,['date','price','type','flags'])
                 console.table(result)
 
-                return {highestPeaks, lowestPeaks, rows, result, passedSanityInspection, intervalFlags, detectionFlow, settings}
+                return {highestPeaks, lowestPeaks, rows, result, passedSanityInspection, intervalFlags, settings, intervalFlow: onlyPeaksCloned}
 
             }
 
@@ -1090,18 +1085,33 @@ class ProjectStockVision {
              * @param {number} historyDaysNeeded 
              */
             static async updateSettingsAndHistory(code, history, serverUrl, settings = {}, isSettings = false, historyDaysNeeded = 9) {
+                /**
+                 * 
+                 * @param {PriceHistory} data 
+                 * @returns {PriceHistory[]}
+                 */
+                const duplicatePriceHistory = (data) => {
+                    if (data.type === PriceAnalysis.PEAK) {
+                        return [data, {...data, type: PriceAnalysis.VALLEY}]
+                    }
+
+                    return [data, {...data, type: PriceAnalysis.PEAK}]
+                }
+
                 try {
                     const formatedCode = PriceAnalysis.codeFormat(code)
                     const businessDaysOfTheYear = PriceAnalysis.confirmTodayInMultipleDaysInterval().businessDaysOfTheYear
                     const businessDaysBeforeToday = businessDaysOfTheYear.filter(day => day <= Date.now())
                     // TO-DO explore taking less data for intervals smaller than 30min if needed
                     const historyToUpload = history.filter(item => item.epochDate >= businessDaysBeforeToday.at(-1 * historyDaysNeeded))
-                        .map((item) => {
+                        .flatMap((item) => {
                             const {epochDate, ...rest} = item
-                            return rest
+                            return duplicatePriceHistory(rest)
                         })
                     console.log(historyToUpload)
-                    await Vision.historyOrSettingsHTTP(formatedCode,historyToUpload,serverUrl,settings,isSettings,{})
+                    if (serverUrl !== undefined) {
+                        await Vision.historyOrSettingsHTTP(formatedCode,historyToUpload,serverUrl,settings,isSettings,{})
+                    }
                     console.log('update sent')
                 } catch (error) {
                     console.log('updateSettingsAndHistory', error.toString())
@@ -1306,7 +1316,7 @@ class ProjectStockVision {
                 // https://www.timeanddate.com/date/workdays.html?d1=1&m1=1&y1=2025&d2=29&m2=11&y2=2025&ti=on&
                 const today = new Date(new Date().setHours(0,0,0,0))
                 const todayFormatString = PriceAnalysis.dateStringFormat(today, 'D/M/Y')
-                const nextMonth = today.setMonth(today.getMonth() + 1)
+                const nextMonth = new Date(today).setMonth(today.getMonth() + 1)
                 const dateAfterNewYear = 2
                 const firstDayOfTheYear = new Date(today.setFullYear(today.getFullYear(), month, dateAfterNewYear))
                 let firstBusinessDayOfTheYear, businessDayLoop, /** @type {string[]} */businessDaysOfTheYearIntervals
@@ -1342,6 +1352,7 @@ class ProjectStockVision {
 
                     return previous
                 }, [])
+
 
                 return {
                     todayConfirmed: businessDaysOfTheYearIntervals.includes(todayFormatString),
