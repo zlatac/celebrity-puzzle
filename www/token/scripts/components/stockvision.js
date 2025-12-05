@@ -11,7 +11,6 @@
  * @typedef { import("token").ICodeBackendSettings } CodeBackendSettings
  * @typedef { import("token").ITradingIntervalInspection } TradingIntervalInspection
  * @typedef { import("token").IPrecisionIntervalInspection } PrecisionIntervalInspection
- * @typedef { import("token").PriceAnalysis } IPriceAnalysis
  * @typedef { import("token").IStockVision } StockVision
  * 
  * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
@@ -315,33 +314,6 @@ class ProjectStockVision {
                 return this.peakValleyProgressionOrder.filter((item) => item.epochDate > this.todaysDateMidnight)
             }
 
-            get todaysPeakValleySnapshot() {
-                // since peak and valley alternate in pattern they will always be side by side in progression order
-                const openPeakValley = this.peakValleyToday.slice(0, 2)
-                const closePeakValley = this.peakValleyToday.slice(-2, undefined)
-                const lastTenInBetweenPeakValleys = this.peakValleyToday.slice(-2*6, -2) // results in 10 data points (-12 + 2)
-                /* Nice to have the deepest valley before the end of the day when the lowest valley
-                    of the day comes before the highest peak of the day (steep slope price increase edge case) */
-                const lowestValleyAfterHighestPeakToday = []
-                if (this.highestPeakToday !== undefined 
-                    && this.lowestValleyToday !== undefined
-                    && this.highestPeakToday.epochDate > this.lowestValleyToday.epochDate
-                ) {
-                    const valleysAfterHighestPeakToday = this.valleyOnlyProgressionOrder
-                        .filter((item) => item.epochDate > this.highestPeakToday.epochDate)
-                    if (valleysAfterHighestPeakToday.length > 0) {
-                        const valleyPrices = valleysAfterHighestPeakToday.map((valley) => valley.price)
-                        const minPrice = Math.min(...valleyPrices)
-                        const minPriceIndex = valleyPrices.lastIndexOf(minPrice)
-
-                        lowestValleyAfterHighestPeakToday.push(valleysAfterHighestPeakToday.at(minPriceIndex))
-                    }
-                }
-
-                return Array.from(this.highestPeakAndLowestValleyToday)
-                    .concat(openPeakValley,lowestValleyAfterHighestPeakToday,closePeakValley,lastTenInBetweenPeakValleys)
-            }
-
             /** @returns {boolean} */
             get onlyPrecisionFlagOnCurrentPrice() {
                 return this._currentPrice.flags.includes(PriceAnalysis.TRADING_FLAGS.PRECISION) 
@@ -384,6 +356,34 @@ class ProjectStockVision {
                 
                 return positionIsStuck
 
+            }
+
+            todaysPeakValleySnapshot() {
+                // TO-DO refactor to consume data history to return snapshot
+                // since peak and valley alternate in pattern they will always be side by side in progression order
+                const openPeakValley = this.peakValleyToday.slice(0, 2)
+                const closePeakValley = this.peakValleyToday.slice(-2, undefined)
+                const lastTenInBetweenPeakValleys = this.peakValleyToday.slice(-2*6, -2) // results in 10 data points (-12 + 2)
+                /* Nice to have the deepest valley before the end of the day when the lowest valley
+                    of the day comes before the highest peak of the day (steep slope price increase edge case) */
+                const lowestValleyAfterHighestPeakToday = []
+                if (this.highestPeakToday !== undefined 
+                    && this.lowestValleyToday !== undefined
+                    && this.highestPeakToday.epochDate > this.lowestValleyToday.epochDate
+                ) {
+                    const valleysAfterHighestPeakToday = this.valleyOnlyProgressionOrder
+                        .filter((item) => item.epochDate > this.highestPeakToday.epochDate)
+                    if (valleysAfterHighestPeakToday.length > 0) {
+                        const valleyPrices = valleysAfterHighestPeakToday.map((valley) => valley.price)
+                        const minPrice = Math.min(...valleyPrices)
+                        const minPriceIndex = valleyPrices.lastIndexOf(minPrice)
+
+                        lowestValleyAfterHighestPeakToday.push(valleysAfterHighestPeakToday.at(minPriceIndex))
+                    }
+                }
+
+                return Array.from(this.highestPeakAndLowestValleyToday)
+                    .concat(openPeakValley,lowestValleyAfterHighestPeakToday,closePeakValley,lastTenInBetweenPeakValleys)
             }
 
             targetedProfitAcquired(code) {
@@ -1314,11 +1314,13 @@ class ProjectStockVision {
                 // count weeks in numbers of 5 => 5 days * 2 is 2 weeks
                 // months interval will not work with this logic
                 // https://www.timeanddate.com/date/workdays.html?d1=1&m1=1&y1=2025&d2=29&m2=11&y2=2025&ti=on&
-                const today = new Date(new Date().setHours(0,0,0,0))
+                const today = new Date()
+                today.setHours(0,0,0,0)
                 const todayFormatString = PriceAnalysis.dateStringFormat(today, 'D/M/Y')
                 const nextMonth = new Date(today).setMonth(today.getMonth() + 1)
                 const dateAfterNewYear = 2
-                const firstDayOfTheYear = new Date(today.setFullYear(today.getFullYear(), month, dateAfterNewYear))
+                const firstDayOfTheYear = new Date(today)
+                firstDayOfTheYear.setFullYear(today.getFullYear(), month, dateAfterNewYear)
                 let firstBusinessDayOfTheYear, businessDayLoop, /** @type {string[]} */businessDaysOfTheYearIntervals
                 /** @type {number[]} */
                 const businessDaysOfTheYear = []
@@ -1468,6 +1470,7 @@ class ProjectStockVision {
          */
         static async uploadTodaysPriceHistory(code = window.idaStockVision.code, squashTodaysHistory = true) {
             try {
+                const todayMidnight = new Date().setHours(0,0,0,0)
                 const primaryCode = Vision.PriceAnalysis.primaryCode(code)
                 const priceStore = window.idaStockVision.priceStore
                 let snapShotBasket = []
@@ -1491,8 +1494,15 @@ class ProjectStockVision {
                     mode: 'cors',
                 })
                 if (squashTodaysHistory) {
+                    const allPeakValleyHistoryBeforeToday = priceStore.peakValleyHistory
+                        .filter(history => {
+                            if ('epochDate' in history) {
+                                return history.epochDate < todayMidnight
+                            }
+                            return Date.parse(history.date) < todayMidnight
+                        })
                     const squashTodaysPeakValleyHistoryForAllCodes = 
-                        Array.from(priceStore.analysis[code].peakValleyBeforeToday).concat(uniquePeakValleySnapshots)
+                        Array.from(allPeakValleyHistoryBeforeToday).concat(uniquePeakValleySnapshots)
                     priceStore.peakValleyHistory = squashTodaysPeakValleyHistoryForAllCodes
                     // Make sure that lastPrice does not become a peak or valley in the next trading session
                     priceStore.lastPrice = undefined
@@ -2513,9 +2523,10 @@ class ProjectStockVision {
         mutationObserverCallback = (mutationArray, observerInstance, inspectorTrigger = false) => {
             try {
                 // TO-DO have a disconnect method to cleanup setTimeouts for history upload
-                const nowEpochDate = Date.now()
-                const nowDateFullString = new Date(nowEpochDate).toString()
-                const nowDateISOString = new Date(nowEpochDate).toISOString()
+                const now = new Date()
+                const nowEpochDate = now.getTime()
+                const nowDateFullString = now.toString()
+                const nowDateISOString = now.toISOString()
                 const lastRecord = mutationArray[mutationArray.length - 1]
                 const targetValue =  Vision.decimalConvert(Vision.sanitizePrice(lastRecord.target.nodeValue))
                 const windowStockVision = window.idaStockVision
@@ -2572,7 +2583,7 @@ class ProjectStockVision {
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
                     }
                     priceStore.highestPeakAndLowestValleyToday[this.#code] = analysis.highestPeakAndLowestValleyToday
-                    priceStore.todaysPeakValleySnapshot[this.#code] = analysis.todaysPeakValleySnapshot
+                    priceStore.todaysPeakValleySnapshot[this.#code] = analysis.peakValleyToday
                     anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
                     // should be set after all flags have been possibly set
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 

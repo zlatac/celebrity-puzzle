@@ -48,14 +48,12 @@ export interface IPrecisionIntervalInspection {
    currentPrices: ICurrentPrice[];
 }
 
-export interface PriceAnalysis {
-  constructor(history: IPriceHistory[], currentPrice: ICurrentPrice, currentPosition: IPosition, isCrypto: boolean, entryThreshold: number, exitThreshold: number, priceTradingInterval: string)
-  _peakValleyHistory: IPriceHistory;
+export class IPriceAnalysis {
+  _peakValleyHistory: IPriceHistory[];
   _currentPrice: ICurrentPrice;
   _currentPosition: IPosition;
   _isCrypto: boolean;
   _priceTradingInterval: string;
-  _twentyFourHoursInMiliSeconds: number
   get peakValleyProgressionOrder(): IPriceHistory[]
   get todaysDateMidnight(): number
   get dateExistsForCurrrentPosition(): boolean
@@ -69,14 +67,12 @@ export interface PriceAnalysis {
   get peakValleyBeforeToday(): IPriceHistory[]
   get peakValleyToday(): IPriceHistory[]
   get todaysPeakValleySnapshot(): IPriceHistory[]
-  get peakValleySizeManagement(): undefined
   get isCurrentPositionStuck(): boolean
   findAnchorPeak(): IPriceHistory | undefined
   findAnchorValley(): IPriceHistory | undefined
   findAnchor(): IPriceHistory | undefined
   findOptimalClosestHighestPeak(): IPriceHistory | undefined
   priceSlope(): {value: number; positive: boolean; negative: boolean;} | undefined
-  dayTradingAveragePrice(): number
 }
 
 export interface IPriceStore {
@@ -90,7 +86,7 @@ export interface IPriceStore {
   highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
   todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};
   currentPosition: {[key: string]: IPosition};
-  analysis: {[key: string]: InstanceType<PriceAnalysis>};
+  analysis: {[key: string]: any};
   priceTimeIntervalsToday: {[key: string]: Map<string, ITradingIntervalInspection>;};
   precisionTimeIntervalsToday: {[key: string]: Map<string, IPrecisionIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
