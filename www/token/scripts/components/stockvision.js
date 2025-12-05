@@ -4598,3 +4598,8 @@ class StockVisionTrade {
     }
 
 }
+
+module.exports = {
+    ProjectStockVision,
+    StockVisionTrade,
+}

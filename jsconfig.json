@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "baseUrl": "./",
-    "target": "es2022"
+    "target": "es2022",
+    "paths": {
+      "@/*": ["./www/*"],
+    }
   },
   "exclude": ["node_modules", "**/node_modules/*"]
 }
