@@ -1,6 +1,10 @@
 export type PEAK = 'peak'
 export type VALLEY = 'valley'
-export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' | '15min' | '27min' | '30min' | '45min' | '1hour' | 'none'
+export type INTERVAL_DAY_FLAGS = '1day' | '2day' | '3day' | '4day' | '5day'
+export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
+  | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | INTERVAL_DAY_FLAGS | 'none'
+export type TRADING_FLAGS = 'regular' | 'precision'
+export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
 
 export interface IPrice {
   price: number;
@@ -10,11 +14,11 @@ export interface IPrice {
 
 export interface IPriceHistory extends IPrice {
   type: PEAK | VALLEY;
-  flags: INTERVAL_FLAGS[]; 
+  flags: Array<INTERVAL_FLAGS|TRADING_FLAGS>; 
 }
 
 export interface ICurrentPrice extends IPrice {
-  flags: INTERVAL_FLAGS[]; 
+  flags: Array<INTERVAL_FLAGS|TRADING_FLAGS>; 
 }
 
 export interface IPosition extends IPrice {
@@ -22,7 +26,7 @@ export interface IPosition extends IPrice {
   positionAnchor?: number;
 }
 
-export interface IIntervalInspection {
+export interface ITradingIntervalInspection {
    peakCaptured: boolean;
    valleyCaptured: boolean;
    currentPriceExecuted: boolean;
@@ -32,17 +36,24 @@ export interface IIntervalInspection {
    hourMinute: string;
    peakPrice: number;
    valleyPrice: number;
-   currentPrice: number;
+   currentPrice: ICurrentPrice;
 }
 
-export interface PriceAnalysis {
-  constructor(history: IPriceHistory[], currentPrice: ICurrentPrice, currentPosition: IPosition, isCrypto: boolean, entryThreshold: number, exitThreshold: number, priceTradingInterval: string)
-  _peakValleyHistory: IPriceHistory;
+export interface IPrecisionIntervalInspection {
+   currentPriceExecuted: boolean;
+   epochDate: number;
+   inspectionEpochDate: number;
+   index: number;
+   hourMinute: string;
+   currentPrices: ICurrentPrice[];
+}
+
+export class IPriceAnalysis {
+  _peakValleyHistory: IPriceHistory[];
   _currentPrice: ICurrentPrice;
   _currentPosition: IPosition;
   _isCrypto: boolean;
   _priceTradingInterval: string;
-  _twentyFourHoursInMiliSeconds: number
   get peakValleyProgressionOrder(): IPriceHistory[]
   get todaysDateMidnight(): number
   get dateExistsForCurrrentPosition(): boolean
@@ -56,14 +67,12 @@ export interface PriceAnalysis {
   get peakValleyBeforeToday(): IPriceHistory[]
   get peakValleyToday(): IPriceHistory[]
   get todaysPeakValleySnapshot(): IPriceHistory[]
-  get peakValleySizeManagement(): undefined
   get isCurrentPositionStuck(): boolean
   findAnchorPeak(): IPriceHistory | undefined
   findAnchorValley(): IPriceHistory | undefined
   findAnchor(): IPriceHistory | undefined
   findOptimalClosestHighestPeak(): IPriceHistory | undefined
   priceSlope(): {value: number; positive: boolean; negative: boolean;} | undefined
-  dayTradingAveragePrice(): number
 }
 
 export interface IPriceStore {
@@ -77,9 +86,23 @@ export interface IPriceStore {
   highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
   todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};
   currentPosition: {[key: string]: IPosition};
-  analysis: {[key: string]: InstanceType<PriceAnalysis>};
-  priceTimeIntervalsToday: {[key: string]: Map<string, IIntervalInspection>;};
+  analysis: {[key: string]: any};
+  priceTimeIntervalsToday: {[key: string]: Map<string, ITradingIntervalInspection>;};
+  precisionTimeIntervalsToday: {[key: string]: Map<string, IPrecisionIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
+}
+
+export interface ICodeBackendSettings {
+  tradingInterval?: string;
+  precisionInterval?: string;
+  autoEntry?: number;
+  autoEntryMultiplier?: number;
+  autoExit?: number;
+  manualEntry?: number;
+  manualExit?: number;
+  profit?: number;
+  loss?: number;
+  leaveProfitBehind?: boolean;
 }
 
 export interface IStockVision {
@@ -96,7 +119,7 @@ export interface IStockVision {
   };
   mutationObservers: {[key:string]: MutationObserver};
   consoleClearInstance: number;
-  windowCloseEventListener: EventListener;
+  // windowCloseEventListener: EventListener;
   code: string;
   statusTimeoutList: number[];
   statusTimeoutInstance: undefined | number;
@@ -116,12 +139,33 @@ export interface IStockVision {
   settings: {
     [key:string]: {
       tradingInterval: INTERVAL_FLAGS;
+      precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
+      profitThreshold: undefined | number;
+      lossThreshold: undefined | number;
+      entryPercentageThreshold: undefined | number;
+      exitPercentageThreshold: undefined | number;
+      entryMultiplier: undefined | number;
+      manualEntryPriceThreshold: undefined | number;
+      manualExitPriceThreshold: undefined | number;
     };
   };
   server: {[key:string]: string};
   cssSelectors: {[key:string]: {[key]: Function}};
-  constants: {}
+  constants: {};
+  reports: {
+    dateIn: string;
+    dateOut: string;
+    code: string;
+    anchorIn: number;
+    anchorOut: number;
+    volatilityIn: boolean;
+    volatilityOut: boolean;
+    priceIn: number;
+    priceOut: number;
+    anchorProfitLoss: number;
+    profitLoss: number;
+  }[];
 }
 
 /** STOCK_VISION_TRADE */
@@ -235,6 +279,8 @@ export interface ITradeCheckResponse extends ICboeQuoteResponse {
   primaryCode: string;
   confirmationLink: string;
   position: boolean;
+  downwardVolatility: boolean;
+  immediateExecution: boolean;
 }
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;
@@ -250,6 +296,7 @@ export interface ITradeOrder extends ITradeCheckResponse {
   filledQuantity: number;
   timeSubmitted?: string;
   priceSubmitted?: string|number;
+  entryOrderId?: string | undefined
 }
 
 export interface IStockVisionTrade {
@@ -261,18 +308,27 @@ export interface IStockVisionTrade {
   modifyOrderQueueInProgress: boolean;
   newOrdersReceived: boolean;
   keepAwakeInstances: number[];
-  tools: {[key:string]: Function};
+  tools: {[key:string]: Function | Object;};
   brokerage: {
     name: 'questrade' | 'ibkr';
   };
   accountId: string;
-  securities: {[key: string]: {
-    securityId: string;
-    capital: number
-  }};
+  securities: {
+    [key: string]: {
+      securityId: string;
+    }
+  };
+  codes: {
+    [key: string]: {
+      capital: number;
+      highRiskThreshold: number;
+    }
+  };
   orders: ITradeOrder[];
-  orderHistory: {[key:string]: {
-    quantity: number;
-    orderId: string;
-  }};
+  orderHistory: {
+    [key:string]: {
+      quantity: number;
+      orderId: string;
+    };
+  };
 }

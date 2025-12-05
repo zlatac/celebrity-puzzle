@@ -447,6 +447,8 @@ const trader = {
         OUT: 'out',
         LOCAL_SERVER: 'local',
         CLOUD_SERVER: 'cloud',
+        tradingStartTime: [9,30,0],
+        tradingEndTime: [16,0,0]
     },
     asyncOperation: {
         historyTimeout: undefined,
@@ -455,6 +457,8 @@ const trader = {
         confirm: [],
         ordersToExecute: [],
         notificationOrders: [],
+        pingPongTracker: {},
+        ordersPreparationRetry: {}
     },
     methods: {
         checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE) => {
@@ -476,20 +480,74 @@ const trader = {
                 for (let i = 0; i < historyAmount; i++) {
                     const item = trader.asyncOperation.history[i]
                     const position = parsedData[item.code]?.position
-                    const codeExists = item.primaryCode && item.primaryCode in parsedData && parsedData[item.primaryCode]
-                    if (codeExists) {
+                    const primaryCodeExists = item.primaryCode && item.primaryCode in parsedData && parsedData[item.primaryCode]
+                    const specificCodeExists = item.code && item.code in parsedData && parsedData[item.code]
+                    if (primaryCodeExists) {
                         if (!Array.isArray(parsedData[item.primaryCode].peakValleyHistory)) {
                             parsedData[item.primaryCode].peakValleyHistory = []
-                        } 
+                        }
             
                     } else {
                         parsedData[item.primaryCode] = {
                             position: 'out',
-                            peakValleyHistory: []
+                            peakValleyHistory: [],
+                            settings: {},
+                        }
+                    }
+                    parsedData[item.primaryCode].peakValleyHistory.push(...item.peakValleyToday)
+
+                    /** settings logic only below */
+                    if (item.code !== item.primaryCode) {
+                        if (specificCodeExists) {
+                            if (!('settings' in parsedData[item.code])) {
+                                parsedData[item.code].settings = {}
+                            }
+                        } else {
+                            parsedData[item.code] = {
+                                position: 'out',
+                                settings: {},
+                            }
                         }
                     }
             
-                    parsedData[item.primaryCode].peakValleyHistory.push(...item.peakValleyToday)
+                    switch(true) {
+                        case item.tradingInterval !== undefined:
+                            parsedData[item.code].settings.tradingInterval = item.tradingInterval
+                        case item.precisionInterval !== undefined:
+                            parsedData[item.code].settings.precisionInterval = item.precisionInterval
+                        case item.leaveProfitBehind !== undefined:
+                            parsedData[item.code].settings.leaveProfitBehind = 
+                                item.leaveProfitBehind === 'true' ? true : false
+                        case item.autoEntry !== undefined:
+                            if (typeof item.autoEntry === 'string') {
+                                parsedData[item.code].settings.autoEntry = Number(item.autoEntry)
+                            }
+                        case item.autoEntryMultiplier !== undefined:
+                            if (typeof item.autoEntryMultiplier === 'string') {
+                                parsedData[item.code].settings.autoEntryMultiplier = Number(item.autoEntryMultiplier)
+                            }
+                        case item.autoExit !== undefined:
+                            if (typeof item.autoExit === 'string') {
+                                parsedData[item.code].settings.autoExit = Number(item.autoExit)
+                            }
+                        case item.manualEntry !== undefined:
+                            if (typeof item.manualEntry === 'string') {
+                                parsedData[item.code].settings.manualEntry = Number(item.manualEntry)
+                            }
+                        case item.manualExit !== undefined:
+                            if (typeof item.manualExit === 'string') {
+                                parsedData[item.code].settings.manualExit = Number(item.manualExit)
+                            }
+                        case item.profit !== undefined:
+                            if (typeof item.profit === 'string') {
+                                parsedData[item.code].settings.profit = Number(item.profit)
+                            }
+                        case item.loss !== undefined:
+                            if (typeof item.loss === 'string') {
+                                parsedData[item.code].settings.loss = Number(item.loss)
+                            }
+                        default:
+                    }
                 }
                 await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.history.splice(0, historyAmount)
@@ -522,6 +580,81 @@ const trader = {
             } catch (error) {
                 console.log(error)
             }
+        },
+        notify: async (subject = '', message, brokerageName = '') => {
+            try {
+                let subjectPrefix = '[LS] NOTIFICATION'
+                subjectPrefix = brokerageName !== '' ? `${subjectPrefix} (${brokerageName})` : subjectPrefix
+                const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
+                    subject: `${subjectPrefix} ${subject}`,
+                    message: `${message}`,
+                }) 
+            } catch (error) {
+                console.log(error)
+            }
+        },
+        checkWebBrowserCrashed: async (brokerageName) => {
+            const brokerageNameExists = brokerageName in trader.asyncOperation.pingPongTracker
+            if (!brokerageNameExists) {
+                trader.asyncOperation.pingPongTracker[brokerageName] = {timeoutInstance: undefined}
+            }
+
+            const brokerageObject = trader.asyncOperation.pingPongTracker[brokerageName]
+            const oneMinute = 1000 * 60
+            clearTimeout(brokerageObject.timeoutInstance)
+            brokerageObject.timeoutInstance = setTimeout(async () => {
+                const now = new Date()
+                const nowEpochDate = now.getTime()
+                const startTime = now.setHours(...trader.constants.tradingStartTime)
+                const endTime = now.setHours(...trader.constants.tradingEndTime)
+                if (nowEpochDate >= startTime && nowEpochDate <= endTime) {
+                    trader.methods.notify(undefined, 'Browser tab stopped pinging, possibly crashed. Please investigate', brokerageName)
+                }
+            }, oneMinute * 5)
+
+
+        },
+        orderPreparation: async (req, res, retry = false) => {
+            const primaryCode = req.query.primaryCode
+            const code = req.query.code
+            try {
+                if (!retry) {
+                    trader.asyncOperation.ordersPreparationRetry[code] = 0
+                }
+                if (retry) {
+                    trader.asyncOperation.ordersPreparationRetry[code]++
+                }
+                const prepareOrder = {
+                    primaryCode: req.query.primaryCode,
+                    code: req.query.code,
+                    position: req.query.action === trader.constants.IN ? true : false,
+                    confirmationLink: req.query.confirmationLink,
+                    downwardVolatility: req.query.downwardVolatility === 'true' ? true : false,
+                    immediateExecution: req.query.immediateExecution === 'true' ? true : false,
+                    // observationPrice: req.query.currentPrice,
+                    seenByBrokerage: [],
+                }
+                const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
+                if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
+                    throw new Error('cannot retrieve price')
+                }
+                trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
+                if (!retry) {
+                    res.sendStatus(200)
+                }
+            } catch (error) {
+                if (!retry) {
+                    res.status(404)
+                    res.send(`${error.toString()}`)
+                }
+                setTimeout(() => {
+                    if (trader.asyncOperation.ordersPreparationRetry[code] >= 4) {
+                        trader.methods.notify(undefined, error.toString(), code)
+                        return
+                    }
+                    trader.methods.orderPreparation(req, res, true)
+                }, 3000)      
+            }
         }
 
     }
@@ -530,25 +663,7 @@ const trader = {
 app.post('/trader/notify', async function(req,res){
     res.append('Access-Control-Allow-Origin', '*')
     if (process.env.SERVER_NAME === trader.constants.LOCAL_SERVER) {
-        try {
-            const prepareOrder = {
-                primaryCode: req.query.primaryCode,
-                code: req.query.code,
-                position: req.query.action === trader.constants.IN ? true : false,
-                confirmationLink: req.query.confirmationLink,
-                // observationPrice: req.query.currentPrice,
-                seenByBrokerage: [],
-            }
-            const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
-            if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
-                throw new Error('cannot retrieve price')
-            }
-            trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
-            res.sendStatus(200)
-        } catch (error) {
-            res.status(404)
-            res.send(`${error.toString()}`)
-        }
+        trader.methods.orderPreparation(req, res)
     }
 
     if (process.env.SERVER_NAME === trader.constants.CLOUD_SERVER) {
@@ -609,17 +724,25 @@ app.get('/trader/status', async function(req,res){
     try {
         const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
         const parsedData = JSON.parse(data)
-        const code = req.query.code.toUpperCase()
+        const code = req.query.code?.toUpperCase()
+        const noHistory = req.query.noHistory
         const codeExists = code && code in parsedData && parsedData[code]
         res.status(202)
         if (codeExists) {
+            const primaryCode = code.split('_')[0]
             const position = parsedData[code].position
+            if (noHistory !== undefined && Boolean(Number(noHistory)) === true) {
+                delete parsedData[primaryCode].peakValleyHistory
+            }
+            const allRelatedCodeEntries = Object.entries(parsedData).filter(item => item[0].includes(primaryCode))
             if (position === 'in') {
                 res.status(201)
             }
             if (position === 'out') {
                 res.status(200)
             }
+            res.send(Object.fromEntries(allRelatedCodeEntries))
+            return
 
         }
         res.send(parsedData)
@@ -723,7 +846,40 @@ app.get('/trader/tradeCheck', async function(req,res) {
         const ordersToSend = trader.asyncOperation.ordersToExecute.filter((order) => !order.seenByBrokerage.includes(brokerageName))
         res.status(200)
         res.send(ordersToSend)
+        trader.methods.checkWebBrowserCrashed(brokerageName)
         ordersToSend.forEach((order) => order.seenByBrokerage.push(brokerageName))
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.post('/trader/settings', async function(req,res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
+    try {
+        let code = req.body?.code || req.query.code
+        let primaryCode = req.body?.primaryCode || req.query.primaryCode
+        code = code.toUpperCase()
+        primaryCode = primaryCode.toUpperCase()
+        const peakValleyToday = []
+        const tradingInterval = req.body?.tradingInterval || req.query.tradingInterval
+        const precisionInterval = req.body?.precisionInterval || req.query.precisionInterval
+        const autoEntry = req.body?.autoEntry || req.query.autoEntry
+        const autoEntryMultiplier = req.body?.autoEntryMultiplier || req.query.autoEntryMultiplier
+        const autoExit = req.body?.autoExit || req.query.autoExit
+        const manualEntry = req.body?.manualEntry || req.query.manualEntry
+        const manualExit = req.body?.manualExit || req.query.manualExit
+        const profit = req.body?.profit || req.query.profit
+        const loss = req.body?.loss || req.query.loss
+        const leaveProfitBehind = req.body?.leaveProfitBehind || req.query.leaveProfitBehind
+        trader.asyncOperation.history.push(
+            {code,primaryCode,peakValleyToday,tradingInterval,precisionInterval,autoEntry,autoEntryMultiplier,autoExit,manualEntry,manualExit,profit,loss,leaveProfitBehind}
+        )
+        clearTimeout(trader.asyncOperation.historyTimeout)
+        console.log(tradingInterval)
+        trader.asyncOperation.historyTimeout = setTimeout(trader.methods.processHistories, 1500)
+        res.sendStatus(202)
     } catch (error) {
         res.status(404)
         res.send(`${error.toString()}`)

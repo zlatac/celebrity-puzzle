@@ -5,8 +5,6 @@ declare global {
   interface Window {
     idaStockVision: IStockVision;
     idaStockVisionTrade: IStockVisionTrade;
-    projectStockVision: Function<MutationCallback>;
-    stockVisionTrade: Function;
   }
 }
 
