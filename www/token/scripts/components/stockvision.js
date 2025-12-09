@@ -963,7 +963,7 @@ class ProjectStockVision {
                 }
 
                 if (rawDataIsDailyInterval) {
-                    businessDaysOfTheYearIntervals = PriceAnalysis.confirmTodayInMultipleDaysInterval(minutesOrDayInterval).businessDaysOfTheYearIntervals
+                    businessDaysOfTheYearIntervals = PriceAnalysis.confirmDateInMultipleDaysInterval(minutesOrDayInterval).businessDaysOfTheYearIntervals
                 }
                 
                 const fullDayMinuteIntervalTotal = !rawDataIsDailyInterval ? 391 : data.length
@@ -1100,7 +1100,7 @@ class ProjectStockVision {
 
                 try {
                     const formatedCode = PriceAnalysis.codeFormat(code)
-                    const businessDaysOfTheYear = PriceAnalysis.confirmTodayInMultipleDaysInterval().businessDaysOfTheYear
+                    const businessDaysOfTheYear = PriceAnalysis.confirmDateInMultipleDaysInterval().businessDaysOfTheYear
                     const businessDaysBeforeToday = businessDaysOfTheYear.filter(day => day <= Date.now())
                     // TO-DO explore taking less data for intervals smaller than 30min if needed
                     const historyToUpload = history.filter(item => item.epochDate >= businessDaysBeforeToday.at(-1 * historyDaysNeeded))
@@ -1302,9 +1302,10 @@ class ProjectStockVision {
             /**
              * 
              * @param {number} daysInterval
+             * @param {Date} dateToConfirm 
              * @param {number} month 
              */
-            static confirmTodayInMultipleDaysInterval(daysInterval = 1, month = 0) {
+            static confirmDateInMultipleDaysInterval(daysInterval = 1, dateToConfirm = new Date(), month = 0) {
                 // relative to the first business day of beginning of the year excluding the new year (mon,tue,wed...)
                 // from that day extract all the business days of the year up to todays month
                 // loop through all the business days with the days interval up to todays month
@@ -1314,13 +1315,13 @@ class ProjectStockVision {
                 // count weeks in numbers of 5 => 5 days * 2 is 2 weeks
                 // months interval will not work with this logic
                 // https://www.timeanddate.com/date/workdays.html?d1=1&m1=1&y1=2025&d2=29&m2=11&y2=2025&ti=on&
-                const today = new Date()
-                today.setHours(0,0,0,0)
-                const todayFormatString = PriceAnalysis.dateStringFormat(today, 'D/M/Y')
-                const nextMonth = new Date(today).setMonth(today.getMonth() + 1)
+                const clonedDate = new Date(dateToConfirm)
+                clonedDate.setHours(0,0,0,0)
+                const dateFormatString = PriceAnalysis.dateStringFormat(clonedDate, 'D/M/Y')
+                const nextMonth = new Date(clonedDate).setMonth(clonedDate.getMonth() + 1)
                 const dateAfterNewYear = 2
-                const firstDayOfTheYear = new Date(today)
-                firstDayOfTheYear.setFullYear(today.getFullYear(), month, dateAfterNewYear)
+                const firstDayOfTheYear = new Date(clonedDate)
+                firstDayOfTheYear.setFullYear(clonedDate.getFullYear(), month, dateAfterNewYear)
                 let firstBusinessDayOfTheYear, businessDayLoop, /** @type {string[]} */businessDaysOfTheYearIntervals
                 /** @type {number[]} */
                 const businessDaysOfTheYear = []
@@ -1348,8 +1349,8 @@ class ProjectStockVision {
 
                 businessDaysOfTheYearIntervals = businessDaysOfTheYear.reduce((previous, current, index) => {
                     if ((index) % daysInterval === 0) {
-                        const date = new Date(current)
-                        previous.push(PriceAnalysis.dateStringFormat(date, 'D/M/Y'))
+                        const currentDate = new Date(current)
+                        previous.push(PriceAnalysis.dateStringFormat(currentDate, 'D/M/Y'))
                     }
 
                     return previous
@@ -1357,7 +1358,7 @@ class ProjectStockVision {
 
 
                 return {
-                    todayConfirmed: businessDaysOfTheYearIntervals.includes(todayFormatString),
+                    confirmed: businessDaysOfTheYearIntervals.includes(dateFormatString),
                     businessDaysOfTheYear,
                     businessDaysOfTheYearIntervals
                 }
@@ -2056,14 +2057,14 @@ class ProjectStockVision {
             let today = new Date()
             if (forTomorrow) {
                 const tomorrowEpoch = today.getTime() + 24*Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[Vision.PriceAnalysis.TRADING_INTERVAL.oneHour]
-                today = new Date(tomorrowEpoch)
+                today.setTime(tomorrowEpoch)
                 clearInterval(window.idaStockVision.intervalInspectorInstance[code])
                 window.idaStockVision.intervalInspectorInstance[code] = undefined
                 window.idaStockVision.timeoutInspectorInstance[code] = undefined
             }
             const [endHour, endMinute, endSecond] = window.idaStockVision.tradingEndTime
-            const stopTime = today.setHours(endHour, endMinute, endSecond, 0)
-            const startTime = today.setHours(startHour,startMinute,startSeconds,0)
+            const stopTime = new Date(today).setHours(endHour, endMinute, endSecond, 0)
+            const startTime = new Date(today).setHours(startHour,startMinute,startSeconds,0)
             const createTimeIntervals = (start, stop) => {
                 const interval = start+intervalInSeconds
                 // console.log(start, stop)
@@ -2079,7 +2080,7 @@ class ProjectStockVision {
                 if (!isWholeNumber) {
                     throw new Error('trading interval must be an absolute day amount in milliseconds')
                 }
-                const todayIsAnInterval =  Vision.PriceAnalysis.confirmTodayInMultipleDaysInterval(millisecondsInDays).todayConfirmed
+                const todayIsAnInterval =  Vision.PriceAnalysis.confirmDateInMultipleDaysInterval(millisecondsInDays, today).confirmed
                 if (isWholeNumber && todayIsAnInterval) {
                     intervals.push(startTime)
                 }
