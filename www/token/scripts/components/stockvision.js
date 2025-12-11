@@ -2566,7 +2566,6 @@ class ProjectStockVision {
 
                 result[code] = {tradingIntervalCheck,precisionIntervalCheck,downwardVolatilityCheck,peakValleyOrderCheck,peakValleySnapshotCheck,tinyCodeIsPoisitonOutCheck,squashedPeakValleyCheck}
                 result[code].pass = Object.values(result[code]).every(item => item === true)
-                debugger
             })
 
             console.log(result)
@@ -4666,6 +4665,7 @@ class StockVisionTrade {
             const primaryCode = current[0].split('_')[0]
             if (!(primaryCode in previous)) {
                 previous[primaryCode] = current[1].capital
+                return previous
             }
             
             previous[primaryCode] += current[1].capital
