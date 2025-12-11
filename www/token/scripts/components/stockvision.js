@@ -114,8 +114,10 @@ class ProjectStockVision {
             
             static ONE_MINUTE_IN_MILLISECONDS = 1000 * 60
 
+            static ONE_HOUR_IN_MILLISECONDS = PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS * 60
+
             /** @type {number} TWENTYFOUR_HOURS_IN_MILLISECONDS */
-            static TWENTYFOUR_HOURS_IN_MILLISECONDS = PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS * 60 *24
+            static TWENTYFOUR_HOURS_IN_MILLISECONDS = PriceAnalysis.ONE_HOUR_IN_MILLISECONDS * 24
 
             /** @type {{[key: string]: number}} TRADING_INTERVAL_SECONDS */
             static TRADING_INTERVAL_SECONDS = {
@@ -2515,6 +2517,63 @@ class ProjectStockVision {
             return output
         }
 
+        static monitorReport(isEndOfDay = false, isCrypto = false) {
+            // some inaccuracies for crypto precision and tradin interval but not important for now
+            const priceAnalysisClass = Vision.PriceAnalysis
+            const idaStockVision = window.idaStockVision
+            const tradingDayTotalHours = isCrypto ? 24 : 6.5
+            const today = new Date()
+            const codes = Object.keys(window.idaStockVision.positionIn)
+            const currentPrice = {price: 0, date: today.toISOString(), flags: []}
+            const result = {}
+            if (isEndOfDay) {
+                today.setTime(today.getTime() +  priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS)
+            }
+            codes.forEach((code) => {
+                const codeSettings = idaStockVision.settings[code]
+                const currentPosition = idaStockVision.priceStore.currentPosition[code]
+                const isTinyCode = priceAnalysisClass.profitPursuitType(code) === priceAnalysisClass.PROFIT_PURSUIT.TINY
+                const historyDistance = Date.now() - idaStockVision.priceStore.peakValleyHistory[0].epochDate
+                const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
+                let peakValleySnapshotCheck = true
+                let squashedPeakValleyCheck = true
+                let tinyCodeIsPoisitonOutCheck = true
+                const currentDayIsConfirmedForTradingInterval = priceAnalysisClass.confirmDateInMultipleDaysInterval(
+                    priceAnalysisClass.REVERSED_TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval],
+                    today
+                ).confirmed
+                const tradingIntervalSeconds = priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval]
+                const intervalAmountWithinTheDay = Math.floor((priceAnalysisClass.ONE_HOUR_IN_MILLISECONDS * tradingDayTotalHours / tradingIntervalSeconds) + 1)
+                const precisionIntervalSeconds = priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.precisionInterval]
+                const expectedTradingIntervalSize = tradingIntervalSeconds < priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
+                    ? intervalAmountWithinTheDay
+                    : 1
+                const expectedPrecisionIntervalSize = precisionIntervalSeconds < priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
+                    ? Math.floor((priceAnalysisClass.ONE_HOUR_IN_MILLISECONDS * tradingDayTotalHours / precisionIntervalSeconds) - 1)
+                    : 1
+                const tradingIntervalCheck = !currentDayIsConfirmedForTradingInterval 
+                    ? idaStockVision.priceStore.priceTimeIntervalsToday[code].size === 0
+                    : idaStockVision.priceStore.priceTimeIntervalsToday[code].size === expectedTradingIntervalSize
+                const precisionIntervalCheck = idaStockVision.priceStore.precisionTimeIntervalsToday[code].size === expectedPrecisionIntervalSize
+                const downwardVolatilityCheck = analysisInstance.downwardVolatility() !== undefined
+                const peakValleyOrderCheck = analysisInstance.peakValleyProgressionOrder.length > 0
+
+                if (isEndOfDay) {
+                    peakValleySnapshotCheck = idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 2)
+                    tinyCodeIsPoisitonOutCheck = isTinyCode ? idaStockVision.positionIn[code] === false : tinyCodeIsPoisitonOutCheck
+                    squashedPeakValleyCheck = historyDistance >= priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS * 9
+                }
+
+                result[code] = {tradingIntervalCheck,precisionIntervalCheck,downwardVolatilityCheck,peakValleyOrderCheck,peakValleySnapshotCheck,tinyCodeIsPoisitonOutCheck,squashedPeakValleyCheck}
+                result[code].pass = Object.values(result[code]).every(item => item === true)
+                debugger
+            })
+
+            console.log(result)
+
+            return Object.values(result).every(item => item.pass === true)
+        }
+
         /**
          * 
          * @param {MutationRecord[]} mutationArray 
@@ -4596,6 +4655,27 @@ class StockVisionTrade {
 
     static stop = () => {
         this.stopPollLocalServer()
+    }
+
+    static monitorReport(isEndOfDay = false, maxCapital = 5000) {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const tradingDayTotalHours = 6.5
+        const today = new Date()
+        const executionCheck = idaStockVisionTrade.orders.every(order => order.executed === true)
+        const codePrimaryCapital = Object.entries(idaStockVisionTrade.codes).reduce((previous, current) => {
+            const primaryCode = current[0].split('_')[0]
+            if (!(primaryCode in previous)) {
+                previous[primaryCode] = current[1].capital
+            }
+            
+            previous[primaryCode] += current[1].capital
+            return previous
+        }, {})
+        const capitalCheck = Object.values(codePrimaryCapital).every(item => item <= maxCapital)
+        const result = {executionCheck, capitalCheck}
+        console.log(result)
+
+        return Object.values(result).every(item => item === true)
     }
 
 }
