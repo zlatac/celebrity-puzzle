@@ -1107,7 +1107,8 @@ class ProjectStockVision {
                     // TO-DO explore taking less data for intervals smaller than 30min if needed
                     const historyToUpload = history.filter(item => item.epochDate >= businessDaysBeforeToday.at(-1 * historyDaysNeeded))
                         .flatMap((item) => {
-                            const {epochDate, ...rest} = item
+                            // @ts-ignore
+                            const {epochDate, volume, percentageChange, ...rest} = item
                             return duplicatePriceHistory(rest)
                         })
                     console.log(historyToUpload)
@@ -1325,6 +1326,7 @@ class ProjectStockVision {
                 const firstDayOfTheYear = new Date(clonedDate)
                 firstDayOfTheYear.setFullYear(clonedDate.getFullYear(), month, dateAfterNewYear)
                 let firstBusinessDayOfTheYear, businessDayLoop, /** @type {string[]} */businessDaysOfTheYearIntervals
+                const businessDaysOfTheYearIntervalsInSeconds = []
                 /** @type {number[]} */
                 const businessDaysOfTheYear = []
                 switch(firstDayOfTheYear.getDay()) {
@@ -1353,6 +1355,7 @@ class ProjectStockVision {
                     if ((index) % daysInterval === 0) {
                         const currentDate = new Date(current)
                         previous.push(PriceAnalysis.dateStringFormat(currentDate, 'D/M/Y'))
+                        businessDaysOfTheYearIntervalsInSeconds.push(current)
                     }
 
                     return previous
@@ -1362,7 +1365,8 @@ class ProjectStockVision {
                 return {
                     confirmed: businessDaysOfTheYearIntervals.includes(dateFormatString),
                     businessDaysOfTheYear,
-                    businessDaysOfTheYearIntervals
+                    businessDaysOfTheYearIntervals,
+                    businessDaysOfTheYearIntervalsInSeconds
                 }
             }
             
@@ -1488,14 +1492,8 @@ class ProjectStockVision {
                 if (uniquePeakValleySnapshots.length === 0) {
                     return
                 }
-                const payload = new URLSearchParams()
-                payload.append('code', code)
-                payload.append('primaryCode', primaryCode)
-                payload.append('peakValleyToday', JSON.stringify(uniquePeakValleySnapshots))
-                const resp = await fetch(`${window.idaStockVision.serverUrl}/trader/history?${payload.toString()}`, {
-                    method: 'POST',
-                    mode: 'cors',
-                })
+                
+                const resp = await Vision.historyOrSettingsHTTP(code, uniquePeakValleySnapshots, `${window.idaStockVision.serverUrl}/trader/history`)
                 if (squashTodaysHistory) {
                     const allPeakValleyHistoryBeforeToday = priceStore.peakValleyHistory
                         .filter(history => {
@@ -1528,15 +1526,15 @@ class ProjectStockVision {
         static setUploadPricesTimeout(isCrypto, currentTimeoutDateInMiliseconds, callback) {
             // will be initialized by the first code but other codes can continue when the first code is destroyed
             let isSameDate = false
-            let currentTiemoutInDateObject
+            let currentTimeoutInDateObject
             const nowInMilliSeconds = Date.now()
             const nowInDateObject = new Date(nowInMilliSeconds)
             const [endHour, endMinute, endSecond] = Vision.PriceAnalysis.tradingHistoryUploadTime(isCrypto)
             const uploadTime =  new Date(nowInMilliSeconds).setHours(endHour, endMinute, endSecond,0) 
             const timeDifference = uploadTime - nowInMilliSeconds
             if (currentTimeoutDateInMiliseconds !== undefined) {
-                currentTiemoutInDateObject = new Date(currentTimeoutDateInMiliseconds)
-                isSameDate = nowInDateObject.getDate() === currentTiemoutInDateObject.getDate()
+                currentTimeoutInDateObject = new Date(currentTimeoutDateInMiliseconds)
+                isSameDate = nowInDateObject.getDate() === currentTimeoutInDateObject.getDate()
             }
             if (!isSameDate && timeDifference > 0) {
                 setTimeout(callback, timeDifference)
@@ -1569,16 +1567,17 @@ class ProjectStockVision {
          * @returns {Promise<Response>}
          */
         static historyOrSettingsHTTP(code, snapshotToUpload = [], serverUrl = window.idaStockVision.serverUrl, additionalPayload = {}, isSettings = false, fetchOptions = {}) {
-            const payload = new URLSearchParams()
-            payload.append('code', code)
-            payload.append('primaryCode', Vision.PriceAnalysis.primaryCode(code))
-            payload.append('peakValleyToday', JSON.stringify(snapshotToUpload))
-            Object.entries(additionalPayload).filter(item => item.at(1) !== undefined).forEach(item => payload.append(item[0], item[1]))
+            const primaryCode = Vision.PriceAnalysis.primaryCode(code)
+            const peakValleyToday = snapshotToUpload
+            const payload = {code, primaryCode, peakValleyToday}
+            Object.entries(additionalPayload).filter(item => item.at(1) !== undefined).forEach(item => payload[item[0]] = item[1])
             const service = isSettings ? 'settings' : 'history'
 
-            return fetch(`${serverUrl}/trader/${service}?${payload.toString()}`, {
+            return fetch(`${serverUrl}/trader/${service}`, {
                 method: 'POST',
                 mode: 'cors',
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload),
                 ...fetchOptions
             })
         }
@@ -2523,7 +2522,7 @@ class ProjectStockVision {
             const idaStockVision = window.idaStockVision
             const tradingDayTotalHours = isCrypto ? 24 : 6.5
             const today = new Date()
-            const codes = Object.keys(window.idaStockVision.positionIn)
+            const codes = Object.keys(idaStockVision.positionIn)
             const currentPrice = {price: 0, date: today.toISOString(), flags: []}
             const result = {}
             if (isEndOfDay) {
@@ -2531,8 +2530,20 @@ class ProjectStockVision {
             }
             codes.forEach((code) => {
                 const codeSettings = idaStockVision.settings[code]
+                const dailyIntervalNumber = priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval] < priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
+                    ? 1
+                    : priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval] / priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 const currentPosition = idaStockVision.priceStore.currentPosition[code]
                 const isTinyCode = priceAnalysisClass.profitPursuitType(code) === priceAnalysisClass.PROFIT_PURSUIT.TINY
+                const lastFiveBusinessDaysCheck = Vision.PriceAnalysis.confirmDateInMultipleDaysInterval(dailyIntervalNumber).businessDaysOfTheYearIntervalsInSeconds
+                    .filter(time => time < today.getTime())
+                    .slice(-5)
+                    .map((mapTime) => {
+                        const dataPointsMatched = idaStockVision.priceStore.peakValleyHistory
+                            .filter((item) => priceAnalysisClass.dateStringFormat(item.epochDate, 'D/M/Y') === priceAnalysisClass.dateStringFormat(mapTime, 'D/M/Y'))
+                        return dataPointsMatched.length > 0
+                    })
+                    .every(outcome => outcome === true)
                 const historyDistance = Date.now() - idaStockVision.priceStore.peakValleyHistory[0].epochDate
                 const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
                 let peakValleySnapshotCheck = true
@@ -2564,7 +2575,7 @@ class ProjectStockVision {
                     squashedPeakValleyCheck = historyDistance >= priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS * 9
                 }
 
-                result[code] = {tradingIntervalCheck,precisionIntervalCheck,downwardVolatilityCheck,peakValleyOrderCheck,peakValleySnapshotCheck,tinyCodeIsPoisitonOutCheck,squashedPeakValleyCheck}
+                result[code] = {tradingIntervalCheck,precisionIntervalCheck,downwardVolatilityCheck,peakValleyOrderCheck,peakValleySnapshotCheck,tinyCodeIsPoisitonOutCheck,squashedPeakValleyCheck,lastFiveBusinessDaysCheck}
                 result[code].pass = Object.values(result[code]).every(item => item === true)
             })
 
