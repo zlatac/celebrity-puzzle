@@ -141,6 +141,20 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.fiveDay]: 5 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
             }
 
+            static get TRADING_INTERVAL_DAYS () {
+                const twentyFourHoursInMiliSeconds = PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
+                const transformation = Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS).map((item) => {
+                    if (item[1] < twentyFourHoursInMiliSeconds) {
+                        item[1] = 1
+                        return item
+                    }
+
+                    item[1] =  item[1]/twentyFourHoursInMiliSeconds
+                    return item
+                })
+                return Object.fromEntries(transformation)
+            }
+
             static get REVERSED_TRADING_INTERVAL_SECONDS() {
                 return Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS)
                     .reduce((previous, current) => {
@@ -2536,7 +2550,7 @@ class ProjectStockVision {
                 const currentPosition = idaStockVision.priceStore.currentPosition[code]
                 const isTinyCode = priceAnalysisClass.profitPursuitType(code) === priceAnalysisClass.PROFIT_PURSUIT.TINY
                 const lastFiveBusinessDaysCheck = Vision.PriceAnalysis.confirmDateInMultipleDaysInterval(dailyIntervalNumber).businessDaysOfTheYearIntervalsInSeconds
-                    .filter(time => time < today.getTime())
+                    .filter(time => time < new Date().setHours(0,0,0,0))
                     .slice(-5)
                     .map((mapTime) => {
                         const dataPointsMatched = idaStockVision.priceStore.peakValleyHistory
@@ -2550,7 +2564,7 @@ class ProjectStockVision {
                 let squashedPeakValleyCheck = true
                 let tinyCodeIsPoisitonOutCheck = true
                 const currentDayIsConfirmedForTradingInterval = priceAnalysisClass.confirmDateInMultipleDaysInterval(
-                    priceAnalysisClass.REVERSED_TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval],
+                    priceAnalysisClass.TRADING_INTERVAL_DAYS[codeSettings.tradingInterval],
                     today
                 ).confirmed
                 const tradingIntervalSeconds = priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval]
