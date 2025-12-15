@@ -1507,7 +1507,7 @@ class ProjectStockVision {
                     return
                 }
                 
-                const resp = await Vision.historyOrSettingsHTTP(code, uniquePeakValleySnapshots, `${window.idaStockVision.serverUrl}/trader/history`)
+                const resp = await Vision.historyOrSettingsHTTP(code, uniquePeakValleySnapshots, window.idaStockVision.serverUrl)
                 if (squashTodaysHistory) {
                     const allPeakValleyHistoryBeforeToday = priceStore.peakValleyHistory
                         .filter(history => {
@@ -2584,7 +2584,9 @@ class ProjectStockVision {
                 const peakValleyOrderCheck = analysisInstance.peakValleyProgressionOrder.length > 0
 
                 if (isEndOfDay) {
-                    peakValleySnapshotCheck = idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 2)
+                    peakValleySnapshotCheck = currentDayIsConfirmedForTradingInterval
+                        ? idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 2)
+                        : idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === 0
                     tinyCodeIsPoisitonOutCheck = isTinyCode ? idaStockVision.positionIn[code] === false : tinyCodeIsPoisitonOutCheck
                     squashedPeakValleyCheck = historyDistance >= priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS * 9
                 }
