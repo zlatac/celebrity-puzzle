@@ -2540,7 +2540,7 @@ class ProjectStockVision {
                     .slice(-5)
                     .map((mapTime) => {
                         const dataPointsMatched = idaStockVision.priceStore.peakValleyHistory
-                            .filter((item) => priceAnalysisClass.dateStringFormat(item.epochDate, 'D/M/Y') === priceAnalysisClass.dateStringFormat(mapTime, 'D/M/Y'))
+                            .filter((item) => priceAnalysisClass.dateStringFormat(item.epochDate, 'D/M/Y') === priceAnalysisClass.dateStringFormat(mapTime, 'D/M/Y') && item.flags.includes(codeSettings.tradingInterval))
                         return dataPointsMatched.length > 0
                     })
                     .every(outcome => outcome === true)
