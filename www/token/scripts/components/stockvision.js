@@ -2584,7 +2584,7 @@ class ProjectStockVision {
                 const peakValleyOrderCheck = analysisInstance.peakValleyProgressionOrder.length > 0
 
                 if (isEndOfDay) {
-                    peakValleySnapshotCheck = currentDayIsConfirmedForTradingInterval
+                    peakValleySnapshotCheck = priceAnalysisClass.confirmDateInMultipleDaysInterval(priceAnalysisClass.TRADING_INTERVAL_DAYS[codeSettings.tradingInterval]).confirmed
                         ? idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 2)
                         : idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === 0
                     tinyCodeIsPoisitonOutCheck = isTinyCode ? idaStockVision.positionIn[code] === false : tinyCodeIsPoisitonOutCheck
