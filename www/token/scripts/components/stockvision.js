@@ -2901,6 +2901,11 @@ class StockVisionTrade {
             {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO"},
             {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO"},
             {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO"},
+            {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO"},
+            {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO"},
+            {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO"},
+            {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO"},
+            {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO"},
         ]
 
         const submit = {
