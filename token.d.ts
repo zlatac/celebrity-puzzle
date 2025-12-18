@@ -148,6 +148,7 @@ export interface IStockVision {
       entryMultiplier: undefined | number;
       manualEntryPriceThreshold: undefined | number;
       manualExitPriceThreshold: undefined | number;
+      entryPrecisionThreshold: undefined | number;
     };
   };
   server: {[key:string]: string};

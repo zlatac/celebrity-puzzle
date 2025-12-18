@@ -141,6 +141,14 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.fiveDay]: 5 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
             }
 
+            static get REVERSED_TRADING_INTERVAL_SECONDS() {
+                return Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS)
+                    .reduce((previous, current) => {
+                        previous[current[1]] = current[0]
+                        return previous
+                    }, {})
+            }
+
             static get TRADING_INTERVAL_DAYS () {
                 const twentyFourHoursInMiliSeconds = PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 const transformation = Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS).map((item) => {
@@ -155,13 +163,6 @@ class ProjectStockVision {
                 return Object.fromEntries(transformation)
             }
 
-            static get REVERSED_TRADING_INTERVAL_SECONDS() {
-                return Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS)
-                    .reduce((previous, current) => {
-                        previous[current[1]] = current[0]
-                        return previous
-                    }, {})
-            }
 
             static EVENT_NAMES = {
                 destroyCode: `${PriceAnalysis.PROJECT_NAME}_destroyCode`,
@@ -254,7 +255,7 @@ class ProjectStockVision {
 
             get todaysDateMidnight () {
                 const today = new Date()
-                return today.setHours(0,0,0)
+                return today.setHours(0,0,0,0)
             }
 
             get dateExistsForCurrrentPosition() {
@@ -1864,6 +1865,7 @@ class ProjectStockVision {
                     manualExitPriceThreshold: this.#manualExitPrice || undefined,
                     profitThreshold: undefined,
                     lossThreshold: undefined,
+                    entryPrecisionThreshold: Vision.PriceAnalysis.entryExitPricePrecisionThreshold,
                 }
                 Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
                 const setFutureIntervalListener = () => {
@@ -2070,8 +2072,9 @@ class ProjectStockVision {
                 return
             }
             let today = new Date()
+            today.setHours(0,0,0,0)
             if (forTomorrow) {
-                const tomorrowEpoch = today.getTime() + 24*Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[Vision.PriceAnalysis.TRADING_INTERVAL.oneHour]
+                const tomorrowEpoch = today.getTime() + Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 today.setTime(tomorrowEpoch)
                 clearInterval(window.idaStockVision.intervalInspectorInstance[code])
                 window.idaStockVision.intervalInspectorInstance[code] = undefined
@@ -2089,7 +2092,7 @@ class ProjectStockVision {
                 }
             }
 
-            if (intervalInSeconds > Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS) {
+            if (intervalInSeconds >= Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS) {
                 const isWholeNumber = intervalInSeconds % Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS === 0
                 const millisecondsInDays = intervalInSeconds / Vision.PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 if (!isWholeNumber) {
@@ -2629,6 +2632,7 @@ class ProjectStockVision {
                 let exitPrice = windowStockVision.settings[this.#code].manualExitPriceThreshold
                 const entryPercentageThreshold = windowStockVision.settings[this.#code].entryPercentageThreshold
                 const exitPercentageThreshold = windowStockVision.settings[this.#code].exitPercentageThreshold
+                const entryPrecisionThreshold = windowStockVision.settings[this.#code].entryPrecisionThreshold
                 let analysis, anchor
                 /** @type {number | string} */
                 let anchorPrice = ''
@@ -2700,7 +2704,7 @@ class ProjectStockVision {
                 }
                 const stockSurfDecision = {
                     enter: onlyPrecisionFlagExistsOnCurrentPrice
-                        ? Vision.numberIsWithinOneDirectionalRange(entryPrice,currentPrice.price,Vision.PriceAnalysis.entryExitPricePrecisionThreshold) 
+                        ? Vision.numberIsWithinOneDirectionalRange(entryPrice,currentPrice.price,entryPrecisionThreshold) 
                         : currentPrice.price >= entryPrice,
                     exit: onlyPrecisionFlagExistsOnCurrentPrice 
                         ? Vision.numberIsWithinOneDirectionalRange(exitPrice,currentPrice.price,Vision.PriceAnalysis.entryExitPricePrecisionThreshold,false) 
