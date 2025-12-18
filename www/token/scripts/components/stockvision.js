@@ -2100,7 +2100,11 @@ class ProjectStockVision {
                 }
                 const todayIsAnInterval =  Vision.PriceAnalysis.confirmDateInMultipleDaysInterval(millisecondsInDays, today).confirmed
                 if (isWholeNumber && todayIsAnInterval) {
-                    intervals.push(startTime)
+                    /* this is important for >= 1 day(s) intervals cause of edge case of a high startime price and low endtime price.
+                    this will enhance a better accurate anchoring for the next interval and an extra opportunity to get in/out
+                    at the end of the day */
+                    const lastIntervalForTheDay = stopTime - (2 * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
+                    intervals.push(startTime, lastIntervalForTheDay)
                 }
                 return
             }
@@ -2565,7 +2569,7 @@ class ProjectStockVision {
                 const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
                 let peakValleySnapshotCheck = true
                 let squashedPeakValleyCheck = true
-                let tinyCodeIsPoisitonOutCheck = true
+                let tinyCodeIsPositonOutCheck = true
                 const currentDayIsConfirmedForTradingInterval = priceAnalysisClass.confirmDateInMultipleDaysInterval(
                     priceAnalysisClass.TRADING_INTERVAL_DAYS[codeSettings.tradingInterval],
                     today
@@ -2575,7 +2579,7 @@ class ProjectStockVision {
                 const precisionIntervalSeconds = priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.precisionInterval]
                 const expectedTradingIntervalSize = tradingIntervalSeconds < priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
                     ? intervalAmountWithinTheDay
-                    : 1
+                    : 1 * 2
                 const expectedPrecisionIntervalSize = precisionIntervalSeconds < priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
                     ? Math.floor((priceAnalysisClass.ONE_HOUR_IN_MILLISECONDS * tradingDayTotalHours / precisionIntervalSeconds) - 1)
                     : 1
@@ -2588,13 +2592,15 @@ class ProjectStockVision {
 
                 if (isEndOfDay) {
                     peakValleySnapshotCheck = priceAnalysisClass.confirmDateInMultipleDaysInterval(priceAnalysisClass.TRADING_INTERVAL_DAYS[codeSettings.tradingInterval]).confirmed
-                        ? idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 2)
+                        ? tradingIntervalSeconds < priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
+                            ? idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 2)
+                            : idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === (intervalAmountWithinTheDay * 4)
                         : idaStockVision.priceStore.todaysPeakValleySnapshot[code].length === 0
-                    tinyCodeIsPoisitonOutCheck = isTinyCode ? idaStockVision.positionIn[code] === false : tinyCodeIsPoisitonOutCheck
+                    tinyCodeIsPositonOutCheck = isTinyCode ? idaStockVision.positionIn[code] === false : tinyCodeIsPositonOutCheck
                     squashedPeakValleyCheck = historyDistance >= priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS * 9
                 }
 
-                result[code] = {tradingIntervalCheck,precisionIntervalCheck,downwardVolatilityCheck,peakValleyOrderCheck,peakValleySnapshotCheck,tinyCodeIsPoisitonOutCheck,squashedPeakValleyCheck,lastFiveBusinessDaysCheck}
+                result[code] = {tradingIntervalCheck,precisionIntervalCheck,downwardVolatilityCheck,peakValleyOrderCheck,peakValleySnapshotCheck,tinyCodeIsPoisitonOutCheck: tinyCodeIsPositonOutCheck,squashedPeakValleyCheck,lastFiveBusinessDaysCheck}
                 result[code].pass = Object.values(result[code]).every(item => item === true)
             })
 
