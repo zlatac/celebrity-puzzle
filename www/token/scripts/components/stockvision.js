@@ -4343,14 +4343,24 @@ class StockVisionTrade {
         return {profitLossAmount, profitLossPercentage, breakDown}
     }
 
-    static fixBrokenOrder = (orderId) => {
+    static fixBrokenOrder = (orderId, cancel = false, backUp = true) => {
+        const windowStockVisionTrade = window.idaStockVisionTrade
         if (typeof orderId !== 'string' || orderId === '') {
             throw new Error('not a string')
         }
-        const order = window.idaStockVisionTrade.orders.find(order => order.orderId === orderId)
-        if (order !== undefined) {
-            order.executed = true
-            return order
+        const specificOrder = windowStockVisionTrade.orders.find(order => order.orderId === orderId)
+        if (specificOrder !== undefined) {
+            specificOrder.executed = true
+            if (cancel) {
+                if (specificOrder.position === false) {
+                    windowStockVisionTrade.orderHistory[specificOrder.code].orderId = specificOrder.entryOrderId
+                }
+                specificOrder.broken = true
+            }
+            if (backUp) {
+                this.backUp()
+            }
+            return specificOrder
         }
 
         return

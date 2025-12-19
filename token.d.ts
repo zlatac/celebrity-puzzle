@@ -286,6 +286,7 @@ export interface ITradeCheckResponse extends ICboeQuoteResponse {
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;
   accepted?: boolean;
+  broken?: boolean;
   orderId?: string | undefined;
   rootOrderId?: string | undefined;
   capital: number;
