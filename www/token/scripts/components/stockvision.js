@@ -2103,7 +2103,7 @@ class ProjectStockVision {
                     /* this is important for >= 1 day(s) intervals cause of edge case of a high startime price and low endtime price.
                     this will enhance a better accurate anchoring for the next interval and an extra opportunity to get in/out
                     at the end of the day */
-                    const lastIntervalForTheDay = stopTime - (2 * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
+                    const lastIntervalForTheDay = new Date(stopTime - (2 * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)).setSeconds(0,0)
                     intervals.push(startTime, lastIntervalForTheDay)
                 }
                 return
