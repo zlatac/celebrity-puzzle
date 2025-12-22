@@ -4299,7 +4299,7 @@ class StockVisionTrade {
      * @param {string[]} specificCodes 
      * 
      */
-    static getProfitLossReturn = (orders = [], specificCodes = []) => {
+    static getProfitLossReturn = (orders = [], fromDateEpoch = 0, specificCodes = []) => {
         // TO-DO switch out profitLoss percentage for geometric mean https://www.investopedia.com/terms/g/geometricmean.asp
         let profitLossAmount = 0
         let profitLossPercentage = 0
@@ -4312,7 +4312,7 @@ class StockVisionTrade {
         }, {})
 
         orders
-            .filter((order) => order.position === false && (specificCodes.length === 0 || specificCodesUppercase.includes(order.code)))
+            .filter((order) => order.position === false && Date.parse(order.timeSubmitted) > fromDateEpoch && (specificCodes.length === 0 || specificCodesUppercase.includes(order.code)))
             .forEach((order) => {
                 const entryOrder = orders.filter(i => i.code === order.code && Date.parse(i.timeSubmitted) < Date.parse(order.timeSubmitted)).at(-1)
                 if (!entryOrder) {
