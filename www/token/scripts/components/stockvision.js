@@ -45,6 +45,8 @@ class ProjectStockVision {
         #exitPercentage
         #tradingInterval
         #precisionInterval
+        /** @type {CurrentPrice} */
+        #mutationCurrentPrice
 
         /**
          * vision
@@ -2049,8 +2051,8 @@ class ProjectStockVision {
                 }
 
                 if (peakValleyDetected !== undefined) {
-                    Vision.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, peakValleyDetected, intervalFlag)
                     priceStore.peakValleyHistory.push(peakValleyDetected)
+                    this.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, peakValleyDetected, intervalFlag)
                 }
             } catch (error) {
                 console.log('Ida Trader Bot - UPDATE PRICES', error)
@@ -2194,7 +2196,7 @@ class ProjectStockVision {
          * @param {PriceHistory | CurrentPrice} peakValleyDetectedOrCurrentPrice 
          * @param {IntervalFlags} intervalFlag
          */
-        static addIntervalFlagToPeakValleyDetectedOrCurrentPrice(code, peakValleyDetectedOrCurrentPrice, intervalFlag) {
+        addIntervalFlagToPeakValleyDetectedOrCurrentPrice(code, peakValleyDetectedOrCurrentPrice, intervalFlag) {
             if (Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[intervalFlag] === undefined) {
                 return
             }
@@ -2203,16 +2205,35 @@ class ProjectStockVision {
             const timeFormatString = Vision.PriceAnalysis.dateStringFormat(peakValleyDetectedOrCurrentPrice.date)
             const tradingIntervalMatch = priceStore.priceTimeIntervalsToday[code].has(timeFormatString)
             const precisionIntervalMatch = priceStore.precisionTimeIntervalsToday[code].has(timeFormatString)
+            
             if (tradingIntervalMatch === true) {
                 const tradingIntervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
                 
                 if (isPeakValley) {
+                    const currentPrice = this.#mutationCurrentPrice
+                    const currentPriceIsPeakValleyDetected = currentPrice.price === peakValleyDetectedOrCurrentPrice.price &&
+                        currentPrice.date === peakValleyDetectedOrCurrentPrice.date
+                    const record = {
+                        target: {
+                            nodeValue: String(currentPrice.price)
+                        }
+                    }
                     switch(peakValleyDetectedOrCurrentPrice.type) {
                         case 'peak':
                             if (!tradingIntervalSettings.peakCaptured) {
                                 peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag)
                                 tradingIntervalSettings.peakCaptured = true
                                 tradingIntervalSettings.peakPrice = peakValleyDetectedOrCurrentPrice.price
+                                // clone into opposite type
+                                const clone = {...peakValleyDetectedOrCurrentPrice}
+                                clone.type = 'valley'
+                                priceStore.peakValleyHistory.push(clone)
+                                tradingIntervalSettings.valleyCaptured = true
+                                tradingIntervalSettings.valleyPrice = peakValleyDetectedOrCurrentPrice.price
+                                if (!currentPriceIsPeakValleyDetected) {
+                                    // to avoid double processing when not needed
+                                    this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                                }
                             }
                             break;
                         case 'valley':
@@ -2220,6 +2241,16 @@ class ProjectStockVision {
                                 peakValleyDetectedOrCurrentPrice.flags.push(intervalFlag)
                                 tradingIntervalSettings.valleyCaptured = true
                                 tradingIntervalSettings.valleyPrice = peakValleyDetectedOrCurrentPrice.price
+                                // clone into opposite type
+                                const clone = {...peakValleyDetectedOrCurrentPrice}
+                                clone.type = 'peak'
+                                priceStore.peakValleyHistory.push(clone)
+                                tradingIntervalSettings.peakCaptured = true
+                                tradingIntervalSettings.peakPrice = peakValleyDetectedOrCurrentPrice.price
+                                if (!currentPriceIsPeakValleyDetected) {
+                                    // to avoid double processing when not needed
+                                    this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                                }
                             }
                             break;
                         default:
@@ -2269,6 +2300,11 @@ class ProjectStockVision {
                 const peakValleyCaptured = [interval.peakCaptured, interval.valleyCaptured].every((item) => item === true)
                 const currentTimePriceExecuted = interval.currentPriceExecuted === true
                 const tradingInterval = window.idaStockVision.settings[code].tradingInterval
+                const record = {
+                    target: {
+                        nodeValue: String(lastPrice.price)
+                    }
+                }
                 
                 if (!peakValleyCaptured) {
                     const closestPeakValleyToNow = window.idaStockVision.priceStore.peakValleyHistory
@@ -2326,15 +2362,14 @@ class ProjectStockVision {
                         interval[`${item.type}Price`] = item.price
                         console.log(`inspector: closest ${item.type} flagged`)
                     })
+
+                    this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                    interval.currentPriceExecuted = true
+                    console.log('inspector: peak/valley flagged & interval time price execution completed')
                 }
 
 
                 if (!currentTimePriceExecuted) {
-                    const record = {
-                        target: {
-                            nodeValue: String(lastPrice.price)
-                        }
-                    }
                     this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
                     interval.currentPriceExecuted = true
                     console.log('inspector: interval time price execution completed')
@@ -2614,6 +2649,9 @@ class ProjectStockVision {
          * @param {MutationRecord[]} mutationArray 
          * @param {MutationObserver} observerInstance 
          * @param {boolean} inspectorTrigger
+         * The current price will first be processed, the peakValleyDetected will follow and depending on the 
+         * flow of the prices it might be in sync with the current price or be detected after the current price
+         * has been executed.
          */
         mutationObserverCallback = (mutationArray, observerInstance, inspectorTrigger = false) => {
             try {
@@ -2628,9 +2666,10 @@ class ProjectStockVision {
                 const priceStore = window.idaStockVision.priceStore
                 /** @type {CurrentPrice} */
                 const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
-                Vision.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, currentPrice, this.#tradingInterval)
+                this.#mutationCurrentPrice = currentPrice
+                this.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, currentPrice, this.#tradingInterval)
                 if (inspectorTrigger === true) {
-                    currentPrice.flags.push(this.#tradingInterval)
+                    currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
                 }
                 const confirmationLink = `${window.idaStockVision.notificationServerUrl}/trader/confirm?`
                 const confirmationQueryParams = new URLSearchParams()
