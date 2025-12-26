@@ -2210,6 +2210,10 @@ class ProjectStockVision {
                 const tradingIntervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
                 
                 if (isPeakValley) {
+                    /* scenarios to cover (done)                  
+                     * CP => currentPrice, CCP => currentCurrentPrice, CPE => currentPriceExecuted, V => valley, P => peak.
+                     * CPE only, CP === P, CP === V, CPE && [P === CCP], CPE && [V === CCP], CPE && [P !== CCP], CPE && [V !== CCP]  
+                     */
                     const currentPrice = this.#mutationCurrentPrice
                     const currentPriceIsPeakValleyDetected = currentPrice.price === peakValleyDetectedOrCurrentPrice.price &&
                         currentPrice.date === peakValleyDetectedOrCurrentPrice.date
@@ -2230,8 +2234,9 @@ class ProjectStockVision {
                                 priceStore.peakValleyHistory.push(clone)
                                 tradingIntervalSettings.valleyCaptured = true
                                 tradingIntervalSettings.valleyPrice = peakValleyDetectedOrCurrentPrice.price
-                                if (!currentPriceIsPeakValleyDetected) {
-                                    // to avoid double processing when not needed
+                                if (!currentPriceIsPeakValleyDetected || tradingIntervalSettings.currentPriceExecuted) {
+                                    // to avoid double processing when current price === peakvalleyDetected[peal/valley is detected]
+                                    // also to process when peak/valley detected after currentPriceExecuted === true
                                     this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
                                 }
                             }
@@ -2247,8 +2252,9 @@ class ProjectStockVision {
                                 priceStore.peakValleyHistory.push(clone)
                                 tradingIntervalSettings.peakCaptured = true
                                 tradingIntervalSettings.peakPrice = peakValleyDetectedOrCurrentPrice.price
-                                if (!currentPriceIsPeakValleyDetected) {
-                                    // to avoid double processing when not needed
+                                if (!currentPriceIsPeakValleyDetected || tradingIntervalSettings.currentPriceExecuted) {
+                                    // to avoid double processing when current price === peakvalleyDetected[peal/valley is detected]
+                                    // also to process when peak/valley detected after currentPriceExecuted === true
                                     this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
                                 }
                             }
