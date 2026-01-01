@@ -2382,13 +2382,14 @@ class ProjectStockVision {
                 }
 
 
-                if (window.idaStockVision.intervalInspectorInstance[code] === undefined) {
-                    window.idaStockVision.intervalInspectorInstance[code] = window.setInterval(() => {
-                        this.tradingIntervalInspector(code, intervalBag, intervalSeconds)
-                    }, intervalSeconds)
-                }
+                // if (window.idaStockVision.intervalInspectorInstance[code] === undefined) {
+                //     window.idaStockVision.intervalInspectorInstance[code] = window.setInterval(() => {
+                //         this.tradingIntervalInspector(code, intervalBag, intervalSeconds)
+                //     }, intervalSeconds)
+                // }
 
                 console.log('inspector: check completed')
+                window.idaStockVision.timeoutInspectorInstance[code] = undefined
             } catch (error) {
                 console.log('Ida Trader Bot - TRADING INTERVAL INSPECTOR', error)
             }
