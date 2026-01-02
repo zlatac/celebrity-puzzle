@@ -2598,7 +2598,7 @@ class ProjectStockVision {
                     : priceAnalysisClass.TRADING_INTERVAL_SECONDS[codeSettings.tradingInterval] / priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 const currentPosition = idaStockVision.priceStore.currentPosition[code]
                 const isTinyCode = priceAnalysisClass.profitPursuitType(code) === priceAnalysisClass.PROFIT_PURSUIT.TINY
-                const lastFiveBusinessDaysCheck = Vision.PriceAnalysis.confirmDateInMultipleDaysInterval(dailyIntervalNumber).businessDaysOfTheYearIntervalsInSeconds
+                const lastFiveBusinessDays = Vision.PriceAnalysis.confirmDateInMultipleDaysInterval(dailyIntervalNumber).businessDaysOfTheYearIntervalsInSeconds
                     .filter(time => time < new Date().setHours(0,0,0,0))
                     .slice(-5)
                     .map((mapTime) => {
@@ -2606,7 +2606,9 @@ class ProjectStockVision {
                             .filter((item) => priceAnalysisClass.dateStringFormat(item.epochDate, 'D/M/Y') === priceAnalysisClass.dateStringFormat(mapTime, 'D/M/Y') && item.flags.includes(codeSettings.tradingInterval))
                         return dataPointsMatched.length > 0
                     })
-                    .every(outcome => outcome === true)
+                // every beginning of the new year will not be able to detect previous year days in general and naturally fail.
+                // we check the length of the result of lastFiveBusinessDays because of how empty array is evaluated => [].every(logic) will always be true.
+                const lastFiveBusinessDaysCheck = lastFiveBusinessDays.length > 0 && lastFiveBusinessDays.every(outcome => outcome === true)
                 const historyDistance = Date.now() - idaStockVision.priceStore.peakValleyHistory[0].epochDate
                 const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
                 let peakValleySnapshotCheck = true
