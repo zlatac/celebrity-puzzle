@@ -982,7 +982,10 @@ class ProjectStockVision {
                 }
 
                 if (rawDataIsDailyInterval) {
-                    businessDaysOfTheYearIntervals = PriceAnalysis.confirmDateInMultipleDaysInterval(minutesOrDayInterval).businessDaysOfTheYearIntervals
+                    const currrentYear = new Date().getFullYear()
+                    const lastYearExists = !data[0].includes(currrentYear.toString())
+                    const dateToConfirm = lastYearExists ? new Date(`12/30/${currrentYear - 1}`) : undefined
+                    businessDaysOfTheYearIntervals = PriceAnalysis.confirmDateInMultipleDaysInterval(minutesOrDayInterval,dateToConfirm,undefined,6).businessDaysOfTheYearIntervals
                 }
                 
                 const fullDayMinuteIntervalTotal = !rawDataIsDailyInterval ? 391 : data.length
@@ -1324,8 +1327,9 @@ class ProjectStockVision {
              * @param {number} daysInterval
              * @param {Date} dateToConfirm 
              * @param {number} month 
+             * @param {number} nextMonthOffset 
              */
-            static confirmDateInMultipleDaysInterval(daysInterval = 1, dateToConfirm = new Date(), month = 0) {
+            static confirmDateInMultipleDaysInterval(daysInterval = 1, dateToConfirm = new Date(), month = 0, nextMonthOffset = 1) {
                 // relative to the first business day of beginning of the year excluding the new year (mon,tue,wed...)
                 // from that day extract all the business days of the year up to todays month
                 // loop through all the business days with the days interval up to todays month
@@ -1338,7 +1342,7 @@ class ProjectStockVision {
                 const clonedDate = new Date(dateToConfirm)
                 clonedDate.setHours(0,0,0,0)
                 const dateFormatString = PriceAnalysis.dateStringFormat(clonedDate, 'D/M/Y')
-                const nextMonth = new Date(clonedDate).setMonth(clonedDate.getMonth() + 1)
+                const nextMonth = new Date(clonedDate).setMonth(clonedDate.getMonth() + nextMonthOffset)
                 const dateAfterNewYear = 2
                 const firstDayOfTheYear = new Date(clonedDate)
                 firstDayOfTheYear.setFullYear(clonedDate.getFullYear(), month, dateAfterNewYear)
