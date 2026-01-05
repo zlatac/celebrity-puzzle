@@ -1511,6 +1511,9 @@ class ProjectStockVision {
                 }
                 
                 const resp = await Vision.historyOrSettingsHTTP(code, uniquePeakValleySnapshots, window.idaStockVision.serverUrl)
+                if (resp.status === 200) {
+                    Vision.trackProcess('uploadHistory')
+                }
                 if (squashTodaysHistory) {
                     const allPeakValleyHistoryBeforeToday = priceStore.peakValleyHistory
                         .filter(history => {
@@ -1780,6 +1783,10 @@ class ProjectStockVision {
                         pauseWatchCode: Vision.pauseWatchCode,
                     },
                     settings: {},
+                    processTracker: {
+                        tradingInterval: {},
+                        uploadHistory: undefined,
+                    },
                     server: {
                         // development: 'http://localhost:9000',
                         // developmentNotification: 'http://10.0.0.148:9000',
@@ -2188,6 +2195,7 @@ class ProjectStockVision {
             Vision.tradingTimeInterval(code, precisionIntervalsBag, precisionIntervalInSeconds, startHour, startMinute, startSeconds, forTomorrow)
             window.idaStockVision.priceStore.priceTimeIntervalsToday[code] = Vision.tradingTimeIntervalForPeakDetection(tradingIntervalsBag)
             window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] = Vision.precisionTimeIntervalForPricePrecision(precisionIntervalsBag)
+            Vision.trackProcess('tradingInterval', code)
         }
 
         /**
@@ -2413,14 +2421,21 @@ class ProjectStockVision {
             // setTimeout with the seconds needed
             const today = new Date()
             const nowEpochDate = today.getTime()
+            const [startHour, startMinute, startSeconds] = window.idaStockVision.tradingStartTime
             /** @type {TradingIntervalInspection[]} */
             const intervalBagValues = Array.from(tradingIntervalBag.values())
             if (intervalBagValues.length === 0) {
+                const tradingIntervalProcessTracker = window.idaStockVision.processTracker.tradingInterval[code]
+                const tradingIntervalProcessDate = Number.isFinite(tradingIntervalProcessTracker) 
+                    ? new Date(tradingIntervalProcessTracker)
+                    : today
+                if (today.getDate() !== tradingIntervalProcessDate.getDate()) {
+                    Vision.setTradingTimeInterval(code, tradingIntervalSeconds, precisionIntervalSeconds, startHour, startMinute, startSeconds)
+                }
                 return
             }
             const firstIntervalItem = intervalBagValues[0]
             const firstIntervalItemDate = new Date(firstIntervalItem.epochDate)
-            const [startHour, startMinute, startSeconds] = window.idaStockVision.tradingStartTime
             // check the interval bag has todays date and reset the interval bag otherwise (after weekend, public holidays, etc)
             if (firstIntervalItemDate.getDate() !== today.getDate()) {
                 Vision.setTradingTimeInterval(code, tradingIntervalSeconds, precisionIntervalSeconds, startHour, startMinute, startSeconds)
@@ -2651,6 +2666,26 @@ class ProjectStockVision {
             console.log(result)
 
             return Object.values(result).every(item => item.pass === true)
+        }
+
+        /**
+         * 
+         * @param {keyof StockVision["processTracker"]} process 
+         * @param {string} [code] 
+         */
+        static trackProcess(process, code) {
+            try {
+                const now = Date.now()
+                const idaStockVisionProcessTracker = window.idaStockVision.processTracker
+                if (code === undefined && typeof idaStockVisionProcessTracker[process] !== 'object') {
+                    // @ts-ignore
+                    idaStockVisionProcessTracker[process] = now
+                    return
+                }
+                idaStockVisionProcessTracker[process][code] = now
+            } catch (error) {
+                
+            }
         }
 
         /**

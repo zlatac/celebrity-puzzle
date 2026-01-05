@@ -167,6 +167,10 @@ export interface IStockVision {
     anchorProfitLoss: number;
     profitLoss: number;
   }[];
+  processTracker: {
+    tradingInterval: {[key: string]: number};
+    uploadHistory: number;
+  }
 }
 
 /** STOCK_VISION_TRADE */
