@@ -1515,7 +1515,7 @@ class ProjectStockVision {
                 }
                 
                 const resp = await Vision.historyOrSettingsHTTP(code, uniquePeakValleySnapshots, window.idaStockVision.serverUrl)
-                if (resp.status === 200) {
+                if (resp.ok) {
                     Vision.trackProcess('uploadHistory')
                 }
                 if (squashTodaysHistory) {
