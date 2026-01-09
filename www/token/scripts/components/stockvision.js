@@ -2609,6 +2609,9 @@ class ProjectStockVision {
             const result = {}
             if (isEndOfDay) {
                 today.setTime(today.getTime() +  priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS)
+                result.uploadHistoryCheck = {pass: undefined}
+                result.uploadHistoryCheck.pass = Number.isFinite(idaStockVision.processTracker.uploadHistory) 
+                    && idaStockVision.processTracker.uploadHistory > new Date().setHours(...priceAnalysisClass.tradingEndTime())
             }
             codes.forEach((code) => {
                 const codeSettings = idaStockVision.settings[code]
