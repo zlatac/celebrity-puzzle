@@ -2625,13 +2625,13 @@ class ProjectStockVision {
                     .slice(-5)
                     .map((mapTime) => {
                         const dataPointsMatched = idaStockVision.priceStore.peakValleyHistory
-                            .filter((item) => priceAnalysisClass.dateStringFormat(item.epochDate, 'D/M/Y') === priceAnalysisClass.dateStringFormat(mapTime, 'D/M/Y') && item.flags.includes(codeSettings.tradingInterval))
+                            .filter((item) => priceAnalysisClass.dateStringFormat(Date.parse(item.date), 'D/M/Y') === priceAnalysisClass.dateStringFormat(mapTime, 'D/M/Y') && item.flags.includes(codeSettings.tradingInterval))
                         return dataPointsMatched.length > 0
                     })
                 // every beginning of the new year will not be able to detect previous year days in general and naturally fail.
                 // we check the length of the result of lastFiveBusinessDays because of how empty array is evaluated => [].every(logic) will always be true.
                 const lastFiveBusinessDaysCheck = lastFiveBusinessDays.length > 0 && lastFiveBusinessDays.every(outcome => outcome === true)
-                const historyDistance = Date.now() - idaStockVision.priceStore.peakValleyHistory[0].epochDate
+                const historyDistance = Date.now() - Date.parse(idaStockVision.priceStore.peakValleyHistory[0].date)
                 const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
                 let peakValleySnapshotCheck = true
                 let squashedPeakValleyCheck = true
