@@ -5,6 +5,8 @@ declare global {
   interface Window {
     idaStockVision: IStockVision;
     idaStockVisionTrade: IStockVisionTrade;
+    ProjectStockVision: class;
+    StockVisionTrade: class;
   }
 }
 

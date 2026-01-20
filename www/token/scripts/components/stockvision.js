@@ -952,8 +952,8 @@ class ProjectStockVision {
              * 
              * @param {string | string[]} rawData 
              * @param {number} minutesOrDayInterval 
-             * @param {number} daysOfMinutesToAnalyse 
-             * @param {boolean} rawDataIsDailyInterval 
+             * @param {number} [daysOfMinutesToAnalyse] 
+             * @param {boolean} [rawDataIsDailyInterval] 
              */
             static prepareForStatistics(rawData, minutesOrDayInterval = 5, daysOfMinutesToAnalyse, rawDataIsDailyInterval = false) {
                 // copy paste raw data from nasdaq into the browser as a string literal https://www.nasdaq.com/market-activity/stocks/tsla/advanced-charting
@@ -1182,7 +1182,7 @@ class ProjectStockVision {
              * 
              * @param {number} startAmount 
              * @param {number} percentageAmount 
-             * @param {boolean} negative 
+             * @param {boolean} negative used to force negative impact when percentageAmount is absolute value
              * @returns {number}
              */
             static percentageFinalAmount(startAmount, percentageAmount, negative = false) {
@@ -1628,6 +1628,7 @@ class ProjectStockVision {
                         window.idaStockVision.priceStore.currentPosition[item].position = position
                         window.idaStockVision.priceStore.currentPosition[item].date = data[item]?.date
                         window.idaStockVision.priceStore.currentPosition[item].price = data[item]?.price
+                        window.idaStockVision.priceStore.currentPosition[item].originalPrice = data[item]?.originalPrice
                     }
                 })
                 if (timeOutSeconds !== undefined) {
@@ -1907,7 +1908,7 @@ class ProjectStockVision {
                     : window.idaStockVision.server.development
                 window.idaStockVision.notificationServerUrl = 'production' in window.idaStockVision.server 
                     ? window.idaStockVision.server.production
-                    : window.idaStockVision.server.developmentNotification
+                    : window.idaStockVision.server.development
                 window.idaStockVision.notificationInProgress[code] = true
                 const primaryCode = Vision.PriceAnalysis.primaryCode(code)
                 const resp = await Vision.statusHTTP(code, false)
@@ -1926,6 +1927,7 @@ class ProjectStockVision {
                 if (code in data && data[code].date && data[code].price) {
                     window.idaStockVision.priceStore.currentPosition[code].date = data[code]?.date
                     window.idaStockVision.priceStore.currentPosition[code].price = data[code]?.price
+                    window.idaStockVision.priceStore.currentPosition[code].originalPrice = data[code]?.originalPrice
                 }
                 if (
                     primaryCode in data && 
@@ -4502,6 +4504,7 @@ class StockVisionTrade {
                     order.orderId = resFormatted[this.constants[brokerageName].trade.orderId]
                     order.quantity = quantity
                     order.priceSubmitted = price
+                    order.priceSubmittedHistory = [price]
                     order.checkCount = 0
                     order.executed = false
                     order.modify = false
@@ -4511,7 +4514,8 @@ class StockVisionTrade {
                     }
                     idaStockVisionTrade.orderHistory[order.code] = {
                         quantity,
-                        orderId: order.orderId
+                        orderId: order.orderId,
+                        price: undefined, // will be defined on execution status
                     }
                     // backup order data in localstorage
                     this.backUp()
@@ -4588,17 +4592,22 @@ class StockVisionTrade {
                         throw new Error(`Cannot find orderId - ${orderId}`)
                     }
                     const orderFromBrokerage = brokerageOrdersObject[orderId]
+                    // only calculated when going into a position so we do not have a position exit lower than observation price
+                    const priceGap = order.position 
+                        ? ProjectStockVision.vision.percentageDelta(Number(order.priceSubmittedHistory[0]), Number(order.priceSubmitted), true)
+                        : undefined
                     switch(orderFromBrokerage.status) {
                         case orderStatuses.executed:
                             order.executed = true
-                            this.confirmOrderWithLink(order.confirmationLink, order.quantity)
+                            idaStockVisionTrade.orderHistory[order.code].price = order.priceSubmitted
+                            this.confirmOrderWithLink(order.confirmationLink, order.quantity, priceGap)
                             break
                         case orderStatuses.partial:
                             order.partialExecution = true
                             order.openQuantity = orderFromBrokerage.openQuantity
                             order.filledQuantity = orderFromBrokerage.filledQuantity
                             break
-                            // to-do handle edge case of partial execution and never completely executes (price run off buy/sell edge case)
+                            // to-do handle edge case of partial execution that never completely executes (price run off buy/sell edge case)
                             // remove break, so that checkCount can be iterated and modify can be triggered
                             // in modify function use openQunatity and quantity to modify buy/sell orders with partialExecution flag
                         case orderStatuses.accepted:
@@ -4642,13 +4651,22 @@ class StockVisionTrade {
      * 
      * @param {string} link 
      * @param {number | undefined} sharesQuantity 
+     * @param {number | undefined} priceGap 
      */
-    static confirmOrderWithLink = (link, sharesQuantity) => {
+    static confirmOrderWithLink = (link, sharesQuantity, priceGap) => {
         try {
             const url = new URL(link)
-            if(sharesQuantity !== undefined) {
+            if (sharesQuantity !== undefined) {
                 url.searchParams.set('quantity', sharesQuantity.toString())
             }
+
+            if (priceGap !== undefined && Number.isFinite(priceGap)) {
+                const positionPrice = Number(url.searchParams.get('price'))
+                const adjustedPositionPrice = ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(positionPrice, priceGap)
+                url.searchParams.set('originalPrice', positionPrice.toString())
+                url.searchParams.set('price', adjustedPositionPrice.toString())
+            }
+
             fetch(`${url.toString()}`, {
                 method: 'GET',
                 mode: 'cors',
@@ -4712,6 +4730,7 @@ class StockVisionTrade {
                     order.accepted = true
                     order.timeSubmitted = now
                     order.priceSubmitted = newPrice
+                    order.priceSubmittedHistory.push(newPrice)
                     order.rootOrderId = order.orderId
                     order.orderId = formattedRes[this.constants[brokerageName].trade.orderId]
                     order.quantity = quantity
@@ -4720,7 +4739,8 @@ class StockVisionTrade {
                     order.modify = false
                     idaStockVisionTrade.orderHistory[order.code] = {
                         quantity,
-                        orderId: order.orderId
+                        orderId: order.orderId,
+                        price: undefined
                     }
                     // backup order data in localstorage
                     this.backUp()
@@ -4814,13 +4834,41 @@ class StockVisionTrade {
             return previous
         }, {})
         const capitalCheck = Object.values(codePrimaryCapital).every(item => item <= maxCapital)
-        const result = {executionCheck, capitalCheck}
+        const projectStockVisionCheck = typeof window.ProjectStockVision === 'object'
+        const result = {executionCheck, capitalCheck, projectStockVisionCheck}
         console.log(result)
 
         return Object.values(result).every(item => item === true)
     }
 
 }
+
+// update entry price
+/** trade */
+// add original price to order
+// on execution of trade compare the priceSubmitted and the original price
+// adjust the confirmation link price  before confirming the trade
+
+/** [cs] */
+// add the originalPrice to code
+
+/** vision */
+// add originalPrice to currentPosition data structure
+
+// profit chunks
+
+/** vision */
+// determine profit chunk threshold (price, capital, profit)
+// assume using position price when profitChunkPrice is null|undefined|0 to determine profit chunk logic
+// create new trade flag type: profit-out: boolean
+// add profitChunkPrice to confirmationLink
+// send notification
+/** trade */
+// add price to orderHistory
+// update price in orderHistory after profit chunk sell
+// update quantity in orderHistory after profit chunk sell
+// confirm after profit chunk sell position IN with updated position values
+
 
 module.exports = {
     ProjectStockVision,

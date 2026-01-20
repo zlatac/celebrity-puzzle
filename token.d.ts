@@ -24,6 +24,7 @@ export interface ICurrentPrice extends IPrice {
 export interface IPosition extends IPrice {
   position: boolean;
   positionAnchor?: number;
+  originalPrice?: number;
 }
 
 export interface ITradingIntervalInspection {
@@ -302,6 +303,7 @@ export interface ITradeOrder extends ITradeCheckResponse {
   filledQuantity: number;
   timeSubmitted?: string;
   priceSubmitted?: string|number;
+  priceSubmittedHistory?: (string|number)[];
   entryOrderId?: string | undefined
 }
 
@@ -335,6 +337,7 @@ export interface IStockVisionTrade {
     [key:string]: {
       quantity: number;
       orderId: string;
+      price: string | number;
     };
   };
 }
