@@ -4834,7 +4834,7 @@ class StockVisionTrade {
             return previous
         }, {})
         const capitalCheck = Object.values(codePrimaryCapital).every(item => item <= maxCapital)
-        const projectStockVisionCheck = typeof window.ProjectStockVision === 'object'
+        const projectStockVisionCheck = typeof ProjectStockVision === 'function'
         const result = {executionCheck, capitalCheck, projectStockVisionCheck}
         console.log(result)
 
@@ -4842,33 +4842,6 @@ class StockVisionTrade {
     }
 
 }
-
-// update entry price
-/** trade */
-// add original price to order
-// on execution of trade compare the priceSubmitted and the original price
-// adjust the confirmation link price  before confirming the trade
-
-/** [cs] */
-// add the originalPrice to code
-
-/** vision */
-// add originalPrice to currentPosition data structure
-
-// profit chunks
-
-/** vision */
-// determine profit chunk threshold (price, capital, profit)
-// assume using position price when profitChunkPrice is null|undefined|0 to determine profit chunk logic
-// create new trade flag type: profit-out: boolean
-// add profitChunkPrice to confirmationLink
-// send notification
-/** trade */
-// add price to orderHistory
-// update price in orderHistory after profit chunk sell
-// update quantity in orderHistory after profit chunk sell
-// confirm after profit chunk sell position IN with updated position values
-
 
 module.exports = {
     ProjectStockVision,
