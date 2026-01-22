@@ -573,6 +573,7 @@ const trader = {
                     parsedData[item.code].position = item.position
                     parsedData[item.code].date = item.payloadDate
                     parsedData[item.code].price = item.price  
+                    parsedData[item.code].originalPrice = item.originalPrice  
                 }
                 await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.confirm.splice(0, confirmationAmount)
@@ -689,6 +690,7 @@ app.get('/trader/confirm', async function(req,res){
         const position = req.query.position
         const positionDate = req.query.date
         const price = Number(req.query.price)
+        const originalPrice = req.query.originalPrice !== undefined ? Number(req.query.originalPrice) : undefined
         if (![trader.constants.IN,trader.constants.OUT].includes(position)) {
             throw new Error('position not valid')
         }
@@ -706,7 +708,7 @@ app.get('/trader/confirm', async function(req,res){
         if (positionDate !== undefined) {
             payloadDate = positionDate
         }
-        trader.asyncOperation.confirm.push({code, price, position, payloadDate})
+        trader.asyncOperation.confirm.push({code, price, position, payloadDate, originalPrice})
         clearTimeout(trader.asyncOperation.confirmTimeout)
         trader.asyncOperation.confirmTimeout = setTimeout(trader.methods.processConfrimations, 500)
         
