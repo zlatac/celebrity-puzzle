@@ -168,7 +168,8 @@ class ProjectStockVision {
 
             static EVENT_NAMES = {
                 destroyCode: `${PriceAnalysis.PROJECT_NAME}_destroyCode`,
-                setFutureInterval: `${PriceAnalysis.PROJECT_NAME}_setFutureInterval`
+                setFutureInterval: `${PriceAnalysis.PROJECT_NAME}_setFutureInterval`,
+                monitorReport: `${PriceAnalysis.PROJECT_NAME}_monitorReport`
             }
 
             /** @type {{[key: string]: TradingFlags}} TRADING_FLAGS */
@@ -1847,6 +1848,12 @@ class ProjectStockVision {
                     constants: {},
                     reports: [],
                 }
+
+                const broadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.monitorReport)
+                broadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
+                    const isEndOfDay = messageEvent.data
+                    console.log(`monitor inspection: ${Vision.monitorReport(isEndOfDay, this.#isCrypto)}`)
+                })
             }
 
             if (!(code in window.idaStockVision.positionIn)) {
@@ -2976,6 +2983,12 @@ class ProjectStockVision {
     
     static visionSettings() {
         return window.idaStockVision.settings
+    }
+
+    static visionMonitorReport(isEndOfDay = false) {
+        const broadcastChannel = new BroadcastChannel(ProjectStockVision.vision.PriceAnalysis.EVENT_NAMES.monitorReport)
+        broadcastChannel.postMessage(isEndOfDay)
+        broadcastChannel.close()
     }
 }
 
@@ -4808,10 +4821,12 @@ class StockVisionTrade {
     }
 
     static start = (noPolling = false) => {
+        const isEndOfDay = new Date().getHours() >= 16
         this.setUp()
         if (!noPolling) {
             this.pollLocalServer()
         }
+        console.log(`monitor inspection: ${this.monitorReport(isEndOfDay)}`)
     }
 
     static stop = () => {
