@@ -616,8 +616,8 @@ const trader = {
 
         },
         orderPreparation: async (req, res, retry = false) => {
-            const primaryCode = req.query.primaryCode
-            const code = req.query.code
+            const primaryCode = req.body.primaryCode
+            const code = req.body.code
             try {
                 if (!retry) {
                     trader.asyncOperation.ordersPreparationRetry[code] = 0
@@ -626,12 +626,12 @@ const trader = {
                     trader.asyncOperation.ordersPreparationRetry[code]++
                 }
                 const prepareOrder = {
-                    primaryCode: req.query.primaryCode,
-                    code: req.query.code,
-                    position: req.query.action === trader.constants.IN ? true : false,
-                    confirmationLink: req.query.confirmationLink,
-                    downwardVolatility: req.query.downwardVolatility === 'true' ? true : false,
-                    immediateExecution: req.query.immediateExecution === 'true' ? true : false,
+                    primaryCode,
+                    code,
+                    position: req.body.action === trader.constants.IN ? true : false,
+                    confirmationLink: req.body.confirmationLink,
+                    downwardVolatility: req.body.downwardVolatility,
+                    immediateExecution: req.body.immediateExecution,
                     // observationPrice: req.query.currentPrice,
                     seenByBrokerage: [],
                 }
@@ -670,8 +670,8 @@ app.post('/trader/notify', async function(req,res){
     if (process.env.SERVER_NAME === trader.constants.CLOUD_SERVER) {
         try {
             const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
-                subject: req.query.subject,
-                message: req.query.message,
+                subject: req.body.subject || req.query.subject,
+                message: req.body.message || req.query.message,
             })
             res.sendStatus(202)  
         } catch (error) {

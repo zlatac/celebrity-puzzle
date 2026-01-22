@@ -1963,17 +1963,17 @@ class ProjectStockVision {
          * @param {string} action 
          * @param {number | string} anchorPrice 
          * @param {string} confirmationLink 
-         * @param {{[key: string]: string|boolean} | {}} otherQueryParams 
+         * @param {{[key: string]: string|boolean} | {}} otherBodyParams 
          * @returns {Promise<void>}
          */
-        static async sendNotification(tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink, otherQueryParams = {}) {
+        static async sendNotification(tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink, otherBodyParams = {}) {
             const lastNotification = window.idaStockVision.lastNotificationSent[tokenOrStockCode]
             const priceDifferencePercentage = 'currentPrice' in lastNotification
                 ? Vision.percentageDelta(lastNotification.currentPrice, currentPrice) 
                 : 0
             const percentageThreshold = 5
             const notificationSubject = `${tokenOrStockCode} - Get [${action.toUpperCase()}] (${currentPrice})`
-            const queryParams = new URLSearchParams()
+            const httpPostBody = {}
             const sameActionAsLast = 'action' in lastNotification 
                 ? lastNotification.action === action 
                 : false
@@ -2002,28 +2002,30 @@ class ProjectStockVision {
 
             try {
                 window.idaStockVision.notificationInProgress[tokenOrStockCode] = true
-                queryParams.append('message', messageBody)
-                queryParams.append('subject', notificationSubject)
-                queryParams.append('code', tokenOrStockCode)
-                queryParams.append('primaryCode', Vision.PriceAnalysis.primaryCode(tokenOrStockCode))
-                queryParams.append('action', action)
-                queryParams.append('currentPrice', currentPrice.toString())
-                queryParams.append('confirmationLink', confirmationLink)
-                Object.entries(otherQueryParams).forEach((item) => queryParams.append(item[0], String(item[1])))
-
-                const cloudServerRequest = fetch(`${window.idaStockVision.serverUrl}/trader/notify?${queryParams.toString()}`, {
+                httpPostBody.message = messageBody
+                httpPostBody.subject = notificationSubject
+                httpPostBody.code = tokenOrStockCode
+                httpPostBody.primaryCode =  Vision.PriceAnalysis.primaryCode(tokenOrStockCode)
+                httpPostBody.action = action
+                httpPostBody.currentPrice = currentPrice
+                httpPostBody.confirmationLink = confirmationLink
+                Object.entries(otherBodyParams).forEach((item) => httpPostBody[item[0]] = item[1])
+                
+                /** @type RequestInit */
+                const httpOptions = {
                     method: 'POST',
                     mode: 'cors',
-                })
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(httpPostBody),
+                }
+
+                const cloudServerRequest = fetch(`${window.idaStockVision.serverUrl}/trader/notify`, httpOptions)
                 const localServerRequest = () => {
                     if (experimentMode) {
                         // we do not want to auto trade in experiment mode
                         return Promise.resolve()
                     }
-                    return fetch(`${window.idaStockVision.server.localServer}/trader/notify?${queryParams.toString()}`, {
-                        method: 'POST',
-                        mode: 'cors',
-                    })
+                    return fetch(`${window.idaStockVision.server.localServer}/trader/notify`, httpOptions)
                 }
                 const resp = await Promise.allSettled([cloudServerRequest,localServerRequest()])
                 // const data = await resp[0].value.json()
