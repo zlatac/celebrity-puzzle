@@ -5,6 +5,7 @@ export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min
   | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | INTERVAL_DAY_FLAGS | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
 export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
+export type ACTION = 'in' | 'out' | 'profit out'
 
 export interface IPrice {
   price: number;
@@ -25,6 +26,7 @@ export interface IPosition extends IPrice {
   position: boolean;
   positionAnchor?: number;
   originalPrice?: number;
+  profitChunkPrice ?: number | undefined;
 }
 
 export interface ITradingIntervalInspection {
@@ -114,8 +116,9 @@ export interface IStockVision {
       tokenOrStockCode: string;
       message: string;
       currentPrice: number;
-      action: string;
+      action: ACTION;
       anchorPrice: number | string;
+      isProfitChunkExit: boolean;
     } | {}
   };
   mutationObservers: {[key:string]: MutationObserver};
@@ -132,6 +135,7 @@ export interface IStockVision {
   };
   statusCounter: number;
   serverUrl: string;
+  localServerUrl: string;
   notificationServerUrl: string;
   tradingStartTime: number[];
   tradingEndTime: number[];
@@ -143,6 +147,7 @@ export interface IStockVision {
       precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
       profitThreshold: undefined | number;
+      profitChunkThreshold: undefined | number;
       lossThreshold: undefined | number;
       entryPercentageThreshold: undefined | number;
       exitPercentageThreshold: undefined | number;
@@ -152,7 +157,10 @@ export interface IStockVision {
       entryPrecisionThreshold: undefined | number;
     };
   };
-  server: {[key:string]: string};
+  server: {
+    production: {cloud: string; local: string;};
+    development: {cloud: string; local: string;};
+  };
   cssSelectors: {[key:string]: {[key]: Function}};
   constants: {};
   reports: {
@@ -287,6 +295,15 @@ export interface ITradeCheckResponse extends ICboeQuoteResponse {
   position: boolean;
   downwardVolatility: boolean;
   immediateExecution: boolean;
+  profitChunk: {
+    isValid: boolean;
+    minDelta: number;
+    links: {
+      confirm: string;
+      chunkConfirm: string;
+    }
+    quantityRemaining?: number | undefined
+  }
 }
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;
@@ -330,6 +347,7 @@ export interface IStockVisionTrade {
     [key: string]: {
       capital: number;
       highRiskThreshold: number;
+      chunkSellThreshold: number;
     }
   };
   orders: ITradeOrder[];

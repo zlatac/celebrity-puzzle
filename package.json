@@ -21,7 +21,9 @@
     "dev:bmr": "webpack --config-name bmr --watch",
     "dev:cbt": "webpack --config-name cbt --watch",
     "dev:token": "webpack --config-name token --watch",
-    "dev:puzzle": "webpack --config-name puzzle --watch"
+    "dev:puzzle": "webpack --config-name puzzle --watch",
+    "dev:local": "node server.js file=.env",
+    "dev:cloud": "node server.js file=.env.cloud"
   },
   "author": "zlatac",
   "license": "UNLICENSED",

@@ -11,8 +11,11 @@ var querystring = require('querystring');
 var fs = require('fs').promises;
 var jsdom = require('jsdom');
 if (process.env.NODE_ENV !== 'production') {
-    require('dotenv').config()
+    const secondArguement = process.argv[2].split('=')
+    const config = secondArguement[0].includes('file') ? { path: secondArguement[1] } : {}
+    require('dotenv').config(config)
 }
+console.log(process.argv[2])
 const stripe = require('stripe')(process.env.STRIPE_PRIVATE_KEY);
 // app.use(bodyParser.json()) // for parsing application/json
 // app.use(bodyParser.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
@@ -448,7 +451,11 @@ const trader = {
         LOCAL_SERVER: 'local',
         CLOUD_SERVER: 'cloud',
         tradingStartTime: [9,30,0],
-        tradingEndTime: [16,0,0]
+        tradingEndTime: [16,0,0],
+        confirmType: {
+            STANDARD: 'standard',
+            PROFIT_CHUNK: 'profitChunk',
+        }
     },
     asyncOperation: {
         historyTimeout: undefined,
@@ -570,10 +577,23 @@ const trader = {
                     if (!(item.code in parsedData)) {
                         parsedData[item.code] = {}
                     }
-                    parsedData[item.code].position = item.position
-                    parsedData[item.code].date = item.payloadDate
-                    parsedData[item.code].price = item.price  
-                    parsedData[item.code].originalPrice = item.originalPrice  
+                    switch(item.confirmType) {
+                        case trader.constants.confirmType.STANDARD:
+                            parsedData[item.code].position = item.position
+                            parsedData[item.code].date = item.payloadDate
+                            parsedData[item.code].price = item.price  
+                            parsedData[item.code].originalPrice = item.originalPrice
+                            if (item.position === trader.constants.OUT) {
+                                parsedData[item.code].profitChunkPrice = undefined 
+                            }
+                            break
+                        case trader.constants.confirmType.PROFIT_CHUNK:
+                            parsedData[item.code].position = item.position
+                            parsedData[item.code].profitChunkDate = item.payloadDate
+                            parsedData[item.code].profitChunkPrice = item.price   
+                            break
+                        default:
+                    }
                 }
                 await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.confirm.splice(0, confirmationAmount)
@@ -632,6 +652,7 @@ const trader = {
                     confirmationLink: req.body.confirmationLink,
                     downwardVolatility: req.body.downwardVolatility,
                     immediateExecution: req.body.immediateExecution,
+                    profitChunk: req.body.profitChunk,
                     // observationPrice: req.query.currentPrice,
                     seenByBrokerage: [],
                 }
@@ -685,6 +706,7 @@ app.post('/trader/notify', async function(req,res){
 app.get('/trader/confirm', async function(req,res){
      res.append('Access-Control-Allow-Origin', '*')
     try {
+        const confirmType = trader.constants.confirmType.STANDARD
         let payloadDate = new Date().toISOString()
         const code = req.query.code.toUpperCase()
         const position = req.query.position
@@ -708,7 +730,41 @@ app.get('/trader/confirm', async function(req,res){
         if (positionDate !== undefined) {
             payloadDate = positionDate
         }
-        trader.asyncOperation.confirm.push({code, price, position, payloadDate, originalPrice})
+        trader.asyncOperation.confirm.push({code, price, position, payloadDate, originalPrice, confirmType})
+        clearTimeout(trader.asyncOperation.confirmTimeout)
+        trader.asyncOperation.confirmTimeout = setTimeout(trader.methods.processConfrimations, 500)
+        
+        res.status(200)
+        res.send('confirmed')
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.get('/trader/confirm/profitChunk', async function(req,res){
+     res.append('Access-Control-Allow-Origin', '*')
+    try {
+        const confirmType = trader.constants.confirmType.PROFIT_CHUNK
+        let payloadDate = new Date().toISOString()
+        const code = req.query.code.toUpperCase()
+        const position = trader.constants.IN
+        const profitChunkDate = req.query.date
+        const price = Number(req.query.price)
+        
+        if (isNaN(price)) {
+            throw new Error('price not valid number')
+        }
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+        const parsedData = JSON.parse(data)
+        
+        if (parsedData[code].position === position && parsedData[code].profitChunkPrice === price) {
+            throw new Error('already confirmed')
+        }
+        if (profitChunkDate !== undefined) {
+            payloadDate = profitChunkDate
+        }
+        trader.asyncOperation.confirm.push({code, price, position, payloadDate, confirmType})
         clearTimeout(trader.asyncOperation.confirmTimeout)
         trader.asyncOperation.confirmTimeout = setTimeout(trader.methods.processConfrimations, 500)
         
