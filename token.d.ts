@@ -175,6 +175,7 @@ export interface IStockVision {
     priceOut: number;
     anchorProfitLoss: number;
     profitLoss: number;
+    chunkOut: boolean;
   }[];
   processTracker: {
     tradingInterval: {[key: string]: number};

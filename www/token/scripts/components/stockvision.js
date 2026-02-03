@@ -2552,11 +2552,12 @@ class ProjectStockVision {
                 const retrieveData = (notificationMessage) => {
                     //TO-DO use array.find to get the specific data needed as the index order will vary dynamically
                     const message = notificationMessage.split('\n')
-                    let anchorPrice, downwardVolatility, link, profitLoss
+                    let anchorPrice, downwardVolatility, link, profitLoss, isProfitChunk
                     anchorPrice = message.find(item => item.toLowerCase().includes('anchor'))
                     downwardVolatility = message.find(item => item.toLowerCase().includes('volatility'))
                     link = message.find(item => item.toLowerCase().includes('link'))
                     profitLoss = message.find(item => item.toLowerCase().includes('gross'))
+                    isProfitChunk = message.find(item => item.toLowerCase().includes('profit chunk'))
                     const url = new URL(link.split(': ').at(-1).trim())
                     const date = url.searchParams.get('date')
                     const position = url.searchParams.get('position') === Vision.PriceAnalysis.ACTION.IN ? Vision.PriceAnalysis.IN : Vision.PriceAnalysis.OUT
@@ -2565,8 +2566,9 @@ class ProjectStockVision {
                     anchorPrice = anchorPrice !== undefined ? Number(anchorPrice.split(':').at(-1).trim()) : undefined
                     profitLoss = profitLoss !== undefined ? Number(profitLoss.split(':').at(-1).trim()) : undefined
                     downwardVolatility = downwardVolatility.split(':').at(-1).trim() === 'true' ? true : false
+                    isProfitChunk = isProfitChunk.split(':').at(-1).trim() === 'true' ? true : false
     
-                    return {anchorPrice, downwardVolatility, date, position, price, code, profitLoss}
+                    return {anchorPrice, downwardVolatility, date, position, price, code, profitLoss, isProfitChunk}
                 }
                 
                 const exit = retrieveData(messageExit)
@@ -2586,6 +2588,7 @@ class ProjectStockVision {
                     priceOut: exit.price,
                     profitLoss: exit.profitLoss,
                     anchorProfitLoss: Vision.percentageDelta(anchorIn, exit.anchorPrice, true),
+                    chunkOut: exit.isProfitChunk
                 }
     
                 idaStockVision.reports.push(report)
@@ -2615,6 +2618,7 @@ class ProjectStockVision {
             reports.filter(report => specificCodes.length === 0 || formatedSpecificCodes.includes(report.code))
             .forEach((report) => {
                 profitLossPercentage += report.profitLoss
+                const profitCapture = report.chunkOut === true ? 'chunk' : 'total'
                 
                 if (!Number.isNaN(report.anchorProfitLoss)) {
                     anchorProfitLossPercentage += report.anchorProfitLoss
@@ -2632,6 +2636,7 @@ class ProjectStockVision {
                     report.volatilityOut,
                     Vision.PriceAnalysis.dateStringFormat(report.dateIn, 'D/M h:m'),
                     Vision.PriceAnalysis.dateStringFormat(report.dateOut, 'D/M h:m'),
+                    profitCapture
                 ])
             })
 
@@ -2671,6 +2676,7 @@ class ProjectStockVision {
             const codes = Object.keys(idaStockVision.positionIn)
             const currentPrice = {price: 0, date: today.toISOString(), flags: []}
             const result = {}
+            result.productionCheck = {pass: typeof idaStockVision.server.production === 'object' && idaStockVision.server.production.cloud && idaStockVision.server.production.local}
             if (isEndOfDay) {
                 today.setTime(today.getTime() +  priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS)
                 result.uploadHistoryCheck = {pass: undefined}
@@ -2863,6 +2869,7 @@ class ProjectStockVision {
                         exitByTradingEndTime === true && Vision.PriceAnalysis.profitPursuitType(this.#code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY
                     if (isProfitChunkExit) {
                         const chunkConfirmationLink = new URL(`${window.idaStockVision.notificationServerUrl}/trader/confirm/profitChunk`)
+                        notificationBody =  notificationBody.concat(`Profit chunk: true \r\n`)
                         otherNotificationQueryParams.profitChunk = {
                             isValid: isProfitChunkExit,
                             minDelta: analysis.profitChunkPriceToCurrentPriceDelta,
