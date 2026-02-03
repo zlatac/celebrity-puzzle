@@ -11,8 +11,8 @@ var querystring = require('querystring');
 var fs = require('fs').promises;
 var jsdom = require('jsdom');
 if (process.env.NODE_ENV !== 'production') {
-    const secondArguement = process.argv[2].split('=')
-    const config = secondArguement[0].includes('file') ? { path: secondArguement[1] } : {}
+    const secondArguement = process.argv[2]?.split('=')
+    const config = secondArguement && secondArguement[0].includes('file') ? { path: secondArguement[1] } : {}
     require('dotenv').config(config)
 }
 console.log(process.argv[2])

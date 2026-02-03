@@ -23,8 +23,6 @@
  * @typedef { import("token").IStockVisionTrade } SVisionTrade
  */
 
-const { url } = require("stylus")
-
 // @ts-ignore
 class ProjectStockVision {
     constructor() {}
@@ -4501,7 +4499,9 @@ class StockVisionTrade {
         orders
             .filter((order) => order.position === false && Date.parse(order.timeSubmitted) > fromDateEpoch && (specificCodes.length === 0 || specificCodesUppercase.includes(order.code)))
             .forEach((order) => {
-                const entryOrder = orders.filter(i => i.code === order.code && Date.parse(i.timeSubmitted) < Date.parse(order.timeSubmitted)).at(-1)
+                const entryOrder = orders
+                    .filter(i => i.code === order.code && i.position === true && Date.parse(i.timeSubmitted) < Date.parse(order.timeSubmitted))
+                    .at(-1)
                 if (!entryOrder) {
                     return
                 }
@@ -4584,7 +4584,7 @@ class StockVisionTrade {
                 let quantityToRecord = quantity
                 const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
                 const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
-                if (quantity === undefined) {
+                if (quantity === undefined || quantity === 0) {
                     throw new Error(`no quantity to process order - ${order.code}`)
                 }
                 if (securityId === undefined) {
@@ -4828,7 +4828,7 @@ class StockVisionTrade {
                     ? this.sharesAmount(newPrice, realCapital) 
                     : order.quantity
                 let quantityToRecord = quantity
-                if (quantity === undefined) {
+                if (quantity === undefined || quantity === 0) {
                     order.accepted = true
                     order.executed = true
                     throw new Error(`MODIFY ORDERS - no quantity to process - ${order.code}`)
