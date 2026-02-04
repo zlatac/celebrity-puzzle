@@ -2676,7 +2676,7 @@ class ProjectStockVision {
             const codes = Object.keys(idaStockVision.positionIn)
             const currentPrice = {price: 0, date: today.toISOString(), flags: []}
             const result = {}
-            result.productionCheck = {pass: typeof idaStockVision.server.production === 'object' && idaStockVision.server.production.cloud && idaStockVision.server.production.local}
+            result.productionCheck = {pass: typeof idaStockVision.server.production === 'object' && typeof idaStockVision.server.production.cloud === 'string' && typeof idaStockVision.server.production.local === 'string'}
             if (isEndOfDay) {
                 today.setTime(today.getTime() +  priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS)
                 result.uploadHistoryCheck = {pass: undefined}
