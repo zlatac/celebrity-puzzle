@@ -1506,6 +1506,49 @@ class ProjectStockVision {
 
         /**
          * 
+         * @param {number|string} num 
+         * @param {number} decimalPlaces 
+         * @returns {number|string}
+         */
+        static decimalPrecision(num, decimalPlaces = 2) {
+            // this only work for normal currency numbers. really small numbers very close to 0 become zero or exponential eg 0.005 || 0.00000005
+            if (!['string', 'number'].includes(typeof num) || Number.isNaN(num)) {
+                return num
+            }
+            const numberString = num.toString()
+            const [first, second] = numberString.split('.')
+
+            if (second === undefined) {
+                return num
+            }
+            
+            return Number(`${first}.${second.substring(0, decimalPlaces)}`)
+        }
+
+        /**
+         * @param {number} profitToTake
+         * @returns {number | undefined}
+         */
+        static calculateProfitChunk(profitToTake) {
+            const half = Number(profitToTake)/2
+            switch(true) {
+                case !(Number.isFinite(profitToTake)):
+                case Math.sign(profitToTake) < 0:
+                    return undefined
+                case profitToTake >= 6:
+                    return 3
+                case profitToTake > 0.5:
+                    return Number(Vision.decimalPrecision(half, 1))
+                case profitToTake > 0.01 && profitToTake <= 0.5:
+                    return Number(Vision.decimalPrecision(half, 2))
+                default:
+                    return half
+                    
+            }
+        }
+
+        /**
+         * 
          * @param {PriceHistory | undefined} anchor 
          * @param {number} entryThreshold 
          * @param {number} exitThreshold 
@@ -2969,6 +3012,7 @@ class ProjectStockVision {
      * @param {IntervalFlags | undefined} [tradingInterval] 
      * @param {IntervalFlags | undefined} [precisionInterval]
      * @param {boolean} [isCrypto]
+     * @param {number | 'none'} [profitChunkThreshold]
      * @returns {string}
      */
     static visionLarge(
@@ -2981,7 +3025,8 @@ class ProjectStockVision {
         lossThreshold,
         tradingInterval,
         precisionInterval,
-        isCrypto = false
+        isCrypto = false,
+        profitChunkThreshold
     ) {
         const codeFormatted = code.toUpperCase()
         try {
@@ -2997,6 +3042,11 @@ class ProjectStockVision {
             window.idaStockVision.settings[codeFormatted].profitThreshold = profitThreshold
             window.idaStockVision.settings[codeFormatted].lossThreshold = lossThreshold
             window.idaStockVision.settings[codeFormatted].entryMultiplier = entryMultiplierThreshold
+            window.idaStockVision.settings[codeFormatted].profitChunkThreshold = profitChunkThreshold 
+                ? profitChunkThreshold !== 'none'
+                    ? profitChunkThreshold
+                    : undefined
+                : ProjectStockVision.vision.calculateProfitChunk(profitThreshold)
 
             visionInstance.watch()
 
@@ -3021,7 +3071,7 @@ class ProjectStockVision {
      * @returns {string}
      */
     static visionSmall(code, entry, exit, entryMultiplier, experiment = false, profit, tradingInterval = '4hour', precisionInterval = '5min') {
-        return ProjectStockVision.visionLarge(`${code}_short`, entry, exit, entryMultiplier, experiment, profit, undefined, tradingInterval, precisionInterval)
+        return ProjectStockVision.visionLarge(`${code}_small`, entry, exit, entryMultiplier, experiment, profit, undefined, tradingInterval, precisionInterval)
     }
 
     /**
@@ -4391,26 +4441,7 @@ class StockVisionTrade {
         })
     }
 
-    /**
-     * 
-     * @param {number|string} num 
-     * @param {number} decimalPlaces 
-     * @returns {number|string}
-     */
-    static decimalPrecision = (num, decimalPlaces = 2) => {
-        // this only work for normal currency numbers. really small numbers very close to 0 become zero or exponential eg 0.005 || 0.00000005
-        if (!['string', 'number'].includes(typeof num) || Number.isNaN(num)) {
-            return num
-        }
-        const numberString = num.toString()
-        const [first, second] = numberString.split('.')
-
-        if (second === undefined) {
-            return num
-        }
-        
-        return Number(`${first}.${second.substring(0, decimalPlaces)}`)
-    }
+    static decimalPrecision = ProjectStockVision.vision.decimalPrecision
 
     /**
      * 

@@ -106,6 +106,7 @@ export interface ICodeBackendSettings {
   profit?: number;
   loss?: number;
   leaveProfitBehind?: boolean;
+  profitChunkExit?: number;
 }
 
 export interface IStockVision {
