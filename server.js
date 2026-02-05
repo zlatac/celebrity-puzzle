@@ -657,8 +657,15 @@ const trader = {
                     seenByBrokerage: [],
                 }
                 const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
-                if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
-                    throw new Error('cannot retrieve price')
+                const cboeData = axiosResponse.data.data
+                
+                let {bid_price, ask_price} = cboeData
+                bid_price = Number(bid_price)
+                ask_price = Number(ask_price)
+                const bidAskMightBeZero = bid_price === 0 || ask_price === 0
+
+                if (!('name' in cboeData) || cboeData.name !== prepareOrder.primaryCode.toUpperCase() || bidAskMightBeZero) {
+                    throw new Error('prepareOrder: cannot retrieve price')
                 }
                 trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
                 if (!retry) {
@@ -886,7 +893,7 @@ app.get('/trader/priceCheck', async function(req,res) {
         let primaryCode = req.body?.primaryCode || req.query.primaryCode
         const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${primaryCode.toUpperCase()}/quote/`, {})
         if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== primaryCode.toUpperCase()) {
-            throw new Error('cannot retrieve price')
+            throw new Error('priceCheck: cannot retrieve price')
         }
         res.status(200)
         res.send(axiosResponse.data.data)
