@@ -659,14 +659,19 @@ const trader = {
                 const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
                 const cboeData = axiosResponse.data.data
                 
+                
+                if (!('name' in cboeData) || cboeData.name !== prepareOrder.primaryCode.toUpperCase()) {
+                    throw new Error('prepareOrder: cannot retrieve price')
+                }
+
                 let {bid_price, ask_price} = cboeData
                 bid_price = Number(bid_price)
                 ask_price = Number(ask_price)
                 const bidAskMightBeZero = bid_price === 0 || ask_price === 0
-
-                if (!('name' in cboeData) || cboeData.name !== prepareOrder.primaryCode.toUpperCase() || bidAskMightBeZero) {
-                    throw new Error('prepareOrder: cannot retrieve price')
+                if (bidAskMightBeZero) {
+                    throw new Error(`prepareOrder: zero value for one of (bid:${bid_price}, ask:${ask_price})`)
                 }
+
                 trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
                 if (!retry) {
                     res.sendStatus(200)
@@ -885,6 +890,32 @@ app.put('/trader/history', async function(req, res) {
     }
     
 })
+
+app.delete('/trader/history', async function(req,res){
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
+    try {
+        const codes = Array.isArray(req.query.codes) ? req.query.codes : [req.query.codes]
+        if (req.query.codes === undefined || codes.length === 0) {
+            throw new Error('missing items to remove')
+        }
+
+        const currentData = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+        const parsedCurrentData = JSON.parse(currentData)
+        codes.forEach(code => {
+            const primaryCode = code.split('_')[0].toUpperCase()
+            if (parsedCurrentData[primaryCode] !== undefined && 'peakValleyHistory' in parsedCurrentData[primaryCode]) {
+                parsedCurrentData[primaryCode].peakValleyHistory = []
+            }
+        })
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedCurrentData))
+        res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
 
 app.get('/trader/priceCheck', async function(req,res) {
     res.append('Access-Control-Allow-Origin', '*')

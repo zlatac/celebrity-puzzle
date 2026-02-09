@@ -1155,8 +1155,9 @@ class ProjectStockVision {
                 }
 
                 try {
+                    const dateToConfirm = history?.at(0) ? new Date(history.at(0).date): undefined
                     const formatedCode = PriceAnalysis.codeFormat(code)
-                    const businessDaysOfTheYear = PriceAnalysis.confirmDateInMultipleDaysInterval().businessDaysOfTheYear
+                    const businessDaysOfTheYear = PriceAnalysis.confirmDateInMultipleDaysInterval(undefined,dateToConfirm,undefined,12).businessDaysOfTheYear
                     const businessDaysBeforeToday = businessDaysOfTheYear.filter(day => day <= Date.now())
                     // TO-DO explore taking less data for intervals smaller than 30min if needed
                     const historyToUpload = history.filter(item => item.epochDate >= businessDaysBeforeToday.at(-1 * historyDaysNeeded))
@@ -1426,6 +1427,20 @@ class ProjectStockVision {
             }
             
         }
+
+        static constants = {
+            server: {
+                production: {
+                    cloud: 'https://styleminions.co/ninja', // [cs]
+                    local: 'http://localhost:9000' // [ls]
+                },
+                development: {
+                    cloud: 'http://localhost:7000',
+                    local: 'http://localhost:9000'
+                },
+            }
+        }
+        
         /**
          * 
          * @param {string} val 
