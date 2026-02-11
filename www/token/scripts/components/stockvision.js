@@ -4266,27 +4266,30 @@ class StockVisionTrade {
 
     /**
      * 
-     * @param {{[key: string]: {securityId: string;}}[]} securities 
+     * @param {{securityUuid: string; symbol: string;}[]} securities 
      * @param {string} accountId 
+     * @param {boolean} cashAccount
      */
-    static defaultBrokerageVariables = (securities, accountId) => {
-        // securityIds, capital, accountId
+    static defaultBrokerageVariables = (securities, accountId, cashAccount = false) => {
+        /** @type {SVisionTrade} */
         const storage = localStorage.getItem(this.constants.localStorageName) !== null 
             ? JSON.parse(localStorage.getItem(this.constants.localStorageName)) 
             : {}
         if (accountId) {
-            storage.accountId = accountId
+            storage.accounts = storage.accounts || {}
+            storage.accounts[cashAccount ? 'cash' : 'rsp'] = {id: accountId}
         }
         if (securities) {
-            const allSecurityInfoNotDefine = Object.values(securities).some((security) => !security.securityId || !security.capital)
+            storage.securities = storage.securities || {}
+            const allSecurityInfoNotDefine = securities.some((security) => !security.securityUuid)
             if (allSecurityInfoNotDefine) {
                 throw new Error('define all security information')
             }
-            const entries =  Object.entries(securities).map(i => {
-                i[0] = i[0].toUpperCase()
-                return i
-            })
-            storage.securities = Object.fromEntries(entries)
+            const entries =  securities.reduce((previous, current) => {
+                previous[current.symbol.split('.TO')[0].toUpperCase()] = {securityId: current.securityUuid}
+                return previous
+            }, {})
+            storage.securities = {...storage.securities, ...entries}
         }
 
         this.storeBrokerageVariables(storage)
@@ -4312,15 +4315,17 @@ class StockVisionTrade {
      * 
      * @param {string} code 
      * @param {number} capital 
+     * @param {Boolean} cashAccount
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, highRiskThreshold = 0.5, chunkSellThreshold = 0.5) => {
+    static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.5) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
             highRiskThreshold,
-            chunkSellThreshold
+            chunkSellThreshold,
+            accountName: cashAccount ? 'cash' : undefined
         }
 
         this.backUp()
@@ -4608,6 +4613,22 @@ class StockVisionTrade {
         return
     }
 
+    /**
+     * 
+     * @param {string} code 
+     * @returns {string}
+     */
+    static getAccountId(code) {
+        const codeUpperCase = code.toUpperCase()
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const accountName = idaStockVisionTrade.codes[codeUpperCase]?.accountName
+        if (accountName !== undefined) {
+            return idaStockVisionTrade.accounts[accountName].id
+        }
+
+        return idaStockVisionTrade.accounts['rsp'].id
+    }
+
     static processOrderQueue = async () => {
         //always store orders in localstorage as backup in case of forced logout
         const idaStockVisionTrade = window.idaStockVisionTrade
@@ -4658,7 +4679,7 @@ class StockVisionTrade {
                         order.confirmationLink = order.profitChunk.links.confirm
                     }
                 }
-                const accountId = idaStockVisionTrade.accountId
+                const accountId = this.getAccountId(order.code)
                 const accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
                 const res = await this.constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
@@ -4676,6 +4697,7 @@ class StockVisionTrade {
                     order.executed = false
                     order.modify = false
                     order.partialExecution = false
+                    order.accountId = accountId 
                     if (order.position === false) {
                         /* in the case of profit chunk orders, this will also create a chain link that can be navigated whenever
                         eg in -> profit-out -> profit-out -> out */
@@ -4896,7 +4918,8 @@ class StockVisionTrade {
                 }
                 const accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
-                const res = await this.constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, idaStockVisionTrade.accountId, quantity, newPrice)
+                const accountId = order.accountId
+                const res = await this.constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, accountId, quantity, newPrice)
                 /** @type {QuestradeSubmitResponse} */
                 const formattedRes = await res.json()
                 if (this.constants[brokerageName].trade.orderId in formattedRes) {
@@ -5011,7 +5034,9 @@ class StockVisionTrade {
         }, {})
         const capitalCheck = Object.values(codePrimaryCapital).every(item => item <= maxCapital)
         const projectStockVisionCheck = typeof ProjectStockVision === 'function'
-        const result = {executionCheck, capitalCheck, projectStockVisionCheck}
+        const accountsCheck = Object.keys(idaStockVisionTrade.accounts).every(i => /rsp|cash/.test(i))
+        const accessTokenCheck = typeof this.getAccessToken(idaStockVisionTrade.brokerage.name) === 'string'
+        const result = {executionCheck, capitalCheck, projectStockVisionCheck, accountsCheck, accessTokenCheck}
         console.log(result)
 
         return Object.values(result).every(item => item === true)

@@ -185,6 +185,7 @@ export interface IStockVision {
 }
 
 /** STOCK_VISION_TRADE */
+export type ACCOUNT_NAMES = 'rsp' | 'cash' 
 export interface ICboeQuoteResponse {
     symbol_name: string;
     trade_time: string;
@@ -323,7 +324,8 @@ export interface ITradeOrder extends ITradeCheckResponse {
   timeSubmitted?: string;
   priceSubmitted?: string|number;
   priceSubmittedHistory?: (string|number)[];
-  entryOrderId?: string | undefined
+  entryOrderId?: string | undefined;
+  accountId?: string;
 }
 
 export interface IStockVisionTrade {
@@ -339,7 +341,11 @@ export interface IStockVisionTrade {
   brokerage: {
     name: 'questrade' | 'ibkr';
   };
-  accountId: string;
+  accounts: {
+    [key: ACCOUNT_NAMES]: {
+      id: string;
+    }
+  };
   securities: {
     [key: string]: {
       securityId: string;
@@ -350,6 +356,7 @@ export interface IStockVisionTrade {
       capital: number;
       highRiskThreshold: number;
       chunkSellThreshold: number;
+      accountName?: ACCOUNT_NAMES;
     }
   };
   orders: ITradeOrder[];
