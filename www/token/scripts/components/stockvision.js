@@ -1451,6 +1451,12 @@ class ProjectStockVision {
                     cloud: 'http://localhost:7000',
                     local: 'http://localhost:9000'
                 },
+            },
+            serverApi: {
+                notify: '/trader/notify'
+            },
+            notification: {
+                subjectGeneral: '[QWA] NOTIFICATION'
             }
         }
         
@@ -1954,7 +1960,7 @@ class ProjectStockVision {
                     },
                     cssSelectors: {
                         nasdaq: {
-                            // use summary page of quote to get all elements
+                            // use summary page of quote to get all elements & must scroll down to load components that have summary data
                             price: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'),
                             highLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-day-range-info'),
                             fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span'),
@@ -2216,6 +2222,25 @@ class ProjectStockVision {
                 Vision.positionStatusPolling(tokenOrStockCode, true)
             } catch (error) {
                 console.log('Ida Trader Bot - NOTIFY ERROR', error)
+            }
+        }
+        /**
+         * 
+         * @param {string} message 
+         * @param {string} subject 
+         * @param {string} tabCode 
+         */
+        static notify = async (message, subject = Vision.constants.notification.subjectGeneral, tabCode = window.idaStockVision.code) => {
+            try {
+                let tabSubject = `${subject} (${tabCode})`
+                const queryParams = new URLSearchParams()
+                queryParams.set('subject', tabSubject)
+                queryParams.set('message', message)
+                fetch(`${window.idaStockVision.notificationServerUrl}${Vision.constants.serverApi.notify}?${queryParams.toString()}`, {
+                    method: 'POST',
+                })
+            } catch (error) {
+                
             }
         }
         /**
@@ -2724,7 +2749,9 @@ class ProjectStockVision {
                 
                 
             } catch (error) {
-                console.log('cannot add report', error.toString())
+                const errorMessage = ['Vision - CANNOT ADD REPORT', error.toString()]
+                console.log(...errorMessage)
+                Vision.notify(errorMessage.join('-'))
             }
         }
 
