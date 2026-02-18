@@ -83,8 +83,17 @@ export interface IPriceStore {
   previousLastPrice: IPrice | undefined;
   marketHighLowRange: {
       low: undefined | number;
-      high: undefined | number;
+      _high: undefined | number;
+      get high(): number;
+      set high(): void;
   };
+  set yesterdayClosePrice(): void;
+  set openPrice(): void;
+  get yesterdayClosePrice(): number;
+  get openPrice(): number;
+  _yesterdayClosePrice: number;
+  _openPrice: number;
+  isUpwardTrendDayToDay: boolean;
   peakValleyHistory: IPriceHistory[];
   highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
   todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};

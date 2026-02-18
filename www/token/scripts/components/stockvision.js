@@ -78,6 +78,7 @@ class ProjectStockVision {
             _peakValleyHistory;
             _currentPrice;
             _currentPosition;
+            _code;
             /** @type {boolean} _isCrypto */
             _isCrypto;
             /** @type {IntervalFlags} _priceTradingInterval */
@@ -213,8 +214,9 @@ class ProjectStockVision {
              * @param {number} exitThreshold 
              * @param {IntervalFlags} priceTradingInterval 
              * @param {IntervalFlags} pricePrecisionInterval 
+             * @param {string} code 
              */
-            constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval, pricePrecisionInterval) {
+            constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval, pricePrecisionInterval, code) {
                 try {
                     const now = Date.now()
                     this._isCrypto = isCrypto
@@ -224,6 +226,7 @@ class ProjectStockVision {
                     this._currentPrice = currentPrice
                     this._currentPosition = currentPosition
                     this._priceTradingInterval = priceTradingInterval
+                    this._code = code
 
                     if (this.dateExistsForCurrrentPosition) {
                         this._currentPosition.epochDate = this.transformDateToEpochMiliseconds(this._currentPosition.date)
@@ -551,6 +554,16 @@ class ProjectStockVision {
 
             }
 
+            get openPriceToCurrentPriceIsUpward() {
+                // TO-DO add tiny code logic so it applies to only tiny profit pursuit
+                return Vision.percentageDelta(window.idaStockVision.priceStore.openPrice, this._currentPrice.price, true) >= 0
+            }
+
+            get isLowRiskAndTinyPursuit() {
+                return PriceAnalysis.profitPursuitType(this._code) === PriceAnalysis.PROFIT_PURSUIT.TINY 
+                    && window.idaStockVision.priceStore.isUpwardTrendDayToDay && this.openPriceToCurrentPriceIsUpward
+            }
+
             /** @returns {PriceHistory | undefined} */
             findAnchorValley() {
                 // find closest highest peak
@@ -558,7 +571,7 @@ class ProjectStockVision {
                 // from deepest valley make sure positive slope between valley price and current price
                 // logic not met do nothing and keep watching
                                     
-                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
+                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined || this.isLowRiskAndTinyPursuit) {
                     return
                 }
                 const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
@@ -1258,14 +1271,14 @@ class ProjectStockVision {
             /**
              * 
              * @param {boolean} isCrypto 
-             * @returns {number[]}
+             * @returns {[number, number, number]}
              */
-            static tradingStartTime (isCrypto = false, minuteOffset = 1) {
+            static tradingStartTime (isCrypto = false, minuteOffset = 1, hourOffset = 0) {
                 // Hour, Minute, Seconds
                 // Add 1 minute to the minute time to have the close price of that minute
                 return isCrypto 
-                    ? [0, 0 + minuteOffset, 0] 
-                    : [9, 30 + minuteOffset, 0]
+                    ? [0 + hourOffset, 0 + minuteOffset, 0] 
+                    : [9 + hourOffset, 30 + minuteOffset, 0]
             }
             
             /**
@@ -1744,7 +1757,8 @@ class ProjectStockVision {
             try {
                 const origin = location.origin
                 const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
-                let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver, lowMutationObserver, highMutationObserver
+                let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver,
+                    lowMutationObserver, highMutationObserver, openPriceElement, prevClosePriceElement
                 window.idaStockVision.mutationObservers[this.#code] = new MutationObserver(this.mutationObserverCallback)
                 const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
                     if (lowElementText !== undefined) {
@@ -1752,6 +1766,21 @@ class ProjectStockVision {
                     }
                     if (highElementText !== undefined) {
                         window.idaStockVision.priceStore.marketHighLowRange.high = Vision.decimalConvert(Vision.sanitizePrice(highElementText))
+                    }
+                }
+                const storeGeneral = (object, property, elementOrNode, shouldObserve=false) => {
+                    if (elementOrNode !== undefined) {
+                        object[property] = Vision.decimalConvert(Vision.sanitizePrice(elementOrNode.innerText || elementOrNode.nodeValue))
+
+                        if(shouldObserve){
+                            const observer = new MutationObserver((mutationArray, observerInstance) => {
+                                const lastRecord = mutationArray[mutationArray.length - 1]
+                                // const targetValue = lastRecord.target.nodeValue
+                                storeGeneral(object, property, lastRecord.target, false)                      
+                            })
+                            observer.observe(elementOrNode, observeOptions)
+
+                        }
                     }
                 }
                 const storeJointHighLowRange = (elementText) => {
@@ -1783,6 +1812,7 @@ class ProjectStockVision {
                         const websiteName = origin.includes('google') ? 'google' : 'nasdaq'
                         priceElement = window.idaStockVision.cssSelectors[websiteName].price()
                         priceHighAndLowRangeElement = window.idaStockVision.cssSelectors[websiteName].highLowRange()
+                        prevClosePriceElement = window.idaStockVision.cssSelectors[websiteName].previousClosePrice()
                         if (priceHighAndLowRangeElement !== null) {
                             storeJointHighLowRange(priceHighAndLowRangeElement.innerText)
                             highAndLowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
@@ -1792,6 +1822,7 @@ class ProjectStockVision {
                             })
                             highAndLowMutationObserver.observe(priceHighAndLowRangeElement, observeOptions)
                         }
+                        storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
                         break
                     case origin.includes('cboe'):
                         priceElement = window.idaStockVision.cssSelectors.cboe.price()
@@ -1803,7 +1834,11 @@ class ProjectStockVision {
                         priceElement = window.idaStockVision.cssSelectors.webull.price()
                         priceLowRangeElement = window.idaStockVision.cssSelectors.webull.lowRange()
                         priceHighRangeElement = window.idaStockVision.cssSelectors.webull.highRange()
+                        prevClosePriceElement = window.idaStockVision.cssSelectors.webull.previousClosePrice()
+                        openPriceElement = window.idaStockVision.cssSelectors.webull.openPrice()
                         setUpGeneralHighLowRangeMutations()
+                        storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
+                        storeGeneral(window.idaStockVision.priceStore, 'openPrice', openPriceElement, true)
                         break
                     case origin.includes('livecoinwatch'):
                         priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
@@ -1837,6 +1872,12 @@ class ProjectStockVision {
             const codeUpperCase = code.toUpperCase()
             window.idaStockVision.mutationObservers[codeUpperCase].disconnect()
         }
+        static calcDayToDayUpwardTrend() {
+            const priceStore = window.idaStockVision.priceStore
+            const prevCloseToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.openPrice, true) >= 0
+            const prevCloseToHighestPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.marketHighLowRange.high, true) >= 0
+            priceStore.isUpwardTrendDayToDay = prevCloseToOpenPrice || prevCloseToHighestPrice
+        }
         /**
          * 
          * @param {string} code 
@@ -1867,8 +1908,17 @@ class ProjectStockVision {
                         previousLastPrice: undefined,
                         marketHighLowRange: {
                             low: undefined,
-                            high: undefined
+                            _high: undefined,
+                            get high(){return this._high},
+                            set high(val){this._high = val; Vision.calcDayToDayUpwardTrend()},
                         },
+                        isUpwardTrendDayToDay: false,
+                        _yesterdayClosePrice: undefined,
+                        _openPrice: undefined,
+                        set yesterdayClosePrice(val){this._yesterdayClosePrice = val; Vision.calcDayToDayUpwardTrend()},
+                        set openPrice(val){this._openPrice = val; Vision.calcDayToDayUpwardTrend()},
+                        get yesterdayClosePrice(){return this._yesterdayClosePrice},
+                        get openPrice(){return this._openPrice},
                         peakValleyHistory: [],
                         highestPeakAndLowestValleyToday: {},
                         todaysPeakValleySnapshot: {},
@@ -1904,9 +1954,11 @@ class ProjectStockVision {
                     },
                     cssSelectors: {
                         nasdaq: {
+                            // use summary page of quote to get all elements
                             price: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'),
                             highLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-day-range-info'),
-                            fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span')
+                            fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span'),
+                            previousClosePrice: () => document.querySelector('nsdq-table').shadowRoot.querySelector('.table:last-child .table-body .table-row:nth-child(2) .table-cell:last-child body')
                         },
                         yahoo: {
                             // csp locked
@@ -1935,6 +1987,8 @@ class ProjectStockVision {
                             preMarketAndAfterHoursPrice: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div > span"),
                             lowRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                             highRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            openPrice: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[1]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            previousClosePrice: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[1]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                         },
                         tradingview: {
                             // https only
@@ -2321,6 +2375,17 @@ class ProjectStockVision {
             Vision.tradingTimeInterval(code, precisionIntervalsBag, precisionIntervalInSeconds, startHour, startMinute, startSeconds, forTomorrow)
             window.idaStockVision.priceStore.priceTimeIntervalsToday[code] = Vision.tradingTimeIntervalForPeakDetection(tradingIntervalsBag)
             window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] = Vision.precisionTimeIntervalForPricePrecision(precisionIntervalsBag)
+            if (Vision.PriceAnalysis.profitPursuitType(code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY) {
+                const priceTimeIntervalsToday = window.idaStockVision.priceStore.priceTimeIntervalsToday[code]
+                // TO-DO make this universal for crypto and non crypto
+                const contextDate = new Date(priceTimeIntervalsToday.get('9:31').epochDate)
+                contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,-30,1),0)
+                Array.from(priceTimeIntervalsToday.values()).forEach(item => {
+                    if (item.epochDate < contextDate.getTime()) {
+                        priceTimeIntervalsToday.delete(item.hourMinute)
+                    }
+                })
+            }
             Vision.trackProcess('tradingInterval', code)
         }
 
@@ -2623,8 +2688,8 @@ class ProjectStockVision {
                     const code = url.searchParams.get('code')
                     anchorPrice = anchorPrice !== undefined ? Number(anchorPrice.split(':').at(-1).trim()) : undefined
                     profitLoss = profitLoss !== undefined ? Number(profitLoss.split(':').at(-1).trim()) : undefined
-                    downwardVolatility = downwardVolatility.split(':').at(-1).trim() === 'true' ? true : false
-                    isProfitChunk = isProfitChunk.split(':').at(-1).trim() === 'true' ? true : false
+                    downwardVolatility = downwardVolatility !== undefined ? downwardVolatility.split(':').at(-1).trim() === 'true' : false
+                    isProfitChunk = isProfitChunk !== undefined ? isProfitChunk.split(':').at(-1).trim() === 'true' : false
     
                     return {anchorPrice, downwardVolatility, date, position, price, code, profitLoss, isProfitChunk}
                 }
@@ -2760,7 +2825,7 @@ class ProjectStockVision {
                 // we check the length of the result of lastFiveBusinessDays because of how empty array is evaluated => [].every(logic) will always be true.
                 const lastFiveBusinessDaysCheck = lastFiveBusinessDays.length > 0 && lastFiveBusinessDays.every(outcome => outcome === true)
                 const historyDistance = Date.now() - Date.parse(idaStockVision.priceStore.peakValleyHistory[0].date)
-                const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
+                const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,code)
                 let peakValleySnapshotCheck = true
                 let squashedPeakValleyCheck = true
                 let tinyCodeIsPositonOutCheck = true
@@ -2880,7 +2945,7 @@ class ProjectStockVision {
                     ) {
                         return
                     }
-                    analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval)
+                    analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval, this.#code)
                     priceStore.analysis[this.#code] = analysis
                     anchor = analysis.findAnchor()
                     downwardVolatilityTrail = analysis.downwardVolatility()
