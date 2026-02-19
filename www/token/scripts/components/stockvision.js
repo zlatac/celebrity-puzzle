@@ -559,9 +559,9 @@ class ProjectStockVision {
                 return Vision.percentageDelta(window.idaStockVision.priceStore.openPrice, this._currentPrice.price, true) >= 0
             }
 
-            get isLowRiskAndTinyPursuit() {
+            get isHighRiskAndTinyPursuit() {
                 return PriceAnalysis.profitPursuitType(this._code) === PriceAnalysis.PROFIT_PURSUIT.TINY 
-                    && window.idaStockVision.priceStore.isUpwardTrendDayToDay && this.openPriceToCurrentPriceIsUpward
+                    && (window.idaStockVision.priceStore.isUpwardTrendDayToDay === false || this.openPriceToCurrentPriceIsUpward === false)
             }
 
             /** @returns {PriceHistory | undefined} */
@@ -571,7 +571,7 @@ class ProjectStockVision {
                 // from deepest valley make sure positive slope between valley price and current price
                 // logic not met do nothing and keep watching
                                     
-                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined || this.isLowRiskAndTinyPursuit) {
+                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined || this.isHighRiskAndTinyPursuit) {
                     return
                 }
                 const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
@@ -4580,7 +4580,7 @@ class StockVisionTrade {
         if (parametersHasZero) {
             throw new Error('zero value exists for at least one of the parameters (bidPrice, askPrice)')
         }
-        if (isTinyOrder) {
+        if (Boolean(this.feature.tinySlowSpeed) && isTinyOrder) {
             if (!order.position) {
                 return this.decimalPrecision(Math.max(askPrice,bidPrice))
             }
@@ -4719,6 +4719,24 @@ class StockVisionTrade {
         }
 
         return idaStockVisionTrade.accounts['rsp'].id
+    }
+
+    static get feature() {
+        return window.idaStockVisionTrade.featureFlags
+    }
+
+    /**
+     * 
+     * @param {string} name 
+     * @returns 
+     */
+    static toggleFeature(name) {
+        if (!(name in this.feature)) {
+            console.log(`feature does not exist`)
+            return
+        }
+
+        window.idaStockVisionTrade.featureFlags[name] = !this.feature[name]
     }
 
     static processOrderQueue = async () => {
@@ -4897,7 +4915,7 @@ class StockVisionTrade {
                         case orderStatuses.pending:
                         case orderStatuses.queued:
                         case orderStatuses.activated:
-                            const isTinyCode = order.code.includes('_TINY') && !order.immediateExecution
+                            const isTinyCode = Boolean(this.feature.tinySlowSpeed) && order.code.includes('_TINY') && !order.immediateExecution
                             const localModifyThreshold = isTinyCode ? (60/5) * 60 : this.constants.modifyThreshold
                             if (order.checkCount >= localModifyThreshold) {
                                 order.modify = true
@@ -5065,6 +5083,9 @@ class StockVisionTrade {
                 orders: [],
                 orderHistory: {},
                 codes: {},
+                featureFlags: {
+                    tinySlowSpeed: true
+                },
                 tools: {
                     start: StockVisionTrade.start,
                     stop: StockVisionTrade.stop,

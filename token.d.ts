@@ -337,6 +337,10 @@ export interface ITradeOrder extends ITradeCheckResponse {
   accountId?: string;
 }
 
+export interface ITradeFeatureFlags {
+  tinySlowSpeed: boolean
+}
+
 export interface IStockVisionTrade {
   pollServerInProgress: boolean;
   pollServerInstance: undefined | number;
@@ -376,4 +380,5 @@ export interface IStockVisionTrade {
       price: string | number;
     };
   };
+  featureFlags: ITradeFeatureFlags;
 }
