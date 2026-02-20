@@ -1583,6 +1583,39 @@ class ProjectStockVision {
 
         /**
          * 
+         * @param {string} code 
+         * @param {number} price 
+         * @param {string} dayMonthYearString 
+         * @param {IntervalFlags} tradingInterval 
+         * @param {boolean} addToPriceStore 
+         * @returns {PriceHistory[]}
+         */
+        static createHistory(code, price, dayMonthYearString, tradingInterval, addToPriceStore = false) {
+            const formatedCode = Vision.PriceAnalysis.codeFormat(code)
+            const interval = tradingInterval || window.idaStockVision.settings[formatedCode]?.tradingInterval
+            const date = new Date(dayMonthYearString).toISOString()
+            if (interval === undefined || date === undefined || Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[interval] === undefined) {
+                throw new Error('something is wrong') 
+            }
+            /** @type {PriceHistory[]} */
+            const history = [Vision.PriceAnalysis.PEAK,Vision.PriceAnalysis.VALLEY].map(type => {
+                return {
+                    type,
+                    price,
+                    date,
+                    flags: [interval]
+                }
+            })
+
+            if (addToPriceStore) {
+                window.idaStockVision.priceStore.peakValleyHistory.push(...history)
+            }
+
+            return history
+        }
+
+        /**
+         * 
          * @param {PriceHistory | undefined} anchor 
          * @param {number} entryThreshold 
          * @param {number} exitThreshold 
@@ -4411,7 +4444,7 @@ class StockVisionTrade {
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.5) => {
+    static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.7) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
