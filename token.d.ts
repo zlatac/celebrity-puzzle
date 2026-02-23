@@ -362,6 +362,7 @@ export interface IStockVisionTrade {
   securities: {
     [key: string]: {
       securityId: string;
+      sector: string;
     }
   };
   codes: {

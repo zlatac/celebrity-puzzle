@@ -3286,16 +3286,27 @@ class StockVisionTrade {
         // use scope to find access token in sessionStorage. access token gets updated frequently
         // request headers can be flaky so make sure you are sending exactly what they are looking for
         // you will get a new orderId when you modify an existing order and the previoud orderId becomes a rootOrderId
-        const securityIds = [ 
-            {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO"},
-            {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO"},
-            {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO"},
-            {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO"},
-            {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO"},
-            {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO"},
-            {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO"},
-            {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO"},
-            {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO"},
+        const securityIds = [
+            {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO", sector: this.constants.sectors.IT},
+            {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO", sector: this.constants.sectors.IT},
+            {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO", sector: this.constants.sectors.IT},
+            {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO", sector: this.constants.sectors.IT},
+            {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO", sector: this.constants.sectors.HEALTH},
+            {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO", sector: this.constants.sectors.STAPLE},
+            {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO", sector: this.constants.sectors.AUTO},
+            {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO", sector: this.constants.sectors.IT},
+            {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO", sector: this.constants.sectors.IT},
+            {securityUuid: "12910d3f-164a-4202-0964-97986c590605", symbol: "GEV.TO", sector: this.constants.sectors.INDUSTRIAL},
+            {securityUuid: "5d012344-69a4-4d72-02bb-252ca1520b7a", symbol: "VZ.TO", sector: this.constants.sectors.TELECOM},
+            {securityUuid: "2d171b36-1c8a-4d92-0d5f-08958d5d059e", symbol: "XOM.TO", sector: this.constants.sectors.ENERGY},
+            {securityUuid: "054d0f5c-1e0a-4512-0c24-3482a94c0215", symbol: "ENB.TO", sector: this.constants.sectors.ENERGY},
+            {securityUuid: "2727298f-0689-4782-0cd6-3f283c5c1d87", symbol: "OXY.TO", sector: this.constants.sectors.ENERGY},
+            {securityUuid: "28121091-1785-4832-0868-d39088581639", symbol: "CHEV.TO", sector: this.constants.sectors.ENERGY},
+            {securityUuid: "241f5446-0d09-4482-00ed-a79a5f500e8c", symbol: "LLY.TO", sector: this.constants.sectors.HEALTH},
+            {securityUuid: "22302c83-3b3a-4222-0ea7-8895575e0a26", symbol: "WMT.TO", sector: this.constants.sectors.STAPLE},
+            {securityUuid: "10210935-170f-4012-09d4-32a494591d15", symbol: "PG.TO", sector: this.constants.sectors.STAPLE},
+            {securityUuid: "2a29270e-0834-4a42-0b17-5087796b0146", symbol: "VISA.TO", sector: this.constants.sectors.FINANCE},
+            {securityUuid: "6f571411-05be-4f32-0275-89925c220734", symbol: "MA.TO", sector: this.constants.sectors.FINANCE},
         ]
 
         const submit = {
@@ -4369,7 +4380,17 @@ class StockVisionTrade {
             },
             tradeProcess: this.questradeTradeProcess(),
         },
-        ibkr: {}
+        ibkr: {},
+        sectors: {
+            IT: 'it',
+            AUTO: 'auto',
+            HEALTH: 'health',
+            ENERGY: 'energy',
+            STAPLE: 'staple',
+            INDUSTRIAL: 'industrial',
+            FINANCE: 'finance',
+            TELECOM: 'telecom',
+        }
     }
 
     /**
@@ -4391,7 +4412,7 @@ class StockVisionTrade {
 
     /**
      * 
-     * @param {{securityUuid: string; symbol: string;}[]} securities 
+     * @param {{securityUuid: string; symbol: string; sector: string;}[]} securities 
      * @param {string} accountId 
      * @param {boolean} cashAccount
      */
@@ -4411,7 +4432,10 @@ class StockVisionTrade {
                 throw new Error('define all security information')
             }
             const entries =  securities.reduce((previous, current) => {
-                previous[current.symbol.split('.TO')[0].toUpperCase()] = {securityId: current.securityUuid}
+                previous[current.symbol.split('.TO')[0].toUpperCase()] = {
+                    securityId: current.securityUuid,
+                    sector: current.sector
+                }
                 return previous
             }, {})
             storage.securities = {...storage.securities, ...entries}
