@@ -338,7 +338,8 @@ export interface ITradeOrder extends ITradeCheckResponse {
 }
 
 export interface ITradeFeatureFlags {
-  tinySlowSpeed: boolean
+  tinySlowSpeed: boolean;
+  tinyPriceDecision: boolean;
 }
 
 export interface IStockVisionTrade {
