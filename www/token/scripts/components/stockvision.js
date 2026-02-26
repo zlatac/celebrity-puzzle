@@ -479,12 +479,11 @@ class ProjectStockVision {
                 /* only precision interval should be used here as thats what happens last & some trading interval
                  might only have 1 in a trading day */
                 const precisionIntervalExist = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] instanceof Map
-                const profitLossThresholdsDefined = this.profitLossThresholdsExist(code)
+                // const profitLossThresholdsDefined = this.profitLossThresholdsExist(code)
                 const isTinyProfitPursuit = PriceAnalysis.profitPursuitType(code) === PriceAnalysis.PROFIT_PURSUIT.TINY
                 let lastHourMinute
 
                 if (!isTinyProfitPursuit
-                    ||[precisionIntervalExist, profitLossThresholdsDefined].some(item => item === false)
                     || mutationEpochDate === undefined 
                     || this._currentPosition === undefined 
                     || !ignorePosition && this._currentPosition.position !== PriceAnalysis.IN
@@ -493,7 +492,7 @@ class ProjectStockVision {
                 }
 
                 switch(true) {
-                    case profitLossThresholdsDefined && precisionIntervalExist:
+                    case precisionIntervalExist:
                         lastHourMinute = Array.from(window.idaStockVision.priceStore.precisionTimeIntervalsToday[code].values()).at(-1)
                         if (lastHourMinute.epochDate <= mutationEpochDate) {
                             return true
@@ -564,6 +563,12 @@ class ProjectStockVision {
                     && (window.idaStockVision.priceStore.isUpwardTrendDayToDay === false || this.openPriceToCurrentPriceIsUpward === false)
             }
 
+            get lowestPriceOfTheDay() {
+                // TO-DO in priceStore setter create a price history and push into peakvalleyhistory to persist across the day
+                // especially when we have to rebuild the tiny code for any reason
+                return window.idaStockVision.priceStore.marketHighLowRange.low
+            }
+
             /** @returns {PriceHistory | undefined} */
             findAnchorValley() {
                 // find closest highest peak
@@ -571,13 +576,18 @@ class ProjectStockVision {
                 // from deepest valley make sure positive slope between valley price and current price
                 // logic not met do nothing and keep watching
                                     
-                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined || this.isHighRiskAndTinyPursuit) {
+                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
                     return
                 }
                 const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
                 const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => {
                     return (item.epochDate > this.closestHighestPeak.epochDate) && this.dateIsGreaterThanOrEqual(item.epochDate, currentPositionDate)
                 })
+
+                if (PriceAnalysis.profitPursuitType(this._code) === PriceAnalysis.PROFIT_PURSUIT.TINY && this.lowestPriceOfTheDay !== undefined) {
+                    valleysFromClosestHighestPeak.push({...this.lowestPriceOfTheDay, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY})
+                }
+
                 const prices = valleysFromClosestHighestPeak.map((item) => item.price)
                 const lowestPrice = Math.min(...prices)
                 const lowestPriceIndex = prices.lastIndexOf(lowestPrice)
@@ -1881,6 +1891,9 @@ class ProjectStockVision {
                         break
                     case origin.includes('livecoinwatch'):
                         priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
+                        priceLowRangeElement = window.idaStockVision.cssSelectors.livecoinwatch.lowRange()
+                        priceHighRangeElement = window.idaStockVision.cssSelectors.livecoinwatch.highRange()
+                        setUpGeneralHighLowRangeMutations()
                         break
                     default:
                         // add tradingview, google finance
@@ -1914,7 +1927,7 @@ class ProjectStockVision {
         static calcDayToDayUpwardTrend() {
             const priceStore = window.idaStockVision.priceStore
             const prevCloseToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.openPrice, true) >= 0
-            const prevCloseToHighestPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.marketHighLowRange.high, true) >= 0
+            const prevCloseToHighestPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.marketHighLowRange.high?.price, true) >= 0
             priceStore.isUpwardTrendDayToDay = prevCloseToOpenPrice || prevCloseToHighestPrice
         }
         /**
@@ -1946,10 +1959,22 @@ class ProjectStockVision {
                         lastPrice: undefined,
                         previousLastPrice: undefined,
                         marketHighLowRange: {
-                            low: undefined,
+                            _low: undefined,
+                            get low(){return this._low},
+                            set low(val) {
+                                const now = new Date()
+                                // @ts-ignore
+                                this._low = {price: val, epochDate: now.getTime(), date: now.toISOString()}
+                                Vision.calcDayToDayUpwardTrend()
+                            },
                             _high: undefined,
                             get high(){return this._high},
-                            set high(val){this._high = val; Vision.calcDayToDayUpwardTrend()},
+                            set high(val) {
+                                const now = new Date()
+                                // @ts-ignore
+                                this._high = {price: val, epochDate: now.getTime(), date: now.toISOString()}
+                                Vision.calcDayToDayUpwardTrend()
+                            },
                         },
                         isUpwardTrendDayToDay: false,
                         _yesterdayClosePrice: undefined,
@@ -2007,7 +2032,8 @@ class ProjectStockVision {
                         },
                         livecoinwatch: {
                             price: () => document.querySelector('.coin-price-large .price'),
-                            highLowRange: () => null
+                            lowRange: () => document.evaluate('//*[@id="__next"]/div/div[1]/main/div/div[2]/div[1]/div/div/section/div[3]/div[2]/div[2]/div[2]/span',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            highRange: () => document.evaluate('//*[@id="__next"]/div/div[1]/main/div/div[2]/div[1]/div/div/section/div[3]/div[2]/div[2]/div[3]/span',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                         },
                         cboe: {
                             price: () => document.querySelector('#singleSecurityQuote > div > div > div > div> div:nth-child(2) > h2'),
@@ -2285,10 +2311,6 @@ class ProjectStockVision {
         updatePrices(currentPrice, peakValleyDetected, intervalFlag) {
             try {
                 const priceStore = window.idaStockVision.priceStore
-                const {low, high} = priceStore.marketHighLowRange
-                const isHighLowRangeValid = [low, high].every((item) => typeof item === 'number' && item > 0)
-                // Reduce market noise from outlier price trades(pre-market & after market hours especially)
-                const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice.price >= low && currentPrice.price <= high) : true
 
                 if (priceStore.lastPrice?.price !== currentPrice.price) {
                     priceStore.previousLastPrice = priceStore.lastPrice
@@ -2437,9 +2459,9 @@ class ProjectStockVision {
                 const priceTimeIntervalsToday = window.idaStockVision.priceStore.priceTimeIntervalsToday[code]
                 // TO-DO make this universal for crypto and non crypto
                 const contextDate = new Date(priceTimeIntervalsToday.get('9:31').epochDate)
-                contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,-30,1),0)
+                contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,undefined,1),0)
                 Array.from(priceTimeIntervalsToday.values()).forEach(item => {
-                    if (item.epochDate < contextDate.getTime()) {
+                    if (item.epochDate !== contextDate.getTime()) {
                         priceTimeIntervalsToday.delete(item.hourMinute)
                     }
                 })

@@ -82,10 +82,12 @@ export interface IPriceStore {
   lastPrice: IPrice | undefined;
   previousLastPrice: IPrice | undefined;
   marketHighLowRange: {
-      low: undefined | number;
-      _high: undefined | number;
-      get high(): number;
-      set high(): void;
+    _high: IPrice | undefined;
+    get high(): IPrice | undefined
+    set high(x: number): void;
+    _low: IPrice | undefined
+    get low(): IPrice | undefined
+    set low(x: number): void;
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
