@@ -802,7 +802,7 @@ app.get('/trader/status', async function(req,res){
             const primaryCode = code.split('_')[0]
             const position = parsedData[code].position
             if (noHistory !== undefined && Boolean(Number(noHistory)) === true) {
-                delete parsedData[primaryCode].peakValleyHistory
+                delete parsedData[primaryCode]?.peakValleyHistory
             }
             const allRelatedCodeEntries = Object.entries(parsedData).filter(item => item[0].includes(primaryCode))
             if (position === 'in') {

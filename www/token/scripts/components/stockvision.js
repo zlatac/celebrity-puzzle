@@ -2457,12 +2457,18 @@ class ProjectStockVision {
             window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] = Vision.precisionTimeIntervalForPricePrecision(precisionIntervalsBag)
             if (Vision.PriceAnalysis.profitPursuitType(code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY) {
                 const priceTimeIntervalsToday = window.idaStockVision.priceStore.priceTimeIntervalsToday[code]
+                const precisionTimeIntervalsToday = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code]
                 // TO-DO make this universal for crypto and non crypto
                 const contextDate = new Date(priceTimeIntervalsToday.get('9:31').epochDate)
                 contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,undefined,1),0)
                 Array.from(priceTimeIntervalsToday.values()).forEach(item => {
                     if (item.epochDate !== contextDate.getTime()) {
                         priceTimeIntervalsToday.delete(item.hourMinute)
+                    }
+                })
+                Array.from(precisionTimeIntervalsToday.values()).forEach(item => {
+                    if (item.epochDate <= contextDate.getTime()) {
+                        precisionTimeIntervalsToday.delete(item.hourMinute)
                     }
                 })
             }
