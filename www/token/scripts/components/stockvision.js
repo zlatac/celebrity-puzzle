@@ -3677,7 +3677,7 @@ class StockVisionTrade {
         }
 
         const orders = {
-            fetch: (accessToken, fromDateISO) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=20&sort-by=-createdDateTime`, {
+            fetch: (accessToken, fromDateISO) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=100&sort-by=-createdDateTime`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
@@ -4480,6 +4480,7 @@ class StockVisionTrade {
         storage.orderHistory = idaStockVisionTrade.orderHistory
         storage.codes = idaStockVisionTrade.codes
         storage.securities = idaStockVisionTrade.securities
+        storage.featureFlags = idaStockVisionTrade.featureFlags
 
         this.storeBrokerageVariables(storage)
     }
@@ -4806,6 +4807,10 @@ class StockVisionTrade {
         return window.idaStockVisionTrade.featureFlags
     }
 
+    static get unexecutedOrders() {
+        return window.idaStockVisionTrade.orders.filter(order => !order.executed)
+    }
+
     /**
      * 
      * @param {string} name 
@@ -4819,6 +4824,7 @@ class StockVisionTrade {
 
         window.idaStockVisionTrade.featureFlags[name] = !this.feature[name]
         this.backUp()
+        return window.idaStockVisionTrade.featureFlags[name]
     }
 
     static processOrderQueue = async () => {
@@ -4956,7 +4962,7 @@ class StockVisionTrade {
         
         try {
             let orderToModifyExist = false
-            const fromDateISO = orders.at(0).timeSubmitted
+            const fromDateISO = new Date(orders.at(0).ts).toISOString()
             const brokerageName = idaStockVisionTrade.brokerage.name
             const orderStatuses = this.constants[brokerageName].trade.orderStatus
             const accessToken = this.getAccessToken(brokerageName)
