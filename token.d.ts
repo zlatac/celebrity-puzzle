@@ -88,6 +88,7 @@ export interface IPriceStore {
     _low: IPrice | undefined
     get low(): IPrice | undefined
     set low(x: number): void;
+    executedLows: Set<number>;
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;

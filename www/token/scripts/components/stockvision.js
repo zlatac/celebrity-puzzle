@@ -371,6 +371,10 @@ class ProjectStockVision {
                 return Vision.percentageDelta(this.profitChunkPrice, this._currentPrice.price, true)
             }
 
+            get isTinyProfitPursuit() {
+                return PriceAnalysis.profitPursuitType(this._code) === PriceAnalysis.PROFIT_PURSUIT.TINY
+            }
+
             get isCurrentPositionStuck() {
                 const isStuckMaxPeak = this.findAnchorPeak(true)
                 if (this._currentPosition === undefined
@@ -442,12 +446,19 @@ class ProjectStockVision {
                 return Vision.percentageDelta(this._currentPosition.price, this._currentPrice.price, true) >= profitThreshold
             }
 
-            targetedLossAcquired(code) {
+            /**
+             * 
+             * @param {string} code 
+             * @param {number} currentHour 
+             * @returns {boolean}
+             */
+            targetedLossAcquired(code, currentHour) {
                 const lossThreshold = window.idaStockVision.settings[code].lossThreshold
                 if (typeof lossThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
+                    || this.isTinyProfitPursuit &&  Number.isFinite(currentHour) && currentHour < 15
                 ) {
                     return false
                 }
@@ -455,12 +466,19 @@ class ProjectStockVision {
                 return Vision.percentageDelta(this._currentPosition.price, this._currentPrice.price, true) <= -1 * lossThreshold
             }
 
-            targetedChunkProfitAcquired(code) {
+            /**
+             * 
+             * @param {string} code 
+             * @param {number} currentHour 
+             * @returns {boolean}
+             */
+            targetedChunkProfitAcquired(code, currentHour) {
                 const profitChunkThreshold = window.idaStockVision.settings[code].profitChunkThreshold
                 if (typeof profitChunkThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
+                    || this.isTinyProfitPursuit &&  Number.isFinite(currentHour) && currentHour < 15
                 ) {
                     return false
                 }
@@ -584,7 +602,7 @@ class ProjectStockVision {
                     return (item.epochDate > this.closestHighestPeak.epochDate) && this.dateIsGreaterThanOrEqual(item.epochDate, currentPositionDate)
                 })
 
-                if (PriceAnalysis.profitPursuitType(this._code) === PriceAnalysis.PROFIT_PURSUIT.TINY && this.lowestPriceOfTheDay !== undefined) {
+                if (this.isTinyProfitPursuit && this.lowestPriceOfTheDay !== undefined) {
                     valleysFromClosestHighestPeak.push({...this.lowestPriceOfTheDay, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY})
                 }
 
@@ -1960,11 +1978,11 @@ class ProjectStockVision {
                         previousLastPrice: undefined,
                         marketHighLowRange: {
                             _low: undefined,
-                            get low(){return this._low},
+                            get low(){return !this.executedLows.has(this._low.price) ? this._low : undefined},
                             set low(val) {
                                 const now = new Date()
                                 // @ts-ignore
-                                this._low = {price: val, epochDate: now.getTime(), date: now.toISOString()}
+                                this._low = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
                                 Vision.calcDayToDayUpwardTrend()
                             },
                             _high: undefined,
@@ -1975,6 +1993,7 @@ class ProjectStockVision {
                                 this._high = {price: val, epochDate: now.getTime(), date: now.toISOString()}
                                 Vision.calcDayToDayUpwardTrend()
                             },
+                            executedLows: new Set(),
                         },
                         isUpwardTrendDayToDay: false,
                         _yesterdayClosePrice: undefined,
@@ -2801,12 +2820,14 @@ class ProjectStockVision {
                 }
     
                 idaStockVision.reports.push(report)
-
+                
                 if (!localStorage.hasOwnProperty(localStorageKey)){
                     localStorage.setItem(localStorageKey, JSON.stringify([]))
                 }
                 // save to localstorage
                 localStorage.setItem(localStorageKey, JSON.stringify([...JSON.parse(localStorage.getItem(localStorageKey)), report]))
+                
+                idaStockVision.priceStore.marketHighLowRange.executedLows.add(report.anchorIn)
                 
                 
             } catch (error) {
@@ -3047,9 +3068,9 @@ class ProjectStockVision {
                     if (analysis.currentPositionIn) {
                         exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
                         const targetedProfitAcquired = analysis.targetedProfitAcquired(this.#code)
-                        const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code)
+                        const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code, now.getHours())
                         isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
-                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
+                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || analysis.targetedLossAcquired(this.#code, now.getHours()) || exitByTradingEndTime
                             ? currentPrice.price 
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
                     }
@@ -3252,10 +3273,11 @@ class ProjectStockVision {
      * @param {number} [loss] 
      * @param {IntervalFlags} [tradingInterval]
      * @param {IntervalFlags} [precisionInterval]
+     * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.2, exit = 0.2, experiment = false, profit = 0.3, loss = 0.3, tradingInterval = '15min', precisionInterval) {
-        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval)
+    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 2, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
     }
 
     /**
