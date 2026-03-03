@@ -4883,7 +4883,7 @@ class StockVisionTrade {
                     : this.getLatestOrderedHistory(order.code).quantity
                 let quantityToRecord = quantity
                 const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
-                const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
+                const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid && !order.immediateExecution
                 if (quantity === undefined || quantity === 0) {
                     throw new Error(`no quantity to process order - ${order.code}`)
                 }
