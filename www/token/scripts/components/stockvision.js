@@ -4839,6 +4839,12 @@ class StockVisionTrade {
         return window.idaStockVisionTrade.orders.filter(order => !order.executed)
     }
 
+    static get todaysOrders() {
+        const today = new Date()
+        today.setHours(0,0,0,0)
+        return window.idaStockVisionTrade.orders.filter(order => Date.parse(order.timeSubmitted) >= today.getTime())
+    }
+
     /**
      * 
      * @param {string} name 
@@ -4853,6 +4859,29 @@ class StockVisionTrade {
         window.idaStockVisionTrade.featureFlags[name] = !this.feature[name]
         this.backUp()
         return window.idaStockVisionTrade.featureFlags[name]
+    }
+
+    /**
+     * 
+     * @param {number} numberOfStocks 
+     * @param {number} capitalPerStock 
+     * @param {number} reserve 
+     * @returns {number}
+     */
+    static workingCapital(numberOfStocks, capitalPerStock, reserve = 20) {
+        return numberOfStocks * ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(capitalPerStock, reserve)
+    }
+
+    /**
+     * 
+     * @param {number} totalCapital 
+     * @param {number} capitalPerStock 
+     * @param {number} reserve 
+     */
+    static capitalToAllocate(totalCapital, capitalPerStock, reserve = 20) {
+        const numberOfStocks = Math.floor(totalCapital / ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(capitalPerStock, reserve))
+        const reserves = Math.round(numberOfStocks * (capitalPerStock * reserve/100))
+        return {numberOfStocks, reserves}
     }
 
     static processOrderQueue = async () => {
