@@ -238,23 +238,25 @@ class ProjectStockVision {
 
             /** @returns {PriceHistory[]} peakValleyProgressionOrder */
             get peakValleyProgressionOrder() {
-                return this._peakValleyHistory.map((item) => {
-                    // To-do refactor to a reduce that also removes duplicates within the peak/valley using type and epoch date in the map
-                    if (!('epochDate' in item)) {
+                /** @type {PriceHistory[]} */
+                const finalOutput = this._peakValleyHistory.reduce((previous, current) => {
+                    const flagsEmpty = current.flags.length === 0
+                    if (!('epochDate' in current)) {
                         // Needed for manual addition of price histories without epochDate
-                        item.epochDate = this.transformDateToEpochMiliseconds(item.date)
+                        current.epochDate = this.transformDateToEpochMiliseconds(current.date)
                     }
-                    return item
-                })
-                .filter((item) => {
                     if (PriceAnalysis.TRADING_INTERVAL_SECONDS[this._priceTradingInterval] === undefined) {
-                        return true
+                        previous.push(current)
+                        return previous
                     }
-                    const flagsEmpty = item.flags.length === 0
+                    if (current.flags.includes(this._priceTradingInterval) || (flagsEmpty && current.epochDate < this.todaysDateMidnight)){
+                        previous.push(current)
+                    }
 
-                    return item.flags.includes(this._priceTradingInterval) || (flagsEmpty && item.epochDate < this.todaysDateMidnight)
-                })
-                .sort((a,b) => {
+                    return previous
+                }, [])
+
+                finalOutput.sort((a,b) => {
                     // ascending date
                     if (a.epochDate < b.epochDate) {
                         return -1
@@ -264,6 +266,16 @@ class ProjectStockVision {
                     }
                     return 1
                 })
+
+                Object.defineProperty(this, 'peakValleyProgressionOrder', {
+                    // affects only object and not the class
+                    get() {
+                        return finalOutput;
+                    },
+                });
+                // console.log('memoized')
+                
+                return this.peakValleyProgressionOrder
                 
             }
 
@@ -487,21 +499,13 @@ class ProjectStockVision {
             }
 
             /**
-             * 
-             * @param {string} code 
+             *  
              * @param {number} mutationEpochDate 
              * @param {boolean} ignorePosition 
              * @returns {boolean}
              */
-            exitByTradingEndTime(code, mutationEpochDate, ignorePosition = false) {
-                /* only precision interval should be used here as thats what happens last & some trading interval
-                 might only have 1 in a trading day */
-                const precisionIntervalExist = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] instanceof Map
-                // const profitLossThresholdsDefined = this.profitLossThresholdsExist(code)
-                const isTinyProfitPursuit = PriceAnalysis.profitPursuitType(code) === PriceAnalysis.PROFIT_PURSUIT.TINY
-                let lastHourMinute
-
-                if (!isTinyProfitPursuit
+            exitByTradingEndTime(mutationEpochDate, ignorePosition = false) {
+                if (!this.isTinyProfitPursuit
                     || mutationEpochDate === undefined 
                     || this._currentPosition === undefined 
                     || !ignorePosition && this._currentPosition.position !== PriceAnalysis.IN
@@ -509,16 +513,9 @@ class ProjectStockVision {
                     return false
                 }
 
-                switch(true) {
-                    case precisionIntervalExist:
-                        lastHourMinute = Array.from(window.idaStockVision.priceStore.precisionTimeIntervalsToday[code].values()).at(-1)
-                        if (lastHourMinute.epochDate <= mutationEpochDate) {
-                            return true
-                        }
-                        return false
-                    default:
-                        return false
-                }
+                const exitDate = new Date().setHours(...PriceAnalysis.tinyExitTime(this._isCrypto),0)
+                const morningExitDate = new Date().setHours(10,28,0,0)
+                return mutationEpochDate >= exitDate || mutationEpochDate <= morningExitDate
             }
 
             /** 
@@ -1301,7 +1298,7 @@ class ProjectStockVision {
              * @param {boolean} isCrypto 
              * @returns {[number, number, number]}
              */
-            static tradingStartTime (isCrypto = false, minuteOffset = 1, hourOffset = 0) {
+            static tradingStartTime(isCrypto = false, minuteOffset = 1, hourOffset = 0) {
                 // Hour, Minute, Seconds
                 // Add 1 minute to the minute time to have the close price of that minute
                 return isCrypto 
@@ -1314,11 +1311,11 @@ class ProjectStockVision {
              * @param {boolean} isCrypto 
              * @returns {[number, number, number]}
              */
-            static tradingEndTime (isCrypto = false) {
+            static tradingEndTime(isCrypto = false, minuteOffset = 0, hourOffset = 0) {
                 // Hour, Minute, Seconds
                 return isCrypto 
-                    ? [23, 58, 0] 
-                    : [15, 59, 59]
+                    ? [23 + hourOffset, 58 + minuteOffset, 0] 
+                    : [15 + hourOffset, 59 + minuteOffset, 59]
             }
 
             /**
@@ -1326,7 +1323,16 @@ class ProjectStockVision {
              * @param {boolean} isCrypto 
              * @returns {[number, number, number]}
              */
-            static tradingHistoryUploadTime (isCrypto = false) {
+            static tinyExitTime(isCrypto = false) {
+                return PriceAnalysis.tradingEndTime(isCrypto, -4)
+            }
+
+            /**
+             * 
+             * @param {boolean} isCrypto 
+             * @returns {[number, number, number]}
+             */
+            static tradingHistoryUploadTime(isCrypto = false) {
                 // Hour, Minute, Seconds
                 return isCrypto 
                     ? PriceAnalysis.tradingEndTime(true)
@@ -1968,6 +1974,7 @@ class ProjectStockVision {
                     statusCounter: 0,
                     intervalInspectorInstance: {},
                     timeoutInspectorInstance: {},
+                    tinyExitTimeoutInstance: undefined,
                     serverUrl: '',
                     localServerUrl: '',
                     notificationServerUrl: '',
@@ -2107,7 +2114,7 @@ class ProjectStockVision {
                     ({
                         position: false,
                     })
-                window.idaStockVision.priceStore.analysis[code] = undefined
+                window.idaStockVision.priceStore.analysis[code] = () => Vision.deriveAnalysis(code)
                 window.idaStockVision.priceStore.todaysPeakValleySnapshot[code] = []
                 window.idaStockVision.priceStore.highestPeakAndLowestValleyToday[code] = []
                 window.idaStockVision.intervalInspectorInstance[code] = undefined
@@ -2119,6 +2126,7 @@ class ProjectStockVision {
                 window.idaStockVision.settings[code] = {
                     tradingInterval: this.#tradingInterval,
                     precisionInterval: this.#precisionInterval,
+                    isCrypto: this.#isCrypto,
                     experiment: false,
                     entryPercentageThreshold: this.#entryPercentage || undefined,
                     exitPercentageThreshold: this.#exitPercentage || undefined,
@@ -2485,11 +2493,11 @@ class ProjectStockVision {
                         priceTimeIntervalsToday.delete(item.hourMinute)
                     }
                 })
-                Array.from(precisionTimeIntervalsToday.values()).forEach(item => {
-                    if (item.epochDate <= contextDate.getTime()) {
-                        precisionTimeIntervalsToday.delete(item.hourMinute)
-                    }
-                })
+                // Array.from(precisionTimeIntervalsToday.values()).forEach(item => {
+                //     if (item.epochDate <= contextDate.getTime()) {
+                //         precisionTimeIntervalsToday.delete(item.hourMinute)
+                //     }
+                // })
             }
             Vision.trackProcess('tradingInterval', code)
         }
@@ -2755,6 +2763,31 @@ class ProjectStockVision {
 
         }
 
+        runTinyExitSetup() {
+            const now = new Date()
+            const uploadProcessTracker = window.idaStockVision.processTracker.uploadHistory
+            const trackerDate = Number.isFinite(uploadProcessTracker) ? new Date(uploadProcessTracker) : now
+            const idaStockVision = window.idaStockVision
+            const isTinyCode = Vision.PriceAnalysis.profitPursuitType(this.#code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY
+            if (!isTinyCode || trackerDate.getDate() === now.getDate() && idaStockVision.tinyExitTimeoutInstance !== undefined) {
+                return
+            }
+            
+            const exitDate = new Date()
+            exitDate.setHours(...Vision.PriceAnalysis.tinyExitTime(this.#isCrypto), 0)
+            const runTime = exitDate.getTime() - now.getTime()
+            clearTimeout(idaStockVision.tinyExitTimeoutInstance)
+            idaStockVision.tinyExitTimeoutInstance = window.setTimeout(() => {
+                const record = {
+                    target: {
+                        nodeValue: String(idaStockVision.priceStore.lastPrice.price)
+                    }
+                }
+                this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+            }, runTime)
+            console.log(`will force exit by: ${exitDate.getTime()}`)
+        }
+
         /**
          * 
          * @param {string} code 
@@ -2997,6 +3030,16 @@ class ProjectStockVision {
             }
         }
 
+        static deriveAnalysis(code) {
+            const formattedCode = Vision.PriceAnalysis.codeFormat(code)
+            const priceStore = window.idaStockVision.priceStore
+            const codeSettings = window.idaStockVision.settings[formattedCode]
+            /** @type {CurrentPrice} */  // @ts-ignore
+            const currentPrice = priceStore.lastPrice !== undefined ? {...priceStore.lastPrice} : {...priceStore.peakValleyHistory.at(-1)}
+            
+            return new ProjectStockVision.vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, priceStore.currentPosition[formattedCode], codeSettings.isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,formattedCode)
+        }
+
         /**
          * 
          * @param {MutationRecord[]} mutationArray 
@@ -3048,25 +3091,30 @@ class ProjectStockVision {
                     const peakValleyDetected = Vision.PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                     this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
                     this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
+                    this.runTinyExitSetup()
                     if (Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval] !== undefined 
                         && 'flags' in currentPrice 
                         && !currentPrice.flags.includes(this.#tradingInterval)
                     ) {
                         return
                     }
-                    analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval, this.#code)
-                    priceStore.analysis[this.#code] = analysis
+                    analysis = new WeakRef(new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval, this.#code))
+                    analysis = analysis.deref()
+                    if (analysis === undefined) {
+                        throw new Error('cannot get analysis object')
+                    }
+                    // priceStore.analysis[this.#code] = analysis
                     anchor = analysis.findAnchor()
                     downwardVolatilityTrail = analysis.downwardVolatility()
                     if (analysis.currentPositionOut) {
-                        shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate, true)
+                        shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
                         entryPrice = !shouldBeExitingByTradingEndTime
                             ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                             : undefined
                     }
                     if (analysis.currentPositionIn) {
-                        exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
+                        exitByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate)
                         const targetedProfitAcquired = analysis.targetedProfitAcquired(this.#code)
                         const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code, now.getHours())
                         isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
@@ -3074,8 +3122,8 @@ class ProjectStockVision {
                             ? currentPrice.price 
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
                     }
-                    priceStore.highestPeakAndLowestValleyToday[this.#code] = analysis.highestPeakAndLowestValleyToday
-                    priceStore.todaysPeakValleySnapshot[this.#code] = analysis.peakValleyToday
+                    // priceStore.highestPeakAndLowestValleyToday[this.#code] = [...analysis.highestPeakAndLowestValleyToday]
+                    priceStore.todaysPeakValleySnapshot[this.#code] = [...analysis.peakValleyToday]
                     anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
                     // should be set after all flags have been possibly set
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 
@@ -3097,9 +3145,8 @@ class ProjectStockVision {
                         : notificationBody
                     notificationBody =  notificationBody.concat(`Downward volatility: ${downwardVolatilityTrail} \r\n`)
                     otherNotificationQueryParams.downwardVolatility = downwardVolatilityTrail === true
-                    otherNotificationQueryParams.immediateExecution = 
-                        exitByTradingEndTime === true && Vision.PriceAnalysis.profitPursuitType(this.#code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY
-                    if (isProfitChunkExit) {
+                    otherNotificationQueryParams.immediateExecution = exitByTradingEndTime === true
+                    if (isProfitChunkExit && exitByTradingEndTime === false) {
                         const chunkConfirmationLink = new URL(`${window.idaStockVision.notificationServerUrl}/trader/confirm/profitChunk`)
                         notificationBody =  notificationBody.concat(`Profit chunk: true \r\n`)
                         otherNotificationQueryParams.profitChunk = {
@@ -4912,7 +4959,7 @@ class StockVisionTrade {
                     : this.getLatestOrderedHistory(order.code).quantity
                 let quantityToRecord = quantity
                 const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
-                const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid && !order.immediateExecution
+                const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
                 if (quantity === undefined || quantity === 0) {
                     throw new Error(`no quantity to process order - ${order.code}`)
                 }

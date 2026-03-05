@@ -101,7 +101,7 @@ export interface IPriceStore {
   highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
   todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};
   currentPosition: {[key: string]: IPosition};
-  analysis: {[key: string]: any};
+  analysis: {[key: string]: () => Object};
   priceTimeIntervalsToday: {[key: string]: Map<string, ITradingIntervalInspection>;};
   precisionTimeIntervalsToday: {[key: string]: Map<string, IPrecisionIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
@@ -146,6 +146,7 @@ export interface IStockVision {
   timeoutInspectorInstance: {
     [key: string]: undefined | number;
   };
+  tinyExitTimeoutInstance: number;
   statusCounter: number;
   serverUrl: string;
   localServerUrl: string;
@@ -159,6 +160,7 @@ export interface IStockVision {
       tradingInterval: INTERVAL_FLAGS;
       precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
+      isCrypto: boolean;
       profitThreshold: undefined | number;
       profitChunkThreshold: undefined | number;
       lossThreshold: undefined | number;
