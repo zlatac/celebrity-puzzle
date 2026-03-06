@@ -4570,9 +4570,10 @@ class StockVisionTrade {
      */
     static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.7) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
+        const isTinyCode = ProjectStockVision.vision.PriceAnalysis.profitPursuitType(code) === ProjectStockVision.vision.PriceAnalysis.PROFIT_PURSUIT.TINY
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
-            highRiskThreshold,
+            highRiskThreshold: isTinyCode ? 1 : highRiskThreshold,
             chunkSellThreshold,
             accountName: cashAccount ? 'cash' : undefined
         }
