@@ -2031,6 +2031,7 @@ class ProjectStockVision {
                     processTracker: {
                         tradingInterval: {},
                         uploadHistory: undefined,
+                        tinyExit: undefined,
                     },
                     server: {
                         production: {
@@ -2765,8 +2766,8 @@ class ProjectStockVision {
 
         runTinyExitSetup() {
             const now = new Date()
-            const uploadProcessTracker = window.idaStockVision.processTracker.uploadHistory
-            const trackerDate = Number.isFinite(uploadProcessTracker) ? new Date(uploadProcessTracker) : now
+            const processTracker = window.idaStockVision.processTracker.tinyExit
+            const trackerDate = Number.isFinite(processTracker) ? new Date(processTracker) : now
             const idaStockVision = window.idaStockVision
             const isTinyCode = Vision.PriceAnalysis.profitPursuitType(this.#code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY
             if (!isTinyCode || trackerDate.getDate() === now.getDate() && idaStockVision.tinyExitTimeoutInstance !== undefined) {
@@ -2775,16 +2776,25 @@ class ProjectStockVision {
             
             const exitDate = new Date()
             exitDate.setHours(...Vision.PriceAnalysis.tinyExitTime(this.#isCrypto), 0)
+            const tradingEndTime = Vision.PriceAnalysis.tradingEndTime(this.#isCrypto)
             const runTime = exitDate.getTime() - now.getTime()
             clearTimeout(idaStockVision.tinyExitTimeoutInstance)
-            idaStockVision.tinyExitTimeoutInstance = window.setTimeout(() => {
+            const callback = () => {
+                const timeAtCallback = Date.now()
+                const endTime = new Date(now).setHours(...tradingEndTime)
+                if (timeAtCallback > endTime) {
+                    return
+                }
                 const record = {
                     target: {
-                        nodeValue: String(idaStockVision.priceStore.lastPrice.price)
+                        nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
                     }
                 }
                 this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
-            }, runTime)
+                window.setTimeout(callback, 1000 * 60)
+            }
+            idaStockVision.tinyExitTimeoutInstance = window.setTimeout(callback, runTime)
+            Vision.trackProcess('tinyExit')
             console.log(`will force exit by: ${exitDate.getTime()}`)
         }
 

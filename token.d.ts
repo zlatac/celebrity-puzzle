@@ -195,6 +195,7 @@ export interface IStockVision {
   processTracker: {
     tradingInterval: {[key: string]: number};
     uploadHistory: number;
+    tinyExit: number;
   }
 }
 
