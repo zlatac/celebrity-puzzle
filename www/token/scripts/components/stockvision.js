@@ -2494,6 +2494,7 @@ class ProjectStockVision {
                 //         priceTimeIntervalsToday.delete(item.hourMinute)
                 //     }
                 // })
+                priceTimeIntervalsToday.clear()
 
                 // Array.from(precisionTimeIntervalsToday.values()).forEach(item => {
                 //     if (item.epochDate <= contextDate.getTime()) {
@@ -3337,7 +3338,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 2, tradingInterval = 'none', precisionInterval = '5min', isCrypto) {
+    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 2, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
         return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
     }
 
