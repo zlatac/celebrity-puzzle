@@ -206,7 +206,7 @@ class ProjectStockVision {
 
             /**
              * 
-             * @param {PriceHistory[]} history 
+             * @param {readonly PriceHistory[]} history 
              * @param {CurrentPrice} currentPrice 
              * @param {Position} currentPosition 
              * @param {boolean} isCrypto 
@@ -2487,13 +2487,14 @@ class ProjectStockVision {
                 const priceTimeIntervalsToday = window.idaStockVision.priceStore.priceTimeIntervalsToday[code]
                 const precisionTimeIntervalsToday = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code]
                 // TO-DO make this universal for crypto and non crypto
-                const contextDate = new Date(priceTimeIntervalsToday.get('9:31').epochDate)
-                contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,undefined,1),0)
-                Array.from(priceTimeIntervalsToday.values()).forEach(item => {
-                    if (item.epochDate !== contextDate.getTime()) {
-                        priceTimeIntervalsToday.delete(item.hourMinute)
-                    }
-                })
+                // const contextDate = new Date(priceTimeIntervalsToday.get('9:31').epochDate)
+                // contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,undefined,1),0)
+                // Array.from(priceTimeIntervalsToday.values()).forEach(item => {
+                //     if (item.epochDate !== contextDate.getTime()) {
+                //         priceTimeIntervalsToday.delete(item.hourMinute)
+                //     }
+                // })
+
                 // Array.from(precisionTimeIntervalsToday.values()).forEach(item => {
                 //     if (item.epochDate <= contextDate.getTime()) {
                 //         precisionTimeIntervalsToday.delete(item.hourMinute)
@@ -2787,10 +2788,13 @@ class ProjectStockVision {
                 }
                 const record = {
                     target: {
-                        nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
+                        nodeValue: String(idaStockVision.priceStore.lastPrice.price)
                     }
                 }
-                this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                if (idaStockVision.positionIn[this.#code] === Vision.PriceAnalysis.IN) {
+                    // if condition is necessary to make sure we do not get codes that are out -> in, via regular flag on current price
+                    this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                }
                 window.setTimeout(callback, 1000 * 60)
             }
             idaStockVision.tinyExitTimeoutInstance = window.setTimeout(callback, runTime)
@@ -3333,7 +3337,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 2, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 2, tradingInterval = 'none', precisionInterval = '5min', isCrypto) {
         return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
     }
 
