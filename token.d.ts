@@ -88,7 +88,7 @@ export interface IPriceStore {
     _low: IPrice | undefined
     get low(): IPrice | undefined
     set low(x: number): void;
-    executedLows: Set<number>;
+    executedLows: Map<string, Set<number>>;
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
@@ -161,7 +161,9 @@ export interface IStockVision {
       precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
       isCrypto: boolean;
-      profitThreshold: undefined | number;
+      _profitThreshold: undefined | number;
+      get profitThreshold(): undefined | number;
+      set profitThreshold(val: number): void;
       profitChunkThreshold: undefined | number;
       lossThreshold: undefined | number;
       entryPercentageThreshold: undefined | number;
