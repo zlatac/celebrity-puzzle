@@ -145,15 +145,19 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.fiveDay]: 5 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
             }
 
-            static get REVERSED_TRADING_INTERVAL_SECONDS() {
-                return Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS)
+            static swapObjectKeysAndValues(obj) {
+                return Object.entries(obj)
                     .reduce((previous, current) => {
                         previous[current[1]] = current[0]
                         return previous
                     }, {})
             }
 
-            static get TRADING_INTERVAL_DAYS () {
+            static get REVERSED_TRADING_INTERVAL_SECONDS() {
+                return PriceAnalysis.swapObjectKeysAndValues(PriceAnalysis.TRADING_INTERVAL_SECONDS)
+            }
+
+            static get TRADING_INTERVAL_DAYS() {
                 const twentyFourHoursInMiliSeconds = PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 const transformation = Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS).map((item) => {
                     if (item[1] < twentyFourHoursInMiliSeconds) {
@@ -203,6 +207,11 @@ class ProjectStockVision {
                 IN: 'in',
                 OUT: 'out',
                 PROFIT_OUT: 'profit out',
+            }
+
+            /** @type {{[key: string]: string}} REVERSED_ACTION */
+            static get REVERSED_ACTION() {
+                return PriceAnalysis.swapObjectKeysAndValues(PriceAnalysis.ACTION)
             }
 
             /**
@@ -1823,11 +1832,15 @@ class ProjectStockVision {
                         window.idaStockVision.priceStore.currentPosition[item].date = data[item]?.date
                         window.idaStockVision.priceStore.currentPosition[item].price = data[item]?.price
                         window.idaStockVision.priceStore.currentPosition[item].originalPrice = data[item]?.originalPrice
-                        window.idaStockVision.priceStore.currentPosition[item].profitChunkPrice  = data[item]?.profitChunkPrice 
-                        if ('isProfitChunkExit' in window.idaStockVision.lastNotificationSent[item] 
+                        window.idaStockVision.priceStore.currentPosition[item].profitChunkPrice  = data[item]?.profitChunkPrice
+                        const backendConfirmedProfitChunkPrice = 'isProfitChunkExit' in window.idaStockVision.lastNotificationSent[item] 
                             && window.idaStockVision.lastNotificationSent[item].isProfitChunkExit === true
                             && data[item].profitChunkPrice === window.idaStockVision.lastNotificationSent[item].currentPrice
-                        ) {
+                        const tradeFailedToExecuteTinyCode = Vision.PriceAnalysis.isTinyProfitPursuit(item)
+                            && window.idaStockVision.statusTimeoutList.length === window.idaStockVision.statusCounter + 1
+                            && 'action' in window.idaStockVision.lastNotificationSent[item]
+                            && window.idaStockVision.priceStore.currentPosition[item].position !== Vision.PriceAnalysis[Vision.PriceAnalysis.REVERSED_ACTION[window.idaStockVision.lastNotificationSent[item].action]]
+                        if (backendConfirmedProfitChunkPrice || tradeFailedToExecuteTinyCode) {
                             Vision.purgeNotificationLastSent(item)
                         }
                     }
@@ -2821,13 +2834,13 @@ class ProjectStockVision {
             clearTimeout(idaStockVision.tinyExitTimeoutInstance)
             const callback = () => {
                 const timeAtCallback = Date.now()
-                const endTime = new Date(now).setHours(...tradingEndTime)
+                const endTime = new Date(now).setHours(...tradingEndTime, 0)
                 if (timeAtCallback > endTime) {
                     return
                 }
                 
                 window.dispatchEvent(new CustomEvent(Vision.PriceAnalysis.EVENT_NAMES.tinyExit))
-                window.setTimeout(callback, 1000 * 60)
+                window.setTimeout(callback, 1000 * 60 * 0.5)
             }
             idaStockVision.tinyExitTimeoutInstance = window.setTimeout(callback, runTime)
             Vision.trackProcess('tinyExit')
@@ -5136,6 +5149,7 @@ class StockVisionTrade {
                     const priceGap = order.position 
                         ? ProjectStockVision.vision.percentageDelta(Number(order.priceSubmittedHistory[0]), Number(order.priceSubmitted), true)
                         : undefined
+                    order.statusUpdatedTime = orderFromBrokerage.updatedDateTime
                     switch(orderFromBrokerage.status) {
                         case orderStatuses.executed:
                             order.executed = true

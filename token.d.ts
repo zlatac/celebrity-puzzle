@@ -26,7 +26,7 @@ export interface IPosition extends IPrice {
   position: boolean;
   positionAnchor?: number;
   originalPrice?: number;
-  profitChunkPrice ?: number | undefined;
+  profitChunkPrice?: number | undefined;
 }
 
 export interface ITradingIntervalInspection {
@@ -140,6 +140,7 @@ export interface IStockVision {
   code: string;
   statusTimeoutList: number[];
   statusTimeoutInstance: undefined | number;
+  statusCounter: number;
   intervalInspectorInstance: {
     [key: string]: undefined | number;
   };
@@ -147,7 +148,6 @@ export interface IStockVision {
     [key: string]: undefined | number;
   };
   tinyExitTimeoutInstance: number;
-  statusCounter: number;
   serverUrl: string;
   localServerUrl: string;
   notificationServerUrl: string;
@@ -339,6 +339,7 @@ export interface ITradeOrder extends ITradeCheckResponse {
   openQuantity?: number;
   filledQuantity: number;
   timeSubmitted?: string;
+  statusUpdatedTime?: string;
   priceSubmitted?: string|number;
   priceSubmittedHistory?: (string|number)[];
   entryOrderId?: string | undefined;
