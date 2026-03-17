@@ -1850,7 +1850,9 @@ class ProjectStockVision {
                     window.idaStockVision.statusCounter++
                 }
             } catch (error) {
-                console.log('Ida Trader Bot - POSITION STATUS POLLING', error)
+                const errorMessage = ['Vision - POSITION STATUS POLLING', error.toString()]
+                console.log(...errorMessage)
+                Vision.notify(errorMessage.join('-'))
             }
             
         }
@@ -1998,7 +2000,7 @@ class ProjectStockVision {
                     // window.idaStockVision is deleted before function fires rendering it usless
                     // windowCloseEventListener: window.addEventListener('beforeunload', () => {uploadTodaysPriceHistory(undefined,false)}),
                     code: code,
-                    statusTimeoutList: [60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60],
+                    statusTimeoutList: [60*1000,60*1000,60*1000,60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60],
                     statusTimeoutInstance: undefined,
                     statusCounter: 0,
                     intervalInspectorInstance: {},
@@ -2132,6 +2134,13 @@ class ProjectStockVision {
                     const isEndOfDay = messageEvent.data
                     console.log(`monitor inspection: ${Vision.monitorReport(isEndOfDay, this.#isCrypto)}`)
                 })
+
+                // when we gain back internet connection
+                window.addEventListener('online', (event) => {
+                    console.log('Vision - Back Online!!')
+                    window.idaStockVision.tools.positionStatusPolling(undefined, true)
+                })
+                
             }
 
             if (!(code in window.idaStockVision.positionIn)) {
