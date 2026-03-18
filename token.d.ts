@@ -199,6 +199,7 @@ export interface IStockVision {
     uploadHistory: number;
     tinyExit: number;
   }
+  cache: Map<string, Map<string, any>>
 }
 
 /** STOCK_VISION_TRADE */

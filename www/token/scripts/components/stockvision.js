@@ -393,6 +393,37 @@ class ProjectStockVision {
                 return Vision.percentageDelta(this.profitChunkPrice, this._currentPrice.price, true)
             }
 
+            /** @returns {boolean} */
+            get isRunAwayFromOpeningPrice() {
+                const dateStamp = PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
+                if (!window.idaStockVision.cache.has('isRunAwayFromOpeningPrice')) {
+                    window.idaStockVision.cache.set('isRunAwayFromOpeningPrice', new Map())
+                }
+                if (PriceAnalysis.isTinyProfitPursuit(this._code) && window.idaStockVision.priceStore.precisionTimeIntervalsToday.hasOwnProperty(this._code)) {
+                    if (window.idaStockVision.cache.has('isRunAwayFromOpeningPrice') 
+                        && window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').has(dateStamp)
+                    ) {
+                        return window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').get(dateStamp)
+
+                    }
+                    const startTime = '10:31'
+                    const currentPrices = window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].get(startTime)?.currentPrices
+                    const lastCurrentPrice = Array.isArray(currentPrices) && currentPrices.length > 0 ? currentPrices.at(-1) : undefined
+                    const runAwayDelta = 1.2
+                    if (lastCurrentPrice === undefined || window.idaStockVision.priceStore.marketHighLowRange.low === undefined) {
+                        return false
+                    }
+                    
+                    const result =  window.idaStockVision.priceStore.marketHighLowRange.low.epochDate < lastCurrentPrice.epochDate 
+                        && Vision.percentageDelta(window.idaStockVision.priceStore.marketHighLowRange.low.price, lastCurrentPrice.price, true) >= runAwayDelta
+                    
+                    window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStamp, result)
+                    return result
+                }
+
+                return false
+            }
+
             get isCurrentPositionStuck() {
                 const isStuckMaxPeak = this.findAnchorPeak(true)
                 if (this._currentPosition === undefined
@@ -452,7 +483,8 @@ class ProjectStockVision {
             }
 
             targetedProfitAcquired(code) {
-                const profitThreshold = window.idaStockVision.settings[code].profitThreshold
+                // do not get greedy too much risk getting in at the top for tiny code
+                const profitThreshold = this.isRunAwayFromOpeningPrice ? 0.2 : window.idaStockVision.settings[code].profitThreshold
                 if (typeof profitThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
@@ -2127,6 +2159,7 @@ class ProjectStockVision {
                     },
                     constants: {},
                     reports: [],
+                    cache: new Map()
                 }
 
                 const broadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.monitorReport)
@@ -3141,7 +3174,7 @@ class ProjectStockVision {
                 let exitPrice = windowStockVision.settings[this.#code].manualExitPriceThreshold
                 const entryPercentageThreshold = windowStockVision.settings[this.#code].entryPercentageThreshold
                 const exitPercentageThreshold = windowStockVision.settings[this.#code].exitPercentageThreshold
-                const entryPrecisionThreshold = windowStockVision.settings[this.#code].entryPrecisionThreshold
+                let entryPrecisionThreshold = windowStockVision.settings[this.#code].entryPrecisionThreshold
                 let analysis, anchor
                 /** @type {number | string} */
                 let anchorPrice = ''
@@ -3177,6 +3210,8 @@ class ProjectStockVision {
                     if (analysis.currentPositionOut) {
                         shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
+                        const maxTinyEntryPercentage = 2
+                        entryPrecisionThreshold = analysis.isRunAwayFromOpeningPrice ? maxTinyEntryPercentage - entryPercentageThreshold : entryPrecisionThreshold
                         entryPrice = !shouldBeExitingByTradingEndTime
                             ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                             : undefined
