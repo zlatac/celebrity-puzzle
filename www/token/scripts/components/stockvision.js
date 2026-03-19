@@ -176,6 +176,7 @@ class ProjectStockVision {
                 destroyCode: `${PriceAnalysis.PROJECT_NAME}_destroyCode`,
                 setFutureInterval: `${PriceAnalysis.PROJECT_NAME}_setFutureInterval`,
                 monitorReport: `${PriceAnalysis.PROJECT_NAME}_monitorReport`,
+                statusUpdate: `${PriceAnalysis.PROJECT_NAME}_statusUpdate`,
                 tinyExit: `${PriceAnalysis.PROJECT_NAME}_tinyExit`,
             }
 
@@ -2162,11 +2163,20 @@ class ProjectStockVision {
                     cache: new Map()
                 }
 
-                const broadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.monitorReport)
-                broadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
+                const monitorBroadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.monitorReport)
+                const statusBroadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.statusUpdate)
+                monitorBroadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
                     const isEndOfDay = messageEvent.data
                     console.log(`monitor inspection: ${Vision.monitorReport(isEndOfDay, this.#isCrypto)}`)
                 })
+                statusBroadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
+                    const messagePrimaryCode = messageEvent.data
+                    if (messagePrimaryCode === Vision.PriceAnalysis.primaryCode(window.idaStockVision.code) || messagePrimaryCode === 'all') {
+                        console.log(`starting status polling: ${messagePrimaryCode}`)
+                        window.idaStockVision.tools.positionStatusPolling(undefined, true)
+                    }
+                })
+                Vision.connectServerSentEvents(Vision.PriceAnalysis.primaryCode(code))
 
                 // when we gain back internet connection
                 window.addEventListener('online', (event) => {
@@ -2553,6 +2563,7 @@ class ProjectStockVision {
                     hourMinute: hourMinuteString,
                     index,
                     currentPrices: [],
+                    peakCurrentPrice: undefined
                 })
             })
 
@@ -2689,6 +2700,11 @@ class ProjectStockVision {
 
                 precisionIntervalSettings.currentPriceExecuted = true
                 precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
+                // precisionIntervalSettings.peakCurrentPrice = precisionIntervalSettings.peakCurrentPrice !== undefined
+                //     ? peakValleyDetectedOrCurrentPrice.price > precisionIntervalSettings.peakCurrentPrice.price
+                //         ? peakValleyDetectedOrCurrentPrice
+                //         : precisionIntervalSettings.peakCurrentPrice
+                //     : peakValleyDetectedOrCurrentPrice
             }
         }
 
@@ -3141,6 +3157,38 @@ class ProjectStockVision {
             return new ProjectStockVision.vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, priceStore.currentPosition[formattedCode], codeSettings.isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,formattedCode)
         }
 
+        static connectServerSentEvents(code, retry = false) {
+            try {
+                // TO-DO remove hard coded link and refactor urls to a class or object before use in traderSetup
+                const eventSource = new EventSource(`http://localhost:9000/trader/events/vision/${code}`)
+                let chosenByServer = false
+                const attemptReconnection = () => {
+                    setTimeout(() => {
+                        console.log('trying to connect to SSE again')
+                        ProjectStockVision.vision.connectServerSentEvents(code, true)
+                    }, 1000*60*0.5)
+                }
+                eventSource.addEventListener("message", (event) => {console.log(event.data)})
+                // TO-DO create retry logic when server is disconnected permanently
+                eventSource.addEventListener("error", (event) => {
+                    console.log('SSE error', event)
+                    if (retry || chosenByServer === true) {
+                        eventSource.close()
+                        attemptReconnection()
+                    }
+                })
+                eventSource.addEventListener("open", (event) => {
+                    chosenByServer = true
+                })
+                eventSource.addEventListener("update", (event) => {
+                    ProjectStockVision.visionStatusUpdateAll(event.data)
+                })
+                
+            } catch (error) {
+                
+            }
+        }
+
         /**
          * 
          * @param {MutationRecord[]} mutationArray 
@@ -3426,7 +3474,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 2, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
         return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
     }
 
@@ -3463,6 +3511,12 @@ class ProjectStockVision {
     static visionMonitorReport(isEndOfDay = false) {
         const broadcastChannel = new BroadcastChannel(ProjectStockVision.vision.PriceAnalysis.EVENT_NAMES.monitorReport)
         broadcastChannel.postMessage(isEndOfDay)
+        broadcastChannel.close()
+    }
+
+    static visionStatusUpdateAll(code = 'all') {
+        const broadcastChannel = new BroadcastChannel(ProjectStockVision.vision.PriceAnalysis.EVENT_NAMES.statusUpdate)
+        broadcastChannel.postMessage(code)
         broadcastChannel.close()
     }
 }
@@ -5254,6 +5308,9 @@ class StockVisionTrade {
     static confirmOrderWithLink = (link, sharesQuantity, priceGap) => {
         try {
             const url = new URL(link)
+            const code = url.searchParams.has('code') 
+                ? ProjectStockVision.vision.PriceAnalysis.primaryCode(url.searchParams.get('code')) 
+                : undefined
             if (sharesQuantity !== undefined) {
                 url.searchParams.set('quantity', sharesQuantity.toString())
             }
@@ -5269,6 +5326,13 @@ class StockVisionTrade {
                 method: 'GET',
                 mode: 'cors',
             })
+            
+            if (code !== undefined) {
+                fetch(`${this.constants.localServer.serverUrl}/trader/notification/executed/${code}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                })
+            }
         } catch (error) {
             const errorMessage = ['Ida Trader Bot - CONFIRM ORDER WITH LINK', error.toString()]
             console.log(...errorMessage)

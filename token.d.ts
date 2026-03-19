@@ -49,6 +49,7 @@ export interface IPrecisionIntervalInspection {
    index: number;
    hourMinute: string;
    currentPrices: ICurrentPrice[];
+   peakCurrentPrice: ICurrentPrice;
 }
 
 export class IPriceAnalysis {

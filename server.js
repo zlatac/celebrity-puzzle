@@ -10,6 +10,7 @@ var axios = require('axios');
 var querystring = require('querystring');
 var fs = require('fs').promises;
 var jsdom = require('jsdom');
+const EventEmitter = require('node:events');
 if (process.env.NODE_ENV !== 'production') {
     const secondArguement = process.argv[2]?.split('=')
     const config = secondArguement && secondArguement[0].includes('file') ? { path: secondArguement[1] } : {}
@@ -980,4 +981,60 @@ app.post('/trader/settings', async function(req,res) {
         res.status(404)
         res.send(`${error.toString()}`)
     }
+});
+
+const visionEvent = new EventEmitter()
+visionEvent.clients = new Set()
+app.post('/trader/notification/executed/:primaryCode', (req, res) => {
+    res.append('Access-Control-Allow-Origin', '*')
+
+    try {
+        if (req.params.primaryCode === undefined) {
+            throw new Error('missing code')
+        }
+        visionEvent.emit('tradeExecuted', req.params.primaryCode)
+        res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.get('/trader/events/vision/:primaryCode', (req, res) => {
+    res.append('Access-Control-Allow-Origin', '*')
+    
+    if (visionEvent.clients.size === 0) {
+        // Set headers to keep the connection alive and tell the client we're sending event-stream data
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        visionEvent.clients.add(req.params.primaryCode)
+        visionEvent.on('tradeExecuted', (code) => {
+            res.write(`event: update\n`)
+            res.write(`data: ${code.toUpperCase()}\n\n`) 
+        })
+
+         // Send an initial message
+        res.write(`data: Connected to server - ${req.params.primaryCode}\n\n`);
+
+        // Simulate sending updates from the server
+        // let counter = 0;
+        // const intervalId = setInterval(() => {
+        //     counter++;
+        //     // Write the event stream format
+        //     res.write(`data: Message ${counter} - ${req.params.name}\n\n`);
+        // }, 2000);
+
+        // When client closes connection, stop sending events
+        req.on('close', () => {
+            // clearInterval(intervalId);
+            visionEvent.clients.clear()
+            res.end();
+        });
+    } else {
+        res.sendStatus(503)
+    }
+
+    
 });
