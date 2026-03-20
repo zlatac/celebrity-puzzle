@@ -410,7 +410,7 @@ class ProjectStockVision {
                     const startTime = '10:31'
                     const currentPrices = window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].get(startTime)?.currentPrices
                     const lastCurrentPrice = Array.isArray(currentPrices) && currentPrices.length > 0 ? currentPrices.at(-1) : undefined
-                    const runAwayDelta = 1.2
+                    const runAwayDelta = window.idaStockVision.settings[this._code].tinyRunAwayDeltaThreshold
                     if (lastCurrentPrice === undefined || window.idaStockVision.priceStore.marketHighLowRange.low === undefined) {
                         return false
                     }
@@ -632,7 +632,10 @@ class ProjectStockVision {
                 // from deepest valley make sure positive slope between valley price and current price
                 // logic not met do nothing and keep watching
                                     
-                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
+                if (this._currentPosition === undefined 
+                    || this._currentPosition.position !== PriceAnalysis.OUT 
+                    || PriceAnalysis.isTinyProfitPursuit(this._code) === false && this.closestHighestPeak === undefined
+                ) {
                     return
                 }
                 const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
@@ -2227,7 +2230,9 @@ class ProjectStockVision {
                     get profitThreshold(){return this._profitThreshold},
                     lossThreshold: undefined,
                     entryPrecisionThreshold: Vision.PriceAnalysis.entryExitPricePrecisionThreshold,
-                    profitChunkThreshold: undefined, 
+                    profitChunkThreshold: undefined,
+                    maxTinyEntryPercentageThreshold: 2,
+                    tinyRunAwayDeltaThreshold: 1.2,
                 }
                 Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
                 const setFutureIntervalListener = () => {
@@ -3258,7 +3263,7 @@ class ProjectStockVision {
                     if (analysis.currentPositionOut) {
                         shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
-                        const maxTinyEntryPercentage = 2
+                        const maxTinyEntryPercentage = windowStockVision.settings[this.#code].maxTinyEntryPercentageThreshold
                         entryPrecisionThreshold = analysis.isRunAwayFromOpeningPrice ? maxTinyEntryPercentage - entryPercentageThreshold : entryPrecisionThreshold
                         entryPrice = !shouldBeExitingByTradingEndTime
                             ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)

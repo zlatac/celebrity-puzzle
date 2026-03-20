@@ -173,6 +173,8 @@ export interface IStockVision {
       manualEntryPriceThreshold: undefined | number;
       manualExitPriceThreshold: undefined | number;
       entryPrecisionThreshold: undefined | number;
+      maxTinyEntryPercentageThreshold: undefined | number;
+      tinyRunAwayDeltaThreshold: undefined | number;
     };
   };
   server: {
