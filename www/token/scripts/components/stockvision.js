@@ -2232,7 +2232,7 @@ class ProjectStockVision {
                     entryPrecisionThreshold: Vision.PriceAnalysis.entryExitPricePrecisionThreshold,
                     profitChunkThreshold: undefined,
                     maxTinyEntryPercentageThreshold: 2,
-                    tinyRunAwayDeltaThreshold: 1.2,
+                    tinyRunAwayDeltaThreshold: 1.13,
                 }
                 Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
                 const setFutureIntervalListener = () => {
@@ -3479,7 +3479,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.2, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.4, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
         return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
     }
 
@@ -4730,7 +4730,7 @@ class StockVisionTrade {
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.7) => {
+    static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyProfitPursuit(code)
         idaStockVisionTrade.codes[code.toUpperCase()] = {
@@ -4893,7 +4893,15 @@ class StockVisionTrade {
         const askPrice = Number(ask)
         const parametersHasZero = [bidPrice, askPrice].some((price) => price === 0)
         if (lastPrice === 0) {
-            lastPrice = bidPrice
+            switch(order.position) {
+                case ProjectStockVision.vision.PriceAnalysis.IN:
+                    lastPrice = bidPrice
+                    break
+                case ProjectStockVision.vision.PriceAnalysis.OUT:
+                    lastPrice = askPrice
+                    break
+                default:
+            }
         }
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
         const midAskBidPrice = this.decimalPrecision((bidPrice + askPrice)/2)
@@ -5055,6 +5063,10 @@ class StockVisionTrade {
         return window.idaStockVisionTrade.orders.filter(order => Date.parse(order.timeSubmitted) >= today.getTime())
     }
 
+    static get ordersTodayWithZeroLastPrice() {
+        return this.todaysOrders.filter(order => Number(order.last) === 0)
+    }
+
     /**
      * 
      * @param {string} name 
@@ -5091,7 +5103,8 @@ class StockVisionTrade {
     static capitalToAllocate(totalCapital, capitalPerStock, reserve = 20) {
         const numberOfStocks = Math.floor(totalCapital / ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(capitalPerStock, reserve))
         const reserves = Math.round(numberOfStocks * (capitalPerStock * reserve/100))
-        return {numberOfStocks, reserves}
+        const leftOver = totalCapital - reserves - (numberOfStocks * capitalPerStock)
+        return {numberOfStocks, reserves, leftOver}
     }
 
     static processOrderQueue = async () => {
