@@ -4611,6 +4611,7 @@ class StockVisionTrade {
             // Make sure the element(s) are not triggering network events to not crash the browser eg menu buttons, page scroll, etc
             firstElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
             secondElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
+            sideMenuBackdrop: () => document.querySelector('shell-root').querySelector('shell-sidebar .sidebar-backdrop'),
             trade: {
                 buy: 'Buy',
                 sell: 'Sell',
@@ -4797,6 +4798,7 @@ class StockVisionTrade {
             const idaStockVisionTrade = window.idaStockVisionTrade
             const brokerageName = idaStockVisionTrade.brokerage.name
             idaStockVisionTrade.keepAwakeInstances = this.keepAwake(this.constants[brokerageName].firstElement(), this.constants[brokerageName].secondElement())
+            this.constants[brokerageName].sideMenuBackdrop()?.setAttribute('style','opacity:0')
             const intervalCallback = async () => {
                 try {
                     if (idaStockVisionTrade.pollServerInProgress) {
@@ -5323,7 +5325,7 @@ class StockVisionTrade {
      * @param {number | undefined} sharesQuantity 
      * @param {number | undefined} priceGap 
      */
-    static confirmOrderWithLink = (link, sharesQuantity, priceGap) => {
+    static confirmOrderWithLink = async (link, sharesQuantity, priceGap) => {
         try {
             const url = new URL(link)
             const code = url.searchParams.has('code') 
@@ -5340,7 +5342,7 @@ class StockVisionTrade {
                 url.searchParams.set('price', adjustedPositionPrice.toString())
             }
 
-            fetch(`${url.toString()}`, {
+            await fetch(`${url.toString()}`, {
                 method: 'GET',
                 mode: 'cors',
             })
