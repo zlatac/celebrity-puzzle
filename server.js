@@ -673,7 +673,9 @@ const trader = {
                     throw new Error(`prepareOrder: zero value for one of (bid:${bid_price}, ask:${ask_price})`)
                 }
 
-                trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
+                const newOrder = {...prepareOrder,...axiosResponse.data.data}
+                trader.asyncOperation.ordersToExecute.push(newOrder)
+                tradeEvent.emit('sendPreparedOrder', newOrder)
                 if (!retry) {
                     res.sendStatus(200)
                 }
@@ -985,6 +987,8 @@ app.post('/trader/settings', async function(req,res) {
 
 const visionEvent = new EventEmitter()
 visionEvent.clients = new Set()
+const tradeEvent = new EventEmitter()
+tradeEvent.clients = new Set()
 app.post('/trader/notification/executed/:primaryCode', (req, res) => {
     res.append('Access-Control-Allow-Origin', '*')
 
@@ -1035,6 +1039,43 @@ app.get('/trader/events/vision/:primaryCode', (req, res) => {
     } else {
         res.sendStatus(503)
     }
+});
 
+app.get('/trader/events/trade/:brokerageName', (req, res) => {
+    res.append('Access-Control-Allow-Origin', '*')
     
+    // Set headers to keep the connection alive and tell the client we're sending event-stream data
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const brokerageName = req.params.brokerageName
+    const sendPreparedOrderCallback = (newOrder) => {
+        res.write(`event: order\n`)
+        res.write(`data: ${JSON.stringify([newOrder])}\n\n`) 
+        newOrder.seenByBrokerage.push(brokerageName)
+    }
+    tradeEvent.clients.add(brokerageName)
+    
+    // Send an initial message
+    res.write(`data: Connected to server - ${brokerageName}\n\n`);
+    
+    tradeEvent.on('sendPreparedOrder', sendPreparedOrderCallback)
+    const ordersToSend = trader.asyncOperation.ordersToExecute.filter((order) => !order.seenByBrokerage.includes(brokerageName))
+
+    if (ordersToSend.length > 0) {
+        res.write(`event: order\n`)
+        res.write(`data: ${JSON.stringify(ordersToSend)}\n\n`) 
+        ordersToSend.forEach((order) => {
+            order.seenByBrokerage.push(brokerageName)
+        })    
+    }
+
+    // When client closes connection, stop sending events
+    req.on('close', () => {
+        // clearInterval(intervalId);
+        tradeEvent.off('sendPreparedOrder',sendPreparedOrderCallback)
+        tradeEvent.clients.delete(brokerageName)
+        res.end();
+    });
 });

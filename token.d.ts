@@ -364,6 +364,8 @@ export interface IStockVisionTrade {
   modifyOrderQueueInProgress: boolean;
   newOrdersReceived: boolean;
   keepAwakeInstances: number[];
+  eventSourceInstance: EventSource;
+  investigateIntervalInstance: undefined | number;
   tools: {[key:string]: Function | Object;};
   brokerage: {
     name: 'questrade' | 'ibkr';

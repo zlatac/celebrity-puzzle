@@ -529,7 +529,7 @@ class ProjectStockVision {
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
-                    || PriceAnalysis.isTinyProfitPursuit(this._code) &&  Number.isFinite(currentHour) && currentHour < 15
+                    // || PriceAnalysis.isTinyProfitPursuit(this._code) &&  Number.isFinite(currentHour) && currentHour < 15
                 ) {
                     return false
                 }
@@ -3214,12 +3214,22 @@ class ProjectStockVision {
                 const targetValue =  Vision.decimalConvert(Vision.sanitizePrice(lastRecord.target.nodeValue))
                 const windowStockVision = window.idaStockVision
                 const priceStore = window.idaStockVision.priceStore
+                const currentPosition = priceStore.currentPosition[this.#code]
+                const settings = windowStockVision.settings[this.#code]
                 /** @type {CurrentPrice} */
                 const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
                 this.#mutationCurrentPrice = currentPrice
                 this.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, currentPrice, this.#tradingInterval)
                 if (inspectorTrigger === true) {
                     currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
+                }
+                if (inspectorTrigger === false
+                    && Vision.PriceAnalysis.isTinyProfitPursuit(this.#code) 
+                    && currentPosition.position === Vision.PriceAnalysis.IN
+                    && currentPrice.price > currentPosition.price
+                    && Vision.percentageDelta(currentPosition.price, currentPrice.price, true) >= settings.profitThreshold
+                ) {
+                    currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.PRECISION)
                 }
                 let confirmationLink = new URL(`${window.idaStockVision.notificationServerUrl}/trader/confirm`)
                 const confirmationQueryParams = new URLSearchParams()
@@ -3241,7 +3251,7 @@ class ProjectStockVision {
                 const otherNotificationQueryParams = {}
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
                 if (autoEntryExitMode) {
-                    const currentPosition = priceStore.currentPosition[this.#code]
+                    
                     const peakValleyDetected = Vision.PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                     this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
                     this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
@@ -4844,6 +4854,47 @@ class StockVisionTrade {
         }
     }
 
+    static connectServerSentEvents(brokerageName, retry = false) {
+        try {
+            const idaStockVisionTrade = window.idaStockVisionTrade
+            // TO-DO remove hard coded link and refactor urls to a class or object before use in traderSetup
+            const eventSource = new EventSource(`${this.constants.localServer.serverUrl}/trader/events/trade/${brokerageName}`)
+            let isConnected = false
+            const attemptReconnection = () => {
+                setTimeout(() => {
+                    console.log('trying to connect to SSE again')
+                    this.connectServerSentEvents(brokerageName, true)
+                }, 1000*60*0.5)
+            }
+            eventSource.addEventListener("message", (event) => {console.log(event.data)})
+            // TO-DO create retry logic when server is disconnected permanently
+            eventSource.addEventListener("error", (event) => {
+                console.log('SSE error', event)
+                eventSource.close()
+                if (retry || isConnected) {
+                    attemptReconnection()
+                }
+            })
+            eventSource.addEventListener("open", (event) => {
+                isConnected = true
+                idaStockVisionTrade.eventSourceInstance = eventSource
+            })
+            eventSource.addEventListener("order", (event) => {
+                /** @type {TradeCheckResponse} */
+                const orders = JSON.parse(event.data)
+                if (Array.isArray(orders) && orders.length > 0) {
+                    window.idaStockVisionTrade.orders.push(...orders)
+                    this.backUp()
+                    this.processOrderQueue()
+                    return
+                }
+            })
+            
+        } catch (error) {
+            console.log('Trade - CONNECT SERVER SENT EVENTS', error)
+        }
+    }
+
     static stopPollLocalServer = () => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const [first, second] = idaStockVisionTrade.keepAwakeInstances
@@ -5461,6 +5512,7 @@ class StockVisionTrade {
                 pollServerInstance: undefined,
                 pollServerErrorCount: 0,
                 keepAwakeInstances: [],
+                eventSourceInstance: undefined,
                 orders: [],
                 orderHistory: {},
                 codes: {},
@@ -5499,17 +5551,35 @@ class StockVisionTrade {
 
     }
 
-    static start = (noPolling = false) => {
+    static start = (noServerConnection = false) => {
         const isEndOfDay = new Date().getHours() >= 16
         this.setUp()
-        if (!noPolling) {
-            this.pollLocalServer()
+        if (!noServerConnection) {
+            // this.pollLocalServer()
+            const idaStockVisionTrade = window.idaStockVisionTrade
+            const brokerageName = idaStockVisionTrade.brokerage.name
+            idaStockVisionTrade.keepAwakeInstances = this.keepAwake(this.constants[brokerageName].firstElement(), this.constants[brokerageName].secondElement())
+            this.constants[brokerageName].sideMenuBackdrop()?.setAttribute('style','opacity:0')
+            this.connectServerSentEvents(brokerageName)
+
+            idaStockVisionTrade.investigateIntervalInstance = window.setInterval(() => {
+                if (!idaStockVisionTrade.processOrderQueueInProgress && !idaStockVisionTrade.investigateOrderQueueInProgress) {
+                    this.investigateOrderQueue()
+                }
+            }, this.constants.pingPongInterval)
         }
         console.log(`monitor inspection: ${this.monitorReport(isEndOfDay)}`)
     }
 
     static stop = () => {
-        this.stopPollLocalServer()
+        // this.stopPollLocalServer()
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const [first, second] = idaStockVisionTrade.keepAwakeInstances
+        if (idaStockVisionTrade.eventSourceInstance !== undefined) {
+            idaStockVisionTrade.eventSourceInstance.close()
+        }
+        clearInterval(idaStockVisionTrade.investigateIntervalInstance)
+        this.keepAwake(first, second, true)
     }
 
     static monitorReport(isEndOfDay = false, maxCapital = 5000) {
