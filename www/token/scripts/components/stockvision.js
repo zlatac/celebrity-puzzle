@@ -1376,7 +1376,7 @@ class ProjectStockVision {
              * @returns {[number, number, number]}
              */
             static tinyExitTime(isCrypto = false) {
-                return PriceAnalysis.tradingEndTime(isCrypto, -4)
+                return PriceAnalysis.tradingEndTime(isCrypto, -9)
             }
 
             /**
