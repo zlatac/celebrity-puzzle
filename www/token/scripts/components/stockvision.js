@@ -3559,6 +3559,7 @@ class StockVisionTrade {
         INDUSTRIAL: 'industrial',
         FINANCE: 'finance',
         TELECOM: 'telecom',
+        UTILITIES: 'utilities',
     }
 
     static questradeTradeProcess = () => {
@@ -4660,6 +4661,8 @@ class StockVisionTrade {
                 {securityUuid: "10210935-170f-4012-09d4-32a494591d15", symbol: "PG.TO", sector: this.sectors.STAPLE},
                 {securityUuid: "2a29270e-0834-4a42-0b17-5087796b0146", symbol: "VISA.TO", sector: this.sectors.FINANCE},
                 {securityUuid: "6f571411-05be-4f32-0275-89925c220734", symbol: "MA.TO", sector: this.sectors.FINANCE},
+                {securityUuid: "231e5345-5e4f-4302-08ca-a4990d880c0b", symbol: "JNJ.TO", sector: this.sectors.HEALTH},
+                {securityUuid: "74591a1c-134a-4412-07e5-a4970f270e14", symbol: "CEGS.TO", sector: this.sectors.UTILITIES},
             ]
         },
         ibkr: {},
@@ -5491,6 +5494,7 @@ class StockVisionTrade {
                 }
 
             } catch (error) {
+                order.modify = false
                 const errorMessage = ['Ida Trader Bot - MODIFY ORDER QUEUE', error.toString()]
                 console.log(...errorMessage)
                 this.notify(errorMessage.join('-'))
