@@ -5121,6 +5121,10 @@ class StockVisionTrade {
         return window.idaStockVisionTrade.orders.filter(order => Date.parse(order.timeSubmitted) >= today.getTime())
     }
 
+    static get todaysCodes() {
+        return this.todaysOrders.reduce((previous,current) => previous.add(current.code), new Set())
+    }
+
     static get ordersTodayWithZeroLastPrice() {
         return this.todaysOrders.filter(order => Number(order.last) === 0)
     }
