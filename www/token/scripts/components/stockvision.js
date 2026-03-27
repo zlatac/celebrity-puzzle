@@ -409,6 +409,8 @@ class ProjectStockVision {
                     }
                     const startTime = '10:31'
                     const currentPrices = window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].get(startTime)?.currentPrices
+                    // sometimes the array will be genuinely empty at the startTime.
+                    // the last price in the array is most likely the close price of that minute based on observation
                     const lastCurrentPrice = Array.isArray(currentPrices) && currentPrices.length > 0 ? currentPrices.at(-1) : undefined
                     const runAwayDelta = window.idaStockVision.settings[this._code].tinyRunAwayDeltaThreshold
                     if (lastCurrentPrice === undefined || window.idaStockVision.priceStore.marketHighLowRange.low === undefined) {
@@ -2232,7 +2234,7 @@ class ProjectStockVision {
                     entryPrecisionThreshold: Vision.PriceAnalysis.entryExitPricePrecisionThreshold,
                     profitChunkThreshold: undefined,
                     maxTinyEntryPercentageThreshold: 2,
-                    tinyRunAwayDeltaThreshold: 1.13,
+                    tinyRunAwayDeltaThreshold: 1,
                 }
                 Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
                 const setFutureIntervalListener = () => {
