@@ -427,6 +427,10 @@ class ProjectStockVision {
                 return false
             }
 
+            get precisionIntervalValues() {
+                return Array.from(window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].values())
+            }
+
             get isCurrentPositionStuck() {
                 const isStuckMaxPeak = this.findAnchorPeak(true)
                 if (this._currentPosition === undefined
@@ -898,6 +902,22 @@ class ProjectStockVision {
                 const lossThresholdExists = typeof window.idaStockVision.settings[code].lossThreshold === 'number'
 
                 return profitThresholdExists && lossThresholdExists
+            }
+
+            /**
+             * 
+             * @param {PriceHistory} anchorValley 
+             * @returns {boolean}
+             */
+            tinyHasPrecedingPeakFromAnchorValley(anchorValley) {
+                if (!PriceAnalysis.isTinyProfitPursuit(this._code) || this.isRunAwayFromOpeningPrice || anchorValley === undefined) {
+                    return false
+                }
+
+                const precisionIntervalsClosingPricesFromAnchorValleyGreaterThanCurrentPrice = this.precisionIntervalValues
+                    .filter(item => item.epochDate > anchorValley.epochDate && item.lastCurrentPrice > this._currentPrice.price)
+                
+                return precisionIntervalsClosingPricesFromAnchorValleyGreaterThanCurrentPrice.length > 0             
             }
 
             /**
@@ -2570,7 +2590,8 @@ class ProjectStockVision {
                     hourMinute: hourMinuteString,
                     index,
                     currentPrices: [],
-                    peakCurrentPrice: undefined
+                    peakCurrentPrice: undefined,
+                    lastCurrentPrice: undefined,
                 })
             })
 
@@ -2707,6 +2728,7 @@ class ProjectStockVision {
 
                 precisionIntervalSettings.currentPriceExecuted = true
                 precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
+                precisionIntervalSettings.lastCurrentPrice = peakValleyDetectedOrCurrentPrice.price
                 // precisionIntervalSettings.peakCurrentPrice = precisionIntervalSettings.peakCurrentPrice !== undefined
                 //     ? peakValleyDetectedOrCurrentPrice.price > precisionIntervalSettings.peakCurrentPrice.price
                 //         ? peakValleyDetectedOrCurrentPrice
@@ -3179,8 +3201,8 @@ class ProjectStockVision {
                 // TO-DO create retry logic when server is disconnected permanently
                 eventSource.addEventListener("error", (event) => {
                     console.log('SSE error', event)
+                    eventSource.close()
                     if (retry || chosenByServer === true) {
-                        eventSource.close()
                         attemptReconnection()
                     }
                 })
@@ -3276,8 +3298,9 @@ class ProjectStockVision {
                         shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
                         const maxTinyEntryPercentage = windowStockVision.settings[this.#code].maxTinyEntryPercentageThreshold
+                        const tinyHasPrecedingPeakFromAnchorValley = analysis.tinyHasPrecedingPeakFromAnchorValley(anchor)
                         entryPrecisionThreshold = analysis.isRunAwayFromOpeningPrice ? maxTinyEntryPercentage - entryPercentageThreshold : entryPrecisionThreshold
-                        entryPrice = !shouldBeExitingByTradingEndTime
+                        entryPrice = !shouldBeExitingByTradingEndTime || !tinyHasPrecedingPeakFromAnchorValley
                             ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                             : undefined
                     }
@@ -3481,6 +3504,8 @@ class ProjectStockVision {
     /**
      * 
      * @param {string} code 
+     * @param {number} [maxTinyEntryThreshold]
+     * @param {number} [tinyRunAwayThreshold]
      * @param {number} [entry]
      * @param {number} [exit] 
      * @param {boolean} [experiment] 
@@ -3491,8 +3516,21 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.3, exit = 0.4, experiment = false, profit = 0.4, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
-        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
+    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.3, exit = 0.4, experiment = false, profit = 0.4, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+        const codeFormatted = String(`${code}_tiny`).toUpperCase()
+        const output = ProjectStockVision.visionLarge(codeFormatted, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
+        const idaStockVision = window.idaStockVision
+        if (!(codeFormatted in idaStockVision.settings)) {
+            throw new Error(`settings not found for ${codeFormatted}. Please destroy and restart`)
+        }
+        idaStockVision.settings[codeFormatted].tinyRunAwayDeltaThreshold = tinyRunAwayThreshold !== undefined 
+            ? tinyRunAwayThreshold 
+            : idaStockVision.settings[codeFormatted].tinyRunAwayDeltaThreshold 
+        idaStockVision.settings[codeFormatted].maxTinyEntryPercentageThreshold = maxTinyEntryThreshold !== undefined 
+            ? maxTinyEntryThreshold
+            : idaStockVision.settings[codeFormatted].maxTinyEntryPercentageThreshold
+        
+        return output
     }
 
     /**
