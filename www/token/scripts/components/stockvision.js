@@ -3300,7 +3300,7 @@ class ProjectStockVision {
                         const maxTinyEntryPercentage = windowStockVision.settings[this.#code].maxTinyEntryPercentageThreshold
                         const tinyHasPrecedingPeakFromAnchorValley = analysis.tinyHasPrecedingPeakFromAnchorValley(anchor)
                         entryPrecisionThreshold = analysis.isRunAwayFromOpeningPrice ? maxTinyEntryPercentage - entryPercentageThreshold : entryPrecisionThreshold
-                        entryPrice = !shouldBeExitingByTradingEndTime || !tinyHasPrecedingPeakFromAnchorValley
+                        entryPrice = !shouldBeExitingByTradingEndTime && !tinyHasPrecedingPeakFromAnchorValley
                             ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                             : undefined
                     }
@@ -3600,6 +3600,7 @@ class StockVisionTrade {
         FINANCE: 'finance',
         TELECOM: 'telecom',
         UTILITIES: 'utilities',
+        TRANSPORTATION: 'transportation',
     }
 
     static questradeTradeProcess = () => {
@@ -4703,6 +4704,7 @@ class StockVisionTrade {
                 {securityUuid: "6f571411-05be-4f32-0275-89925c220734", symbol: "MA.TO", sector: this.sectors.FINANCE},
                 {securityUuid: "231e5345-5e4f-4302-08ca-a4990d880c0b", symbol: "JNJ.TO", sector: this.sectors.HEALTH},
                 {securityUuid: "74591a1c-134a-4412-07e5-a4970f270e14", symbol: "CEGS.TO", sector: this.sectors.UTILITIES},
+                {securityUuid: "a5813b4d-2458-4582-0732-14137e670383", symbol: "UNP.TO", sector: this.sectors.TRANSPORTATION},
             ]
         },
         ibkr: {},
