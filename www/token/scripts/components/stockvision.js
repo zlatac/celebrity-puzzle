@@ -505,18 +505,17 @@ class ProjectStockVision {
 
             /**
              * 
-             * @param {string} code 
-             * @param {number} currentHour 
-             * @param {number} currentMinute 
+             * @param {string} code
              * @returns {boolean}
              */
-            targetedLossAcquired(code, currentHour, currentMinute) {
+            targetedLossAcquired(code) {
                 const lossThreshold = window.idaStockVision.settings[code].lossThreshold
+                const timeToTakeLoss = new Date().setHours(15,35,0,0)
                 if (typeof lossThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
-                    || PriceAnalysis.isTinyProfitPursuit(this._code) && currentHour < 15 && currentMinute < 35
+                    || PriceAnalysis.isTinyProfitPursuit(this._code) && this._currentPrice.epochDate < timeToTakeLoss
                 ) {
                     return false
                 }
@@ -3314,7 +3313,7 @@ class ProjectStockVision {
                         exitByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate)
                         const targetedProfitAcquired = analysis.targetedProfitAcquired(this.#code)
                         const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code, now.getHours())
-                        const targetedLossAcquired = analysis.targetedLossAcquired(this.#code, now.getHours(), now.getMinutes())
+                        const targetedLossAcquired = analysis.targetedLossAcquired(this.#code)
                         isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
                         exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime
                             ? currentPrice.price 
