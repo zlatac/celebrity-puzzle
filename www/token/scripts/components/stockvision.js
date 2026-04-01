@@ -507,15 +507,16 @@ class ProjectStockVision {
              * 
              * @param {string} code 
              * @param {number} currentHour 
+             * @param {number} currentMinute 
              * @returns {boolean}
              */
-            targetedLossAcquired(code, currentHour) {
+            targetedLossAcquired(code, currentHour, currentMinute) {
                 const lossThreshold = window.idaStockVision.settings[code].lossThreshold
                 if (typeof lossThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
-                    || PriceAnalysis.isTinyProfitPursuit(this._code) &&  Number.isFinite(currentHour) && currentHour < 15
+                    || PriceAnalysis.isTinyProfitPursuit(this._code) && currentHour < 15 && currentMinute < 35
                 ) {
                     return false
                 }
@@ -914,8 +915,13 @@ class ProjectStockVision {
                     return false
                 }
 
+                const currentHourMinuteEpochTime = new Date(this._currentPrice.date).setSeconds(0,0)
                 const precisionIntervalsClosingPricesFromAnchorValleyGreaterThanCurrentPrice = this.precisionIntervalValues
-                    .filter(item => item.epochDate > anchorValley.epochDate && item.lastCurrentPrice > this._currentPrice.price)
+                    .filter(item => {
+                        return item.epochDate > anchorValley.epochDate 
+                            && item.epochDate < currentHourMinuteEpochTime
+                            && item.lastCurrentPrice > this._currentPrice.price
+                    })
                 
                 return precisionIntervalsClosingPricesFromAnchorValleyGreaterThanCurrentPrice.length > 0             
             }
@@ -3308,8 +3314,9 @@ class ProjectStockVision {
                         exitByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate)
                         const targetedProfitAcquired = analysis.targetedProfitAcquired(this.#code)
                         const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code, now.getHours())
+                        const targetedLossAcquired = analysis.targetedLossAcquired(this.#code, now.getHours(), now.getMinutes())
                         isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
-                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || analysis.targetedLossAcquired(this.#code, now.getHours()) || exitByTradingEndTime
+                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime
                             ? currentPrice.price 
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
                     }
@@ -3516,7 +3523,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.3, exit = 0.4, experiment = false, profit = 0.4, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.7, exit = 0.4, experiment = false, profit = 0.4, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
         const codeFormatted = String(`${code}_tiny`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
