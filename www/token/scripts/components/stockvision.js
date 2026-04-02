@@ -4369,7 +4369,33 @@ class StockVisionTrade {
                 "method": "GET",
                 "mode": "cors",
                 "credentials": "include"
-            }).then((data) => {return data.json()}).then((data) => {console.log(data)})
+            }).then((data) => {return data.json()}).then((data) => {console.log(data)}),
+            response: [
+                {
+                    "securityUuid": "74591a1c-134a-4412-07e5-a4970f270e14",
+                    "symbol": "CEGS.TO",
+                    "currency": "CAD",
+                    "lastPrice": 19.44,
+                    "priceChangeAmount": -1.22,
+                    "priceChangePercent": -0.059051,
+                    "bidPrice": 18.97,
+                    "bidSize": 5,
+                    "askPrice": 19.08,
+                    "askSize": 5,
+                    "midPrice": 19.025,
+                    "dailyHighPrice": 19.44,
+                    "dailyLowPrice": 18.99,
+                    "volume": 3892,
+                    "isRealtime": true,
+                    "afterHourLastPrice": 19.44,
+                    "afterHourPriceChangeAmount": null,
+                    "afterHourPriceChangePercent": null,
+                    "snapDateTime": "2026-03-31T13:32:51Z",
+                    "exchangeStatus": "Open",
+                    "lastTrade": "2026-03-31T13:31:27Z",
+                    "openPrice": 19.09
+                },
+            ]
         }
 
         const scopeToFindAccessToken = "openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read"
@@ -5093,9 +5119,12 @@ class StockVisionTrade {
                 const exitIncome = exitPrice * order.quantity
                 const percentageDifference = ((exitPrice - entryPrice)/entryPrice) * 100
                 const profitLoss = exitIncome - entryCost
-                const date = new Date(order.timeSubmitted)
-                const dateDisplay = 
-                    `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`
+                const entryDate = new Date(entryOrder.ts)
+                const entryDateDisplay = 
+                    `${entryDate.getDate()}/${entryDate.getMonth() + 1} ${entryDate.getHours()}:${entryDate.getMinutes()}`
+                const exitDate = new Date(order.ts)
+                const exitDateDisplay = 
+                    `${exitDate.getDate()}/${exitDate.getMonth() + 1} ${exitDate.getHours()}:${exitDate.getMinutes()}`
                 const capitalUtilization = entryOrder.downwardVolatility ? 'half' : 'full'
                 const profitCapture = order.profitChunk && order.profitChunk.isValid ? 'chunk' : 'total'
 
@@ -5105,7 +5134,8 @@ class StockVisionTrade {
                     `${percentageDifference.toFixed(2)}%`,
                     profitLoss.toFixed(2),
                     order.code,
-                    dateDisplay,
+                    entryDateDisplay,
+                    exitDateDisplay,
                     capitalUtilization,
                     profitCapture
                 ])
