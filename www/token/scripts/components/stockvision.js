@@ -559,7 +559,7 @@ class ProjectStockVision {
                 }
 
                 const exitDate = new Date().setHours(...PriceAnalysis.tinyExitTime(this._isCrypto),0)
-                const morningExitDate = new Date().setHours(10,28,0,0)
+                const morningExitDate = new Date().setHours(10,30,0,0)
                 return mutationEpochDate >= exitDate || mutationEpochDate <= morningExitDate
             }
 
