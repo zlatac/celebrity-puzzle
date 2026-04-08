@@ -3248,6 +3248,7 @@ class ProjectStockVision {
                 /** @type {CurrentPrice} */
                 const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
                 this.#mutationCurrentPrice = currentPrice
+                const positionPriceToCurrentPriceDelta = Vision.percentageDelta(currentPosition.price, currentPrice.price, true)
                 this.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, currentPrice, this.#tradingInterval)
                 if (inspectorTrigger === true) {
                     currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
@@ -3256,7 +3257,7 @@ class ProjectStockVision {
                     && Vision.PriceAnalysis.isTinyProfitPursuit(this.#code) 
                     && currentPosition.position === Vision.PriceAnalysis.IN
                     && currentPrice.price > currentPosition.price
-                    && Vision.percentageDelta(currentPosition.price, currentPrice.price, true) >= settings.profitThreshold
+                    && (positionPriceToCurrentPriceDelta >= settings.profitThreshold || positionPriceToCurrentPriceDelta >= settings.profitChunkThreshold)
                 ) {
                     currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.PRECISION)
                 }
@@ -3326,7 +3327,6 @@ class ProjectStockVision {
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 
                         && !currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
                     const timeToUpload = Vision.setUploadPricesTimeout(this.#isCrypto,priceStore.uploadTodaysPriceTime,Vision.uploadTodaysPriceHistory)
-                    const positionPriceToCurrentPriceDelta = Vision.percentageDelta(currentPosition.price, currentPrice.price, true)
                     if (typeof timeToUpload === 'number') {
                         priceStore.uploadTodaysPriceTime = timeToUpload
                     }
