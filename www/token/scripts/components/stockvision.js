@@ -1411,6 +1411,15 @@ class ProjectStockVision {
              * @param {boolean} isCrypto 
              * @returns {[number, number, number]}
              */
+            static tinyStartTime(isCrypto = false) {
+                return PriceAnalysis.tradingStartTime(isCrypto, undefined, 1)
+            }
+
+            /**
+             * 
+             * @param {boolean} isCrypto 
+             * @returns {[number, number, number]}
+             */
             static tradingHistoryUploadTime(isCrypto = false) {
                 // Hour, Minute, Seconds
                 return isCrypto 
@@ -3012,6 +3021,21 @@ class ProjectStockVision {
                 localStorage.setItem(localStorageKey, JSON.stringify([...JSON.parse(localStorage.getItem(localStorageKey)), report]))
                 
                 idaStockVision.priceStore.marketHighLowRange.executedLows.get(report.code).add(report.anchorIn)
+
+                // remove isRunawayPrice from tiny start time
+                if (Vision.PriceAnalysis.isTinyProfitPursuit(report.code)) {
+                    // to make sure we maximize profit when next we get in at a lower valley anchor
+                    const now = Date.now()
+                    const tinyStartTime = new Date()
+                    tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
+                    const dateStamp = Vision.PriceAnalysis.dateStringFormat(now, 'YMD')
+                    const dateStampChanged = `${dateStamp}-${now}`
+                    const isRunAwayFromOpeningPrice = idaStockVision.cache.get('isRunAwayFromOpeningPrice')?.get(dateStamp)
+                    if (now > tinyStartTime.getTime() && isRunAwayFromOpeningPrice === true) {
+                        idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStamp, false)
+                        idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStampChanged, true)
+                    }
+                }
                 
                 
             } catch (error) {
@@ -3281,7 +3305,6 @@ class ProjectStockVision {
                 const otherNotificationQueryParams = {}
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
                 if (autoEntryExitMode) {
-                    
                     const peakValleyDetected = Vision.PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                     this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
                     this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])

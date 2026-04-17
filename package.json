@@ -46,6 +46,7 @@
     "stripe": "^8.145.0",
     "style-loader": "^0.23.1",
     "stylus": "^0.59.0",
-    "stylus-loader": "^3.0.2"
+    "stylus-loader": "^3.0.2",
+    "typescript": "5.9.3"
   }
 }
