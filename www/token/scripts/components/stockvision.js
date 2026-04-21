@@ -3545,7 +3545,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.7, exit = 0.4, experiment = false, profit = 0.4, loss = 0.5, tradingInterval = '1hour', precisionInterval = '5min', isCrypto) {
+    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.7, exit = 0.4, experiment = false, profit = 1, loss = 0.5, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_tiny`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
@@ -4421,9 +4421,39 @@ class StockVisionTrade {
             ]
         }
 
+        const cancelOrder = {
+            response: null,
+            failureResponse: {
+                "resource": "orderEntry",
+                "message": "This order has already been cancelled",
+                "code": "400",
+                "timestamp": "2026-04-21T23:25:57.691Z"
+            },
+            statusCode: 204,
+            failureStatusCode: 400,
+            fetch: (accessToken,orderId) => fetch(`https://api.questrade.com/v1/order-entry/${orderId}`, {
+                "headers": {
+                    "accept": "application/json, text/plain, */*",
+                    "accept-language": "en-US,en;q=0.9",
+                    "authorization": `Bearer ${accessToken}`,
+                    "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": "\"macOS\"",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-site"
+                },
+                "referrer": "https://myportal.questrade.com/",
+                "body": null,
+                "method": "DELETE",
+                "mode": "cors",
+                "credentials": "include"
+            })
+        }
+
         const scopeToFindAccessToken = "openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read"
 
-        return {submit,modify,balance,orders,scopeToFindAccessToken}
+        return {submit,modify,balance,orders,cancelOrder,scopeToFindAccessToken}
 
     }
 
