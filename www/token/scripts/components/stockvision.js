@@ -4799,6 +4799,8 @@ class StockVisionTrade {
                 {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO", sector: this.sectors.IT},
                 {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO", sector: this.sectors.IT},
                 {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO", sector: this.sectors.IT},
+                {securityUuid: "0f1e8ea0-0878-4f02-0b86-0b1c946b0807", symbol: "AMZN.TO", sector: this.sectors.IT},
+                {securityUuid: "0e190f77-0a1b-4e02-0a47-8f9f976a1406", symbol: "AAPL.TO", sector: this.sectors.IT},
                 {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO", sector: this.sectors.IT},
                 {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO", sector: this.sectors.HEALTH},
                 {securityUuid: "241f5446-0d09-4482-00ed-a79a5f500e8c", symbol: "LLY.TO", sector: this.sectors.HEALTH},
