@@ -651,7 +651,14 @@ class ProjectStockVision {
                 switch(true) {
                     case PriceAnalysis.isTinyProfitPursuit(this._code):
                         if (this.lowestPriceOfTheDay !== undefined) {
-                            valleysFromClosestHighestPeak.push({...this.lowestPriceOfTheDay, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY})
+                            const lowestPriceOfTheDayAnchor = {...this.lowestPriceOfTheDay, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY}
+                            const lowestPriceOfDayAnchorHasPrecedingPeaks = this.tinyHasPrecedingPeakFromAnchorValley(lowestPriceOfTheDayAnchor)
+                            const postStartTimePrecisionLow = window.idaStockVision.priceStore.marketHighLowRange.postStartTimePrecisionLow
+                            if (postStartTimePrecisionLow !== undefined && lowestPriceOfDayAnchorHasPrecedingPeaks === true) {
+                                valleysFromClosestHighestPeak.push({...postStartTimePrecisionLow, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY})
+                            } else {
+                                valleysFromClosestHighestPeak.push(lowestPriceOfTheDayAnchor)
+                            }
                         }
                         break
                     default:
@@ -2104,6 +2111,7 @@ class ProjectStockVision {
                                 Vision.calcDayToDayUpwardTrend()
                             },
                             executedLows: new Map(),
+                            postStartTimePrecisionLow: undefined,
                         },
                         isUpwardTrendDayToDay: false,
                         _yesterdayClosePrice: undefined,
@@ -2743,6 +2751,25 @@ class ProjectStockVision {
                 precisionIntervalSettings.currentPriceExecuted = true
                 precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
                 precisionIntervalSettings.lastCurrentPrice = peakValleyDetectedOrCurrentPrice.price
+                // set tiny lowest point amont precision intervals
+                const tinyStartTime = new Date().setHours(...Vision.PriceAnalysis.tinyStartTime(),0)
+                const codePrecisionIntervals = priceStore.precisionTimeIntervalsToday[code]
+                const codePrecionIntervalValues = Array.from(codePrecisionIntervals.values())
+                const precisionToEvaluate = codePrecionIntervalValues[precisionIntervalSettings.index - 1]
+                if (precisionToEvaluate !== undefined && precisionToEvaluate.epochDate > tinyStartTime) {
+                    if (priceStore.marketHighLowRange.postStartTimePrecisionLow === undefined 
+                        || precisionToEvaluate.lastCurrentPrice < priceStore.marketHighLowRange.postStartTimePrecisionLow.price
+                    ) {
+                        priceStore.marketHighLowRange.postStartTimePrecisionLow = {
+                            price: precisionToEvaluate.lastCurrentPrice,
+                            epochDate: precisionToEvaluate.epochDate,
+                            date: new Date(precisionToEvaluate.epochDate).toISOString()
+                        }
+                    }
+                }
+                
+
+
                 // precisionIntervalSettings.peakCurrentPrice = precisionIntervalSettings.peakCurrentPrice !== undefined
                 //     ? peakValleyDetectedOrCurrentPrice.price > precisionIntervalSettings.peakCurrentPrice.price
                 //         ? peakValleyDetectedOrCurrentPrice
