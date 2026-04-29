@@ -2756,9 +2756,14 @@ class ProjectStockVision {
                 const codePrecisionIntervals = priceStore.precisionTimeIntervalsToday[code]
                 const codePrecionIntervalValues = Array.from(codePrecisionIntervals.values())
                 const precisionToEvaluate = codePrecionIntervalValues[precisionIntervalSettings.index - 1]
+                const todayMidnight = new Date().setHours(0,0,0,0)
+                const postStartTimePrecisionLow = priceStore.marketHighLowRange.postStartTimePrecisionLow
+                if (postStartTimePrecisionLow !== undefined && postStartTimePrecisionLow.epochDate < todayMidnight) {
+                    priceStore.marketHighLowRange.postStartTimePrecisionLow = undefined
+                }
                 if (precisionToEvaluate !== undefined && precisionToEvaluate.epochDate > tinyStartTime) {
-                    if (priceStore.marketHighLowRange.postStartTimePrecisionLow === undefined 
-                        || precisionToEvaluate.lastCurrentPrice < priceStore.marketHighLowRange.postStartTimePrecisionLow.price
+                    if (postStartTimePrecisionLow === undefined 
+                        || precisionToEvaluate.lastCurrentPrice < postStartTimePrecisionLow.price
                     ) {
                         priceStore.marketHighLowRange.postStartTimePrecisionLow = {
                             price: precisionToEvaluate.lastCurrentPrice,
