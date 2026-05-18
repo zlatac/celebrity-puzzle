@@ -17,6 +17,7 @@
  * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
  * @typedef { import("token").ITradeOrder } TradeOrder
  * @typedef { import("token").ICboeQuoteResponse } CboeQuoteResponse
+ * @typedef { import("token").IQuestradeQuoteResponse } QuestradeQuoteResponse
  * @typedef { import("token").IQuestradeSubmitResponse |  import("token").IQuestradeSubmitErrorResponse} QuestradeSubmitResponse
  * @typedef { import("token").IQuestradeOrdersResponse } QuestradeOrdersResponse
  * @typedef { import("token").IQuestradeOrder } QuestradeOrder
@@ -396,6 +397,8 @@ class ProjectStockVision {
 
             /** @returns {boolean} */
             get isRunAwayFromOpeningPrice() {
+                return false
+
                 const dateStamp = PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
                 if (!window.idaStockVision.cache.has('isRunAwayFromOpeningPrice')) {
                     window.idaStockVision.cache.set('isRunAwayFromOpeningPrice', new Map())
@@ -511,11 +514,16 @@ class ProjectStockVision {
             targetedLossAcquired(code) {
                 const lossThreshold = window.idaStockVision.settings[code].lossThreshold
                 const timeToTakeLoss = new Date().setHours(15,35,0,0)
+                const isTinyCode = PriceAnalysis.isTinyProfitPursuit(this._code)
+                const isNotTinyTimeToTakeLoss = isTinyCode && this._currentPrice.epochDate < timeToTakeLoss
+                // const currentTinyPositionToLowestPointSlope = isTinyCode ? this.priceSlope(this._currentPosition, this.lowestPriceOfTheDay) : undefined
+                // const slopeIsNotNegative = currentTinyPositionToLowestPointSlope === undefined || currentTinyPositionToLowestPointSlope?.negative === false
                 if (typeof lossThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
-                    || PriceAnalysis.isTinyProfitPursuit(this._code) && this._currentPrice.epochDate < timeToTakeLoss
+                    || isNotTinyTimeToTakeLoss
+                    // || isNotTinyTimeToTakeLoss && slopeIsNotNegative
                 ) {
                     return false
                 }
@@ -705,7 +713,7 @@ class ProjectStockVision {
             }
 
             /**
-             * 
+             * @description Should have the same result regardless of the order of parameters
              * @param {Price} anchorPrice 
              * @param {Price} currentPrice 
              * @returns {{value: number; positive: boolean; negative: boolean;} | undefined}
@@ -922,14 +930,15 @@ class ProjectStockVision {
                 }
 
                 const currentHourMinuteEpochTime = new Date(this._currentPrice.date).setSeconds(0,0)
-                const precisionIntervalsClosingPricesFromAnchorValleyGreaterThanCurrentPrice = this.precisionIntervalValues
+                const projectedEntryPrice = PriceAnalysis.percentageFinalAmount(anchorValley.price, this._entryThreshold)
+                const precisionIntervalsClosingPricesFromAnchorValleyGreaterThanProjectedEntryPrice = this.precisionIntervalValues
                     .filter(item => {
                         return item.epochDate > anchorValley.epochDate 
                             && item.epochDate < currentHourMinuteEpochTime
-                            && item.lastCurrentPrice > this._currentPrice.price
+                            && item.lastCurrentPrice > projectedEntryPrice
                     })
                 
-                return precisionIntervalsClosingPricesFromAnchorValleyGreaterThanCurrentPrice.length > 0             
+                return precisionIntervalsClosingPricesFromAnchorValleyGreaterThanProjectedEntryPrice.length > 0
             }
 
             /**
@@ -1710,7 +1719,6 @@ class ProjectStockVision {
                 case profitToTake >= 6:
                     return 3
                 case profitToTake > 0.5:
-                    return Number(Vision.decimalPrecision(half, 1))
                 case profitToTake > 0.01 && profitToTake <= 0.5:
                     return Number(Vision.decimalPrecision(half, 2))
                 default:
@@ -3052,7 +3060,10 @@ class ProjectStockVision {
                 // save to localstorage
                 localStorage.setItem(localStorageKey, JSON.stringify([...JSON.parse(localStorage.getItem(localStorageKey)), report]))
                 
-                idaStockVision.priceStore.marketHighLowRange.executedLows.get(report.code).add(report.anchorIn)
+                // make sure you add the lowest point of the day as well just in case we use the tiny PoststartLow as the anchor to not trigger re-entry by the same lowest point
+                idaStockVision.priceStore.marketHighLowRange.executedLows.get(report.code)
+                    .add(report.anchorIn)
+                    .add(idaStockVision.priceStore.marketHighLowRange.low.price)
 
                 // remove isRunawayPrice from tiny start time
                 if (Vision.PriceAnalysis.isTinyProfitPursuit(report.code)) {
@@ -3462,7 +3473,7 @@ class ProjectStockVision {
                     confirmationQueryParams.append('position', Vision.PriceAnalysis.ACTION.OUT)
                     confirmationLink.search = confirmationQueryParams.toString()
                     notificationBody = notificationBody.concat(`Action Link: ${confirmationLink.toString()} \r\n`)
-                    if (isProfitChunkExit) {
+                    if (isProfitChunkExit && otherNotificationQueryParams.profitChunk !== undefined) {
                         otherNotificationQueryParams.profitChunk.links.confirm.search = confirmationLink.search
                         otherNotificationQueryParams.profitChunk.links.chunkConfirm.search = confirmationLink.search
                     }
@@ -3577,7 +3588,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.7, exit = 0.4, experiment = false, profit = 1, loss = 0.5, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.7, exit = 0.4, experiment = false, profit = 0.96, loss = 0.5, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_tiny`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
@@ -4386,11 +4397,11 @@ class StockVisionTrade {
         }
 
         const searchStockCode = {
-            fetch: () => fetch("https://api.questrade.com/v1/securities?pattern=nvda&have-options=false&limit=8", {
+            fetch: (accessToken,pattern) => fetch(`https://api.questrade.com/v1/securities?pattern=${pattern}&have-options=false&limit=8`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
-                    "authorization": "Bearer aSeS7Dva9ZKG7E5qBy5Gr4Dal0txbQUgZ7XBOuSR2kuAS0404OmFrNqPa3BaEKk39G20DfBEMDbtyQuMk9O7EA",
+                    "authorization": `Bearer ${accessToken}`,
                     "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
                     "sec-ch-ua-mobile": "?0",
                     "sec-ch-ua-platform": "\"Windows\"",
@@ -4403,15 +4414,19 @@ class StockVisionTrade {
                 "method": "GET",
                 "mode": "cors",
                 "credentials": "include"
-            }).then((data) => {return data.json()}).then((data) => {console.log(data)})
+            })
         }
 
         const getMarketData = {
-            fetch: () => fetch("https://api.questrade.com/v1/market-data/update?symbols=515c3938-2281-4122-0285-869320320824&symbols=1f2c511b-0b83-4f92-0dac-66503e9d0a9d&symbols=7502295d-2255-4592-0ada-a6911f5a1d9b&symbols=67063f4c-2e03-4772-014c-37523481047d&symbols=0d45156a-12a3-4d32-0454-c4943e440535&symbols=1921123f-154c-4962-0c4e-6697040c446f&symbols=0b022952-501c-4b12-0b03-0892834b1012&symbols=22187e06-039b-4272-0001-039849600070", {
+            statusCode: 200,
+            failureStatusCode: 400,
+            // you can set multiple (symbols) query parameters to get results for multiple securities all at once
+            // make sense to get one at a time by default as prices can change drastically between sequential processing
+            fetch: (accessToken,securityId) => fetch(`https://api.questrade.com/v1/market-data/update?symbols=${securityId}`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
-                    "authorization": "Bearer aSeS7Dva9ZKG7E5qBy5Gr4Dal0txbQUgZ7XBOuSR2kuAS0404OmFrNqPa3BaEKk39G20DfBEMDbtyQuMk9O7EA",   
+                    "authorization": `Bearer ${accessToken}`,   
                     "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
                     "sec-ch-ua-mobile": "?0",
                     "sec-ch-ua-platform": "\"Windows\"",
@@ -4424,7 +4439,7 @@ class StockVisionTrade {
                 "method": "GET",
                 "mode": "cors",
                 "credentials": "include"
-            }).then((data) => {return data.json()}).then((data) => {console.log(data)}),
+            }),
             response: [
                 {
                     "securityUuid": "74591a1c-134a-4412-07e5-a4970f270e14",
@@ -4485,7 +4500,7 @@ class StockVisionTrade {
 
         const scopeToFindAccessToken = "openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read"
 
-        return {submit,modify,balance,orders,cancelOrder,scopeToFindAccessToken}
+        return {submit,modify,balance,orders,cancelOrder,getMarketData,searchStockCode,scopeToFindAccessToken}
 
     }
 
@@ -4799,31 +4814,59 @@ class StockVisionTrade {
             },
             tradeProcess: this.questradeTradeProcess(),
             securityIds: [
-                {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO", sector: this.sectors.IT},
-                {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO", sector: this.sectors.IT},
-                {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO", sector: this.sectors.IT},
-                {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO", sector: this.sectors.IT},
-                {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO", sector: this.sectors.IT},
-                {securityUuid: "0f1e8ea0-0878-4f02-0b86-0b1c946b0807", symbol: "AMZN.TO", sector: this.sectors.IT},
-                {securityUuid: "0e190f77-0a1b-4e02-0a47-8f9f976a1406", symbol: "AAPL.TO", sector: this.sectors.IT},
-                {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO", sector: this.sectors.IT},
-                {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO", sector: this.sectors.HEALTH},
-                {securityUuid: "241f5446-0d09-4482-00ed-a79a5f500e8c", symbol: "LLY.TO", sector: this.sectors.HEALTH},
-                {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO", sector: this.sectors.AUTO},
-                {securityUuid: "12910d3f-164a-4202-0964-97986c590605", symbol: "GEV.TO", sector: this.sectors.INDUSTRIAL},
-                {securityUuid: "5d012344-69a4-4d72-02bb-252ca1520b7a", symbol: "VZ.TO", sector: this.sectors.TELECOM},
-                {securityUuid: "2d171b36-1c8a-4d92-0d5f-08958d5d059e", symbol: "XOM.TO", sector: this.sectors.ENERGY},
-                {securityUuid: "054d0f5c-1e0a-4512-0c24-3482a94c0215", symbol: "ENB.TO", sector: this.sectors.ENERGY},
-                {securityUuid: "2727298f-0689-4782-0cd6-3f283c5c1d87", symbol: "OXY.TO", sector: this.sectors.ENERGY},
-                {securityUuid: "28121091-1785-4832-0868-d39088581639", symbol: "CHEV.TO", sector: this.sectors.ENERGY},
-                {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO", sector: this.sectors.STAPLE},
-                {securityUuid: "22302c83-3b3a-4222-0ea7-8895575e0a26", symbol: "WMT.TO", sector: this.sectors.STAPLE},
-                {securityUuid: "10210935-170f-4012-09d4-32a494591d15", symbol: "PG.TO", sector: this.sectors.STAPLE},
-                {securityUuid: "2a29270e-0834-4a42-0b17-5087796b0146", symbol: "VISA.TO", sector: this.sectors.FINANCE},
-                {securityUuid: "6f571411-05be-4f32-0275-89925c220734", symbol: "MA.TO", sector: this.sectors.FINANCE},
-                {securityUuid: "231e5345-5e4f-4302-08ca-a4990d880c0b", symbol: "JNJ.TO", sector: this.sectors.HEALTH},
-                {securityUuid: "74591a1c-134a-4412-07e5-a4970f270e14", symbol: "CEGS.TO", sector: this.sectors.UTILITIES},
-                {securityUuid: "a5813b4d-2458-4582-0732-14137e670383", symbol: "UNP.TO", sector: this.sectors.TRANSPORTATION},
+                {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "0f1e8ea0-0878-4f02-0b86-0b1c946b0807", symbol: "AMZN.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "0e190f77-0a1b-4e02-0a47-8f9f976a1406", symbol: "AAPL.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO", sector: this.sectors.HEALTH, currency: "CAD"},
+                {securityUuid: "241f5446-0d09-4482-00ed-a79a5f500e8c", symbol: "LLY.TO", sector: this.sectors.HEALTH, currency: "CAD"},
+                {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO", sector: this.sectors.AUTO, currency: "CAD"},
+                {securityUuid: "12910d3f-164a-4202-0964-97986c590605", symbol: "GEV.TO", sector: this.sectors.INDUSTRIAL, currency: "CAD"},
+                {securityUuid: "5d012344-69a4-4d72-02bb-252ca1520b7a", symbol: "VZ.TO", sector: this.sectors.TELECOM, currency: "CAD"},
+                {securityUuid: "2d171b36-1c8a-4d92-0d5f-08958d5d059e", symbol: "XOM.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "054d0f5c-1e0a-4512-0c24-3482a94c0215", symbol: "ENB.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "2727298f-0689-4782-0cd6-3f283c5c1d87", symbol: "OXY.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "28121091-1785-4832-0868-d39088581639", symbol: "CHEV.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO", sector: this.sectors.STAPLE, currency: "CAD"},
+                {securityUuid: "22302c83-3b3a-4222-0ea7-8895575e0a26", symbol: "WMT.TO", sector: this.sectors.STAPLE, currency: "CAD"},
+                {securityUuid: "10210935-170f-4012-09d4-32a494591d15", symbol: "PG.TO", sector: this.sectors.STAPLE, currency: "CAD"},
+                {securityUuid: "2a29270e-0834-4a42-0b17-5087796b0146", symbol: "VISA.TO", sector: this.sectors.FINANCE, currency: "CAD"},
+                {securityUuid: "6f571411-05be-4f32-0275-89925c220734", symbol: "MA.TO", sector: this.sectors.FINANCE, currency: "CAD"},
+                {securityUuid: "231e5345-5e4f-4302-08ca-a4990d880c0b", symbol: "JNJ.TO", sector: this.sectors.HEALTH, currency: "CAD"},
+                {securityUuid: "74591a1c-134a-4412-07e5-a4970f270e14", symbol: "CEGS.TO", sector: this.sectors.UTILITIES, currency: "CAD"},
+                {securityUuid: "a5813b4d-2458-4582-0732-14137e670383", symbol: "UNP.TO", sector: this.sectors.TRANSPORTATION, currency: "CAD"},
+                // USD
+                {securityUuid: "14246129-1360-4452-09b0-2185a5591b51", symbol: "SMCI", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "1f2c511b-0b83-4f92-0dac-66503e9d0a9d", symbol: "NVDA", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "2a213c25-2d57-4a22-096c-2b617d89062d", symbol: "TSLA", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "681b2b44-1859-4882-02ff-0d667062cf8e", symbol: "INTC", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "15540005-182f-4582-02a3-91a02e521a82", symbol: "CSCO", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "011f0a2d-0a0f-4152-0f5e-188a070f455f", symbol: "AMZN", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "5a380a4e-1e94-4a32-0c8b-0c79af4c183a", symbol: "AAPL", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "2c064146-109f-4c92-0bc9-1980205b1c98", symbol: "MU", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "411b118c-003b-4132-01b8-078a07412b39", symbol: "PFE", sector: this.sectors.HEALTH, currency: "USD"},
+                {securityUuid: "02261f37-070e-4282-08bf-1f627a48bb8e", symbol: "LLY", sector: this.sectors.HEALTH, currency: "USD"},
+                {securityUuid: "541a8d63-1d2d-4462-04e9-7e9902140e68", symbol: "F", sector: this.sectors.AUTO, currency: "USD"},
+                {securityUuid: "7b0e1026-8a46-4b92-084a-4da02468049b", symbol: "GEV", sector: this.sectors.INDUSTRIAL, currency: "USD"},
+                {securityUuid: "6c2c0371-172f-4c02-0368-62969f435609", symbol: "VZ", sector: this.sectors.TELECOM, currency: "USD"},
+                {securityUuid: "3015025f-1789-4002-0849-91973d080408", symbol: "XOM", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "03221f0b-305d-4342-0d67-3783ae4d0646", symbol: "ENB", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "4737304c-0c30-4792-006f-1d55ae60669e", symbol: "OXY", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "0d0b223f-668d-4d82-09bb-1f1374591b8a", symbol: "CVX", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "0f482004-0177-4f72-03b0-1e9b99531b71", symbol: "COST", sector: this.sectors.STAPLE, currency: "USD"},
+                {securityUuid: "011d3e46-5f46-4172-0aca-978e177a1c7b", symbol: "WMT", sector: this.sectors.STAPLE, currency: "USD"},
+                {securityUuid: "1c370211-1e51-4c42-040c-a9652d84004d", symbol: "PG", sector: this.sectors.STAPLE, currency: "USD"},
+                {securityUuid: "1e12101d-163e-4e12-0d04-678e0f5d6015", symbol: "V", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "5b1f17ae-3923-4b62-0247-0a948b520466", symbol: "MA", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "432a503b-16e5-4332-08fc-095046881f3d", symbol: "IBKR", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "50070502-1d4a-4052-036a-06821e03065b", symbol: "NDAQ", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "16280c20-0447-46a2-035f-1d33276375ae", symbol: "JNJ", sector: this.sectors.HEALTH, currency: "USD"},
+                {securityUuid: "7e3a3b11-0204-4e22-0fbd-949b2a5f1b2c", symbol: "CEG", sector: this.sectors.UTILITIES, currency: "USD"},
+                {securityUuid: "13270d2c-1fa3-4322-0ca4-35880c5c6a25", symbol: "UNP", sector: this.sectors.TRANSPORTATION, currency: "USD"},
             ]
         },
         ibkr: {},
@@ -4920,10 +4963,10 @@ class StockVisionTrade {
 
     /**
      * 
-     * @param {string} brokerage 
+     * @param {SVisionTrade['brokerage']['name']} brokerage 
      * @returns {string | undefined}
      */
-    static getAccessToken = (brokerage) => {
+    static getAccessToken = (brokerage = window.idaStockVisionTrade?.brokerage.name) => {
         let accessToken = undefined
         switch(brokerage) {
             case 'questrade':
@@ -5079,24 +5122,29 @@ class StockVisionTrade {
     /**
      * 
      * @param {string} primaryCode 
+     * @param {SVisionTrade['brokerage']['name']} brokerageName 
      * @returns {Promise<Response>} 
      */
-    static priceCheck = (primaryCode) => {
-        const payload = new URLSearchParams()
-        payload.set('primaryCode', primaryCode)
-        return fetch(`${this.constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
-            method: 'GET',
-            mode: 'cors',
-        })
+    static priceCheck = (primaryCode, brokerageName) => {
+        // const payload = new URLSearchParams()
+        // payload.set('primaryCode', primaryCode)
+        // return fetch(`${this.constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
+        //     method: 'GET',
+        //     mode: 'cors',
+        // })
+
+        const securityId = window.idaStockVisionTrade.securities[primaryCode].securityId
+        const accessToken = this.getAccessToken(brokerageName)
+        return this.constants[brokerageName].tradeProcess.getMarketData.fetch(accessToken,securityId)
     }
 
     static decimalPrecision = ProjectStockVision.vision.decimalPrecision
 
     /**
      * 
-     * @param {string} last 
-     * @param {string} bid 
-     * @param {string} ask 
+     * @param {string | number} last 
+     * @param {string | number} bid 
+     * @param {string | number} ask 
      * @param {TradeOrder} order
      * @returns {string|number}
      */
@@ -5206,14 +5254,17 @@ class StockVisionTrade {
                 const exitIncome = exitPrice * order.quantity
                 const percentageDifference = ((exitPrice - entryPrice)/entryPrice) * 100
                 const profitLoss = exitIncome - entryCost
-                const entryDate = new Date(entryOrder.ts)
+                // to handle both past and present data structure
+                const entryDate = new Date(entryOrder['ts'] || entryOrder.snapDateTime)
                 const entryDateDisplay = 
                     `${entryDate.getDate()}/${entryDate.getMonth() + 1} ${entryDate.getHours()}:${entryDate.getMinutes()}`
-                const exitDate = new Date(order.ts)
+                const exitDate = new Date(order['ts'] || order.snapDateTime)
                 const exitDateDisplay = 
                     `${exitDate.getDate()}/${exitDate.getMonth() + 1} ${exitDate.getHours()}:${exitDate.getMinutes()}`
                 const capitalUtilization = entryOrder.downwardVolatility ? 'half' : 'full'
-                const profitCapture = order.profitChunk && order.profitChunk.isValid ? 'chunk' : 'total'
+                const profitCapture = order.profitChunk && order.profitChunk.isValid && order.profitChunk.quantityRemaining > 0 
+                    ? 'chunk' 
+                    : 'total'
 
                 profitLossAmount += profitLoss
                 profitLossPercentage += percentageDifference
@@ -5289,7 +5340,7 @@ class StockVisionTrade {
     }
 
     static get ordersTodayWithZeroLastPrice() {
-        return this.todaysOrders.filter(order => Number(order.last) === 0)
+        return this.todaysOrders.filter(order => Number(order.lastPrice) === 0)
     }
 
     /**
@@ -5332,6 +5383,22 @@ class StockVisionTrade {
         return {numberOfStocks, reserves, leftOver}
     }
 
+    /**
+     * 
+     * @param {string} pattern 
+     * @param {SVisionTrade['brokerage']['name']} brokerage 
+     */
+    static async searchStock(pattern, brokerage = window.idaStockVisionTrade?.brokerage.name) {
+        try {
+            const res = await this.constants[brokerage].tradeProcess.searchStockCode.fetch(this.getAccessToken(), pattern)
+            const resFormatted = await res.json()
+            return Promise.resolve(resFormatted)
+        } catch (error) {
+            return Promise.reject(error)
+        }
+
+    }
+
     static processOrderQueue = async () => {
         //always store orders in localstorage as backup in case of forced logout
         const idaStockVisionTrade = window.idaStockVisionTrade
@@ -5350,8 +5417,20 @@ class StockVisionTrade {
         // sequential promise fulfliment as forEach does not respect asyc/await
         for(const order of orders) {
             try {
+                // tO-DO refactore to use pricecheck method
+                let accessToken = this.getAccessToken(brokerageName)
+                const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
+                /** @type Response */
+                const quoteRes = await this.constants[brokerageName].tradeProcess.getMarketData.fetch(accessToken,securityId)
+                /** @type QuestradeQuoteResponse[] */
+                const quoteResFormatted = await quoteRes.json()
+                if (!quoteRes.ok || Array.isArray(quoteResFormatted) && quoteResFormatted.length === 0) {
+                    const resText = await quoteRes.text()
+                    throw new Error(`cannot retrieve price - ${order.code} - ${resText}`)
+                }
+                Object.assign(order, quoteResFormatted[0])
                 const action = order.position === true ? this.constants[brokerageName].trade.buy : this.constants[brokerageName].trade.sell
-                let price = this.priceDecision(order.last, order.bid_price, order.ask_price, order)
+                let price = this.priceDecision(order.lastPrice, order.bidPrice, order.askPrice, order)
                 const defaultCapital = idaStockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
@@ -5359,7 +5438,6 @@ class StockVisionTrade {
                     ? this.sharesAmount(price, realCapital) 
                     : this.getLatestOrderedHistory(order.code).quantity
                 let quantityToRecord = quantity
-                const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
                 const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
                 if (quantity === undefined || quantity === 0) {
                     throw new Error(`no quantity to process order - ${order.code}`)
@@ -5383,7 +5461,7 @@ class StockVisionTrade {
                     }
                 }
                 const accountId = this.getAccountId(order.code)
-                const accessToken = this.getAccessToken(brokerageName)
+                accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
                 const res = await this.constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
                 /** @type {QuestradeSubmitResponse} */
@@ -5467,7 +5545,7 @@ class StockVisionTrade {
         
         try {
             let orderToModifyExist = false
-            const fromDateISO = new Date(orders.at(0).ts).toISOString()
+            const fromDateISO = new Date(orders.at(0).snapDateTime).toISOString()
             const brokerageName = idaStockVisionTrade.brokerage.name
             const orderStatuses = this.constants[brokerageName].trade.orderStatus
             const accessToken = this.getAccessToken(brokerageName)
@@ -5605,10 +5683,10 @@ class StockVisionTrade {
 
         for(const order of orders) {
             try {
-                const newPricesResponse = await this.priceCheck(order.primaryCode)
-                /** @type {CboeQuoteResponse} */
+                const newPricesResponse = await this.priceCheck(order.primaryCode, brokerageName)
+                /** @type {QuestradeQuoteResponse[]} */
                 const newPriceJson = await newPricesResponse.json()
-                const newPrice = this.priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price, order)
+                const newPrice = this.priceDecision(newPriceJson[0].lastPrice, newPriceJson[0].bidPrice, newPriceJson[0].askPrice, order)
                 const defaultCapital = idaStockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
@@ -5671,6 +5749,31 @@ class StockVisionTrade {
         }
 
         idaStockVisionTrade.modifyOrderQueueInProgress = false
+    }
+
+    /**
+     * 
+     * @param {TradeOrder} order 
+     */
+    static cancelOrder = async (order) => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const brokerageName = idaStockVisionTrade.brokerage.name
+        const accessToken = this.getAccessToken(brokerageName)
+        try {
+            /** @type {Response} */
+            const res = await this.constants[brokerageName].tradeProcess.cancelOrder.fetch(accessToken, order.orderId)
+            if (!res.ok) {
+                const resText = await res.text()
+                // status code 404 & 400-ish isn't rejected in the fetch promise
+                throw new Error(resText)
+            }
+            this.fixBrokenOrder(order.orderId)
+            
+        } catch (error) {
+            const errorMessage = ['Ida Trader Bot - CANCEL ORDER', error.toString()]
+            console.log(...errorMessage)
+        }
+
     }
 
     static setUp = () => {

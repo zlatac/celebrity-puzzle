@@ -235,6 +235,30 @@ export interface ICboeQuoteResponse {
     ts: string;
     market_cap: number;
 }
+export interface IQuestradeQuoteResponse {
+    securityUuid: string;
+    symbol: string;
+    currency: string;
+    lastPrice: number;
+    priceChangeAmount: number;
+    priceChangePercent: number;
+    bidPrice: number;
+    bidSize: number;
+    askPrice: number;
+    askSize: number;
+    midPrice: number;
+    dailyHighPrice: number;
+    dailyLowPrice: number;
+    volume: number;
+    isRealtime: boolean;
+    afterHourLastPrice: number;
+    afterHourPriceChangeAmount: number;
+    afterHourPriceChangePercent: number;
+    snapDateTime: string;
+    exchangeStatus: string | 'Open' | 'Post-market';
+    lastTrade: string;
+    openPrice: number;
+}
 export interface IQuestradeOrder {
   security: {
       securityUuid: string;
@@ -314,7 +338,7 @@ export interface IQuestradeSubmitErrorResponse {
   resource: string;
   timestamp: string;
 }
-export interface ITradeCheckResponse extends ICboeQuoteResponse {
+export interface ITradeCheckResponse extends IQuestradeQuoteResponse {
   code: string;
   primaryCode: string;
   confirmationLink: string;

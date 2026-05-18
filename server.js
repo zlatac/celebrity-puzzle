@@ -657,23 +657,24 @@ const trader = {
                     // observationPrice: req.query.currentPrice,
                     seenByBrokerage: [],
                 }
-                const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
-                const cboeData = axiosResponse.data.data
+                const newOrder = prepareOrder
+                // const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
+                // const cboeData = axiosResponse.data.data
                 
                 
-                if (!('name' in cboeData) || cboeData.name !== prepareOrder.primaryCode.toUpperCase()) {
-                    throw new Error('prepareOrder: cannot retrieve price')
-                }
+                // if (!('name' in cboeData) || cboeData.name !== prepareOrder.primaryCode.toUpperCase()) {
+                //     throw new Error('prepareOrder: cannot retrieve price')
+                // }
 
-                let {bid_price, ask_price} = cboeData
-                bid_price = Number(bid_price)
-                ask_price = Number(ask_price)
-                const bidAskMightBeZero = bid_price === 0 || ask_price === 0
-                if (bidAskMightBeZero) {
-                    throw new Error(`prepareOrder: zero value for one of (bid:${bid_price}, ask:${ask_price})`)
-                }
+                // let {bid_price, ask_price} = cboeData
+                // bid_price = Number(bid_price)
+                // ask_price = Number(ask_price)
+                // const bidAskMightBeZero = bid_price === 0 || ask_price === 0
+                // if (bidAskMightBeZero) {
+                //     throw new Error(`prepareOrder: zero value for one of (bid:${bid_price}, ask:${ask_price})`)
+                // }
 
-                const newOrder = {...prepareOrder,...axiosResponse.data.data}
+                // const newOrder = {...prepareOrder,...axiosResponse.data.data}
                 trader.asyncOperation.ordersToExecute.push(newOrder)
                 tradeEvent.emit('sendPreparedOrder', newOrder)
                 if (!retry) {
