@@ -27,6 +27,9 @@ export interface IPosition extends IPrice {
   positionAnchor?: number;
   originalPrice?: number;
   profitChunkPrice?: number | undefined;
+  _price: number;
+  set price(val: number): number;
+  get price(): number;
 }
 
 export interface ITradingIntervalInspection {
@@ -90,8 +93,10 @@ export interface IPriceStore {
     _low: IPrice | undefined
     get low(): IPrice | undefined
     set low(x: number): void;
+    get lowToHighDelta(): number | undefined
     executedLows: Map<string, Set<number>>;
     postStartTimePrecisionLow: IPrice | undefined
+    postStartTimePrecisionHigh: IPrice | undefined
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
@@ -177,6 +182,7 @@ export interface IStockVision {
       entryPrecisionThreshold: undefined | number;
       maxTinyEntryPercentageThreshold: undefined | number;
       tinyRunAwayDeltaThreshold: undefined | number;
+      tinyObservedDailyProfitWindow: undefined | number;
     };
   };
   server: {

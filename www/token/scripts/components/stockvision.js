@@ -639,6 +639,14 @@ class ProjectStockVision {
                 return executedLows instanceof Map && !executedLows.get(this._code).has(low.price) ? low : undefined
             }
 
+            get lowToCurrentPositionDelta() {
+                // move to price analysis for specific code usage
+                if (Number.isFinite(this.lowestPriceOfTheDay?.price) && Number.isFinite(this._currentPosition?.price)) {
+                    return Vision.percentageDelta(this.lowestPriceOfTheDay.price, this._currentPosition.price)
+                }
+                return undefined
+            }
+
             /** @returns {PriceHistory | undefined} */
             findAnchorValley() {
                 // find closest highest peak
@@ -2109,6 +2117,7 @@ class ProjectStockVision {
                                 // @ts-ignore
                                 this._low = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
                                 Vision.calcDayToDayUpwardTrend()
+                                Vision.detectAnomaly()
                             },
                             _high: undefined,
                             get high(){return this._high},
@@ -2118,14 +2127,21 @@ class ProjectStockVision {
                                 this._high = {price: val, epochDate: now.getTime(), date: now.toISOString()}
                                 Vision.calcDayToDayUpwardTrend()
                             },
+                            get lowToHighDelta(){
+                                if (Number.isFinite(this.low?.price) && Number.isFinite(this.high?.price) && this.high.epochDate > this.low.epochDate) {
+                                    return Vision.percentageDelta(this.low.price,this.high.price)
+                                }
+                                return undefined
+                            },
                             executedLows: new Map(),
                             postStartTimePrecisionLow: undefined,
+                            postStartTimePrecisionHigh: undefined,
                         },
                         isUpwardTrendDayToDay: false,
                         _yesterdayClosePrice: undefined,
                         _openPrice: undefined,
-                        set yesterdayClosePrice(val){this._yesterdayClosePrice = val; Vision.calcDayToDayUpwardTrend()},
-                        set openPrice(val){this._openPrice = val; Vision.calcDayToDayUpwardTrend()},
+                        set yesterdayClosePrice(val){this._yesterdayClosePrice = val; Vision.calcDayToDayUpwardTrend(); Vision.detectAnomaly()},
+                        set openPrice(val){this._openPrice = val; Vision.calcDayToDayUpwardTrend(); Vision.detectAnomaly()},
                         get yesterdayClosePrice(){return this._yesterdayClosePrice},
                         get openPrice(){return this._openPrice},
                         peakValleyHistory: [],
@@ -2251,6 +2267,14 @@ class ProjectStockVision {
                     /** @type {Position}*/ 
                     ({
                         position: false,
+                        _price: undefined,
+                        get price() {
+                            return this._price
+                        },
+                        set price(val) {
+                            this._price = val
+                            Vision.adjustTinyProfitChunkThreshold(code, this.price)
+                        }
                     })
                 window.idaStockVision.priceStore.analysis[code] = () => Vision.deriveAnalysis(code)
                 window.idaStockVision.priceStore.todaysPeakValleySnapshot[code] = []
@@ -2285,6 +2309,7 @@ class ProjectStockVision {
                     profitChunkThreshold: undefined,
                     maxTinyEntryPercentageThreshold: 2,
                     tinyRunAwayDeltaThreshold: 1,
+                    tinyObservedDailyProfitWindow: 2,
                 }
                 Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
                 const setFutureIntervalListener = () => {
@@ -2766,14 +2791,26 @@ class ProjectStockVision {
                 const precisionToEvaluate = codePrecionIntervalValues[precisionIntervalSettings.index - 1]
                 const todayMidnight = new Date().setHours(0,0,0,0)
                 const postStartTimePrecisionLow = priceStore.marketHighLowRange.postStartTimePrecisionLow
+                const postStartTimePrecisionHigh = priceStore.marketHighLowRange.postStartTimePrecisionHigh
                 if (postStartTimePrecisionLow !== undefined && postStartTimePrecisionLow.epochDate < todayMidnight) {
                     priceStore.marketHighLowRange.postStartTimePrecisionLow = undefined
+                    priceStore.marketHighLowRange.postStartTimePrecisionHigh = undefined
                 }
                 if (precisionToEvaluate !== undefined && precisionToEvaluate.epochDate > tinyStartTime) {
                     if (postStartTimePrecisionLow === undefined 
                         || precisionToEvaluate.lastCurrentPrice < postStartTimePrecisionLow.price
                     ) {
                         priceStore.marketHighLowRange.postStartTimePrecisionLow = {
+                            price: precisionToEvaluate.lastCurrentPrice,
+                            epochDate: precisionToEvaluate.epochDate,
+                            date: new Date(precisionToEvaluate.epochDate).toISOString()
+                        }
+                    }
+
+                    if (postStartTimePrecisionHigh === undefined 
+                        || precisionToEvaluate.lastCurrentPrice > postStartTimePrecisionHigh.price
+                    ) {
+                        priceStore.marketHighLowRange.postStartTimePrecisionHigh = {
                             price: precisionToEvaluate.lastCurrentPrice,
                             epochDate: precisionToEvaluate.epochDate,
                             date: new Date(precisionToEvaluate.epochDate).toISOString()
@@ -2995,6 +3032,71 @@ class ProjectStockVision {
         static purgeNotificationLastSent(code) {
             const codeFormatted = Vision.PriceAnalysis.codeFormat(code)
             window.idaStockVision.lastNotificationSent[codeFormatted] = {}
+        }
+
+        /**
+         * 
+         * @param {string} code 
+         * @param {number} positionPrice
+         */
+        static adjustTinyProfitChunkThreshold(code, positionPrice) {
+            try {
+                if (Vision.PriceAnalysis.isTinyProfitPursuit(code)) {
+                    // inputs - code, positionPrice
+                    const idaStockVision = window.idaStockVision
+                    const observedDailyProfitWindow = idaStockVision.settings[code].tinyObservedDailyProfitWindow
+                    const lowToCurrentPositionDelta = Vision.percentageDelta(idaStockVision.priceStore.marketHighLowRange.low.price, positionPrice)
+                    const originalProfitChunk = Vision.calculateProfitChunk(idaStockVision.settings[code].profitThreshold)
+                    const usableProfitWindow = observedDailyProfitWindow - lowToCurrentPositionDelta
+                    if (lowToCurrentPositionDelta !== undefined) {
+                        switch(true) {
+                            case lowToCurrentPositionDelta >= observedDailyProfitWindow:
+                                idaStockVision.settings[code].profitChunkThreshold = 0
+                                break
+                            case usableProfitWindow < originalProfitChunk:
+                                idaStockVision.settings[code].profitChunkThreshold = usableProfitWindow
+                                break
+                            default:
+                                idaStockVision.settings[code].profitChunkThreshold = originalProfitChunk
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Ida Trader Bot - ADJUST TINY PROFITCHUNK THRESHOLD', error)
+            }
+        }
+
+        static detectAnomaly() {
+            try {
+                const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
+                const startTime = new Date().setHours(...Vision.PriceAnalysis.tradingStartTime(),0)
+                const nowIsAfterStartTime = Date.now() >= startTime
+                if (!window.idaStockVision.cache.has('anomaly')) {
+                    window.idaStockVision.cache.set('anomaly', new Map())
+                }
+                const anomalyThreshold = -4
+                const previousClosePrice = window.idaStockVision.priceStore.yesterdayClosePrice
+                const openPrice = window.idaStockVision.priceStore.openPrice
+                const lowPrice = window.idaStockVision.priceStore.marketHighLowRange.low?.price
+                const previousClosePriceToOpenPrice = Vision.percentageDelta(previousClosePrice, openPrice, true)
+                const previousClosePriceToLowPrice = Vision.percentageDelta(previousClosePrice, lowPrice, true)
+                const lowestDelta = Math.min(previousClosePriceToOpenPrice, previousClosePriceToLowPrice)
+                const lowestAnchor = Math.min(openPrice, lowPrice)
+                const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
+                const anomalyExists = lowestDelta <= anomalyThreshold
+    
+                if (anomalyExists && nowIsAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
+                    Vision.notify(
+                        'Manual assessment from data source & execution needed.',
+                        `${primaryCode} - Anomaly[${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
+                    )
+                    window.idaStockVision.cache.get('anomaly').set(dateStamp, true)
+                }
+
+                return anomalyExists
+            } catch (error) {
+                console.log('Ida Trader Bot - DETECT ANOMALY', error)
+            }
         }
 
         /**
@@ -3576,8 +3678,7 @@ class ProjectStockVision {
     /**
      * 
      * @param {string} code 
-     * @param {number} [maxTinyEntryThreshold]
-     * @param {number} [tinyRunAwayThreshold]
+     * @param {number} [tinyObservedDailyProfitWindow]
      * @param {number} [entry]
      * @param {number} [exit] 
      * @param {boolean} [experiment] 
@@ -3588,19 +3689,17 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, maxTinyEntryThreshold, tinyRunAwayThreshold, entry = 0.7, exit = 0.4, experiment = false, profit = 0.96, loss = 0.5, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionTiny(code, tinyObservedDailyProfitWindow, entry = 0.85, exit = 0.4, experiment = false, profit = 0.96, loss = 0.5, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_tiny`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
         if (!(codeFormatted in idaStockVision.settings)) {
             throw new Error(`settings not found for ${codeFormatted}. Please destroy and restart`)
         }
-        idaStockVision.settings[codeFormatted].tinyRunAwayDeltaThreshold = tinyRunAwayThreshold !== undefined 
-            ? tinyRunAwayThreshold 
-            : idaStockVision.settings[codeFormatted].tinyRunAwayDeltaThreshold 
-        idaStockVision.settings[codeFormatted].maxTinyEntryPercentageThreshold = maxTinyEntryThreshold !== undefined 
-            ? maxTinyEntryThreshold
-            : idaStockVision.settings[codeFormatted].maxTinyEntryPercentageThreshold
+        
+        idaStockVision.settings[codeFormatted].tinyObservedDailyProfitWindow = tinyObservedDailyProfitWindow !== undefined 
+            ? tinyObservedDailyProfitWindow
+            : idaStockVision.settings[codeFormatted].tinyObservedDailyProfitWindow
         
         return output
     }
