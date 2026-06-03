@@ -623,7 +623,7 @@ class ProjectStockVision {
 
             get openPriceToCurrentPriceIsUpward() {
                 // TO-DO add tiny code logic so it applies to only tiny profit pursuit
-                return Vision.percentageDelta(window.idaStockVision.priceStore.openPrice, this._currentPrice.price, true) >= 0
+                return Vision.percentageDelta(window.idaStockVision.priceStore.openPrice?.price, this._currentPrice.price, true) >= 0
             }
 
             get isHighRiskAndTinyPursuit() {
@@ -869,6 +869,9 @@ class ProjectStockVision {
                 // make sure it is deep cloned so we do not overwrite a peak type to valley type carelessly
                 // reverse the array to easily loop from the top
                 // the second result of a peak should break out of the loop and return outcome of slope calculation
+                if (PriceAnalysis.isTinyProfitPursuit(this._code)) {
+                    return undefined
+                }
                 let onlyPeaksCloned = [...onlyPeaks]
                 onlyPeaksCloned.reverse()
                 const removeDuplicates = new Map()
@@ -2076,8 +2079,8 @@ class ProjectStockVision {
         }
         static calcDayToDayUpwardTrend() {
             const priceStore = window.idaStockVision.priceStore
-            const prevCloseToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.openPrice, true) >= 0
-            const prevCloseToHighestPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice, priceStore.marketHighLowRange.high?.price, true) >= 0
+            const prevCloseToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.openPrice?.price, true) >= 0
+            const prevCloseToHighestPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.marketHighLowRange.high?.price, true) >= 0
             priceStore.isUpwardTrendDayToDay = prevCloseToOpenPrice || prevCloseToHighestPrice
         }
         /**
@@ -2140,8 +2143,20 @@ class ProjectStockVision {
                         isUpwardTrendDayToDay: false,
                         _yesterdayClosePrice: undefined,
                         _openPrice: undefined,
-                        set yesterdayClosePrice(val){this._yesterdayClosePrice = val; Vision.calcDayToDayUpwardTrend(); Vision.detectAnomaly()},
-                        set openPrice(val){this._openPrice = val; Vision.calcDayToDayUpwardTrend(); Vision.detectAnomaly()},
+                        set yesterdayClosePrice(val){
+                            const now = new Date()
+                                // @ts-ignore
+                            this._yesterdayClosePrice = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
+                            Vision.calcDayToDayUpwardTrend()
+                            Vision.detectAnomaly()
+                        },
+                        set openPrice(val){
+                            const now = new Date()
+                                // @ts-ignore
+                            this._openPrice = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
+                            Vision.calcDayToDayUpwardTrend()
+                            Vision.detectAnomaly()
+                        },
                         get yesterdayClosePrice(){return this._yesterdayClosePrice},
                         get openPrice(){return this._openPrice},
                         peakValleyHistory: [],
@@ -3068,27 +3083,29 @@ class ProjectStockVision {
 
         static detectAnomaly() {
             try {
+                const anomalyThreshold = -4
+                const priceStore = window.idaStockVision.priceStore
                 const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
                 const startTime = new Date().setHours(...Vision.PriceAnalysis.tradingStartTime(),0)
                 const nowIsAfterStartTime = Date.now() >= startTime
                 if (!window.idaStockVision.cache.has('anomaly')) {
                     window.idaStockVision.cache.set('anomaly', new Map())
                 }
-                const anomalyThreshold = -4
-                const previousClosePrice = window.idaStockVision.priceStore.yesterdayClosePrice
-                const openPrice = window.idaStockVision.priceStore.openPrice
-                const lowPrice = window.idaStockVision.priceStore.marketHighLowRange.low?.price
-                const previousClosePriceToOpenPrice = Vision.percentageDelta(previousClosePrice, openPrice, true)
-                const previousClosePriceToLowPrice = Vision.percentageDelta(previousClosePrice, lowPrice, true)
+                const previousClosePriceToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.openPrice?.price, true)
+                const previousClosePriceToLowPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.marketHighLowRange.low?.price, true)
                 const lowestDelta = Math.min(previousClosePriceToOpenPrice, previousClosePriceToLowPrice)
-                const lowestAnchor = Math.min(openPrice, lowPrice)
+                const lowestAnchor = Math.min(priceStore.openPrice?.price, priceStore.marketHighLowRange.low?.price)
                 const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
                 const anomalyExists = lowestDelta <= anomalyThreshold
     
                 if (anomalyExists && nowIsAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
+                    let message = 'Manual assessment from data source & execution needed.\r\n'
+                    message = message.concat(`PrevClose: ${priceStore.yesterdayClosePrice.price}\r\n`)
+                    message = message.concat(`Open: ${priceStore.openPrice.price}\r\n`)
+                    message = message.concat(`Low: ${priceStore.marketHighLowRange.low.price}\r\n`)
                     Vision.notify(
-                        'Manual assessment from data source & execution needed.',
-                        `${primaryCode} - Anomaly[${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
+                        message,
+                        `${primaryCode} - Anomaly[${priceStore.yesterdayClosePrice.price}->${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
                     )
                     window.idaStockVision.cache.get('anomaly').set(dateStamp, true)
                 }
@@ -5053,7 +5070,7 @@ class StockVisionTrade {
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
             highRiskThreshold: isTinyCode ? 1 : highRiskThreshold,
-            chunkSellThreshold,
+            chunkSellThreshold: isTinyCode ? 1 : chunkSellThreshold,
             accountName: cashAccount ? 'cash' : undefined
         }
 

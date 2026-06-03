@@ -100,10 +100,10 @@ export interface IPriceStore {
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
-  get yesterdayClosePrice(): number;
-  get openPrice(): number;
-  _yesterdayClosePrice: number;
-  _openPrice: number;
+  get yesterdayClosePrice(): IPrice | undefined;
+  get openPrice(): IPrice | undefined;
+  _yesterdayClosePrice: IPrice | undefined;
+  _openPrice: IPrice | undefined;
   isUpwardTrendDayToDay: boolean;
   peakValleyHistory: IPriceHistory[];
   highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
