@@ -419,6 +419,7 @@ export interface IStockVisionTrade {
       highRiskThreshold: number;
       chunkSellThreshold: number;
       accountName?: ACCOUNT_NAMES;
+      currency?: number;
     }
   };
   orders: ITradeOrder[];

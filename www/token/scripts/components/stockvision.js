@@ -3791,6 +3791,14 @@ class StockVisionTrade {
         TRANSPORTATION: 'transportation',
     }
 
+    /**
+     * @type {Readonly<{[key: string]: number;}>}
+     */
+    static currencies = {
+        CAD: 1,
+        USD: 2
+    }
+
     static questradeTradeProcess = () => {
         // access token is needed in the request header
         // use scope to find access token in sessionStorage. access token gets updated frequently
@@ -5060,18 +5068,20 @@ class StockVisionTrade {
      * 
      * @param {string} code 
      * @param {number} capital 
-     * @param {Boolean} cashAccount
+     * @param {boolean} isUSD
+     * @param {boolean} cashAccount
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
+    static setCodeSettings = (code, capital = 5000, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyProfitPursuit(code)
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
             highRiskThreshold: isTinyCode ? 1 : highRiskThreshold,
             chunkSellThreshold: isTinyCode ? 1 : chunkSellThreshold,
-            accountName: cashAccount ? 'cash' : undefined
+            accountName: cashAccount === true ? 'cash' : undefined,
+            currency: isUSD === true ? this.currencies.USD : undefined
         }
 
         this.backUp()
@@ -5229,10 +5239,16 @@ class StockVisionTrade {
      * 
      * @param {string|number} price 
      * @param {number} capitalAmount 
+     * @param {boolean} limitToCapital helps us stay under capital amount and not over when needed
      * @returns {number}
      */
-    static sharesAmount = (price, capitalAmount) => {
-        return Math.ceil(capitalAmount / Number(price))
+    static sharesAmount = (price, capitalAmount, limitToCapital = false) => {
+        const result = capitalAmount / Number(price)
+        if (limitToCapital) {
+            return Math.floor(result)
+        }
+
+        return Math.ceil(result)
     }
     
     /**
@@ -5547,11 +5563,12 @@ class StockVisionTrade {
                 Object.assign(order, quoteResFormatted[0])
                 const action = order.position === true ? this.constants[brokerageName].trade.buy : this.constants[brokerageName].trade.sell
                 let price = this.priceDecision(order.lastPrice, order.bidPrice, order.askPrice, order)
+                const codeSettings = idaStockVisionTrade.codes[order.code]
                 const defaultCapital = idaStockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
                 let quantity = order.position === true 
-                    ? this.sharesAmount(price, realCapital) 
+                    ? this.sharesAmount(price, realCapital, codeSettings.currency === this.currencies.USD) 
                     : this.getLatestOrderedHistory(order.code).quantity
                 let quantityToRecord = quantity
                 const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
@@ -5803,12 +5820,13 @@ class StockVisionTrade {
                 /** @type {QuestradeQuoteResponse[]} */
                 const newPriceJson = await newPricesResponse.json()
                 const newPrice = this.priceDecision(newPriceJson[0].lastPrice, newPriceJson[0].bidPrice, newPriceJson[0].askPrice, order)
+                const codeSettings = idaStockVisionTrade.codes[order.code]
                 const defaultCapital = idaStockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
                 const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
                 const quantity = order.position === true 
-                    ? this.sharesAmount(newPrice, realCapital) 
+                    ? this.sharesAmount(newPrice, realCapital, codeSettings.currency === this.currencies.USD) 
                     : order.quantity
                 let quantityToRecord = quantity
                 if (quantity === undefined || quantity === 0) {
