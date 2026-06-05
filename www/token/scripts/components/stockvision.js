@@ -3087,7 +3087,10 @@ class ProjectStockVision {
                 const priceStore = window.idaStockVision.priceStore
                 const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
                 const startTime = new Date().setHours(...Vision.PriceAnalysis.tradingStartTime(),0)
-                const nowIsAfterStartTime = Date.now() >= startTime
+                const previousClosePriceIsAfterStartTime = priceStore.yesterdayClosePrice?.epochDate >= startTime
+                const openPriceIsAfterStartTime = priceStore.openPrice?.epochDate >= startTime
+                const lowPriceIsAfterStartTime = priceStore.marketHighLowRange.low?.epochDate >= startTime
+                const allPricesNeededAreAfterStartTime = previousClosePriceIsAfterStartTime && openPriceIsAfterStartTime && lowPriceIsAfterStartTime
                 if (!window.idaStockVision.cache.has('anomaly')) {
                     window.idaStockVision.cache.set('anomaly', new Map())
                 }
@@ -3098,7 +3101,7 @@ class ProjectStockVision {
                 const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
                 const anomalyExists = lowestDelta <= anomalyThreshold
     
-                if (anomalyExists && nowIsAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
+                if (anomalyExists && allPricesNeededAreAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
                     let message = 'Manual assessment from data source & execution needed.\r\n'
                     message = message.concat(`PrevClose: ${priceStore.yesterdayClosePrice.price}\r\n`)
                     message = message.concat(`Open: ${priceStore.openPrice.price}\r\n`)
