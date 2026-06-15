@@ -32,9 +32,7 @@ module.exports = [
                 }
             ],
         },
-        node: {
-            Buffer: false
-        }
+        node: {},
     },
     {
         name: 'bmr',
@@ -50,9 +48,7 @@ module.exports = [
             path: path.resolve(__dirname, 'www/bmr/dist')
         },
         module: {},
-        node: {
-            Buffer: false
-        }
+        node: {},
     },
     {
         name: 'cbt',
@@ -68,9 +64,7 @@ module.exports = [
             path: path.resolve(__dirname, 'www/cbt/dist')
         },
         module: {},
-        node: {
-            Buffer: false
-        },
+        node: {},
         plugins: [
             new webpack.DefinePlugin({
                 'process.env.STRIPE_PUBLIC_KEY': JSON.stringify(process.env.STRIPE_PUBLIC_KEY)
@@ -91,9 +85,7 @@ module.exports = [
             path: path.resolve(__dirname, 'www/token/dist')
         },
         module: {},
-        node: {
-            Buffer: false
-        },
+        node: {},
         plugins: [
             new webpack.DefinePlugin({
                 'process.env.STRIPE_PUBLIC_KEY': JSON.stringify(process.env.STRIPE_PUBLIC_KEY)
@@ -114,8 +106,6 @@ module.exports = [
             path: path.resolve(__dirname, 'www/dist')
         },
         module: {},
-        node: {
-            Buffer: false
-        }
+        node: {},
     }
 ];
