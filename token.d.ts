@@ -5,6 +5,7 @@ export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min
   | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | INTERVAL_DAY_FLAGS | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
 export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
+export type ACTION = 'in' | 'out' | 'profit out'
 
 export interface IPrice {
   price: number;
@@ -25,6 +26,10 @@ export interface IPosition extends IPrice {
   position: boolean;
   positionAnchor?: number;
   originalPrice?: number;
+  profitChunkPrice?: number | undefined;
+  _price: number;
+  set price(val: number): number;
+  get price(): number;
 }
 
 export interface ITradingIntervalInspection {
@@ -47,6 +52,8 @@ export interface IPrecisionIntervalInspection {
    index: number;
    hourMinute: string;
    currentPrices: ICurrentPrice[];
+   peakCurrentPrice: ICurrentPrice;
+   lastCurrentPrice: number;
 }
 
 export class IPriceAnalysis {
@@ -80,14 +87,29 @@ export interface IPriceStore {
   lastPrice: IPrice | undefined;
   previousLastPrice: IPrice | undefined;
   marketHighLowRange: {
-      low: undefined | number;
-      high: undefined | number;
+    _high: IPrice | undefined;
+    get high(): IPrice | undefined
+    set high(x: number): void;
+    _low: IPrice | undefined
+    get low(): IPrice | undefined
+    set low(x: number): void;
+    get lowToHighDelta(): number | undefined
+    executedLows: Map<string, Set<number>>;
+    postStartTimePrecisionLow: IPrice | undefined
+    postStartTimePrecisionHigh: IPrice | undefined
   };
+  set yesterdayClosePrice(): void;
+  set openPrice(): void;
+  get yesterdayClosePrice(): IPrice | undefined;
+  get openPrice(): IPrice | undefined;
+  _yesterdayClosePrice: IPrice | undefined;
+  _openPrice: IPrice | undefined;
+  isUpwardTrendDayToDay: boolean;
   peakValleyHistory: IPriceHistory[];
   highestPeakAndLowestValleyToday: {[key: string]: IPriceHistory[]};
   todaysPeakValleySnapshot: {[key: string]: IPriceHistory[]};
   currentPosition: {[key: string]: IPosition};
-  analysis: {[key: string]: any};
+  analysis: {[key: string]: () => Object};
   priceTimeIntervalsToday: {[key: string]: Map<string, ITradingIntervalInspection>;};
   precisionTimeIntervalsToday: {[key: string]: Map<string, IPrecisionIntervalInspection>;};
   uploadTodaysPriceTime: undefined | number;
@@ -104,6 +126,7 @@ export interface ICodeBackendSettings {
   profit?: number;
   loss?: number;
   leaveProfitBehind?: boolean;
+  profitChunkExit?: number;
 }
 
 export interface IStockVision {
@@ -114,8 +137,9 @@ export interface IStockVision {
       tokenOrStockCode: string;
       message: string;
       currentPrice: number;
-      action: string;
+      action: ACTION;
       anchorPrice: number | string;
+      isProfitChunkExit: boolean;
     } | {}
   };
   mutationObservers: {[key:string]: MutationObserver};
@@ -124,14 +148,16 @@ export interface IStockVision {
   code: string;
   statusTimeoutList: number[];
   statusTimeoutInstance: undefined | number;
+  statusCounter: number;
   intervalInspectorInstance: {
     [key: string]: undefined | number;
   };
   timeoutInspectorInstance: {
     [key: string]: undefined | number;
   };
-  statusCounter: number;
+  tinyExitTimeoutInstance: number;
   serverUrl: string;
+  localServerUrl: string;
   notificationServerUrl: string;
   tradingStartTime: number[];
   tradingEndTime: number[];
@@ -142,7 +168,11 @@ export interface IStockVision {
       tradingInterval: INTERVAL_FLAGS;
       precisionInterval: INTERVAL_FLAGS;
       experiment: boolean;
-      profitThreshold: undefined | number;
+      isCrypto: boolean;
+      _profitThreshold: undefined | number;
+      get profitThreshold(): undefined | number;
+      set profitThreshold(val: number): void;
+      profitChunkThreshold: undefined | number;
       lossThreshold: undefined | number;
       entryPercentageThreshold: undefined | number;
       exitPercentageThreshold: undefined | number;
@@ -150,9 +180,15 @@ export interface IStockVision {
       manualEntryPriceThreshold: undefined | number;
       manualExitPriceThreshold: undefined | number;
       entryPrecisionThreshold: undefined | number;
+      maxTinyEntryPercentageThreshold: undefined | number;
+      tinyRunAwayDeltaThreshold: undefined | number;
+      tinyObservedDailyProfitWindow: undefined | number;
     };
   };
-  server: {[key:string]: string};
+  server: {
+    production: {cloud: string; local: string;};
+    development: {cloud: string; local: string;};
+  };
   cssSelectors: {[key:string]: {[key]: Function}};
   constants: {};
   reports: {
@@ -167,14 +203,18 @@ export interface IStockVision {
     priceOut: number;
     anchorProfitLoss: number;
     profitLoss: number;
+    chunkOut: boolean;
   }[];
   processTracker: {
     tradingInterval: {[key: string]: number};
     uploadHistory: number;
+    tinyExit: number;
   }
+  cache: Map<string, Map<string, any>>
 }
 
 /** STOCK_VISION_TRADE */
+export type ACCOUNT_NAMES = 'rsp' | 'cash' 
 export interface ICboeQuoteResponse {
     symbol_name: string;
     trade_time: string;
@@ -200,6 +240,30 @@ export interface ICboeQuoteResponse {
     bid_price: string;
     ts: string;
     market_cap: number;
+}
+export interface IQuestradeQuoteResponse {
+    securityUuid: string;
+    symbol: string;
+    currency: string;
+    lastPrice: number;
+    priceChangeAmount: number;
+    priceChangePercent: number;
+    bidPrice: number;
+    bidSize: number;
+    askPrice: number;
+    askSize: number;
+    midPrice: number;
+    dailyHighPrice: number;
+    dailyLowPrice: number;
+    volume: number;
+    isRealtime: boolean;
+    afterHourLastPrice: number;
+    afterHourPriceChangeAmount: number;
+    afterHourPriceChangePercent: number;
+    snapDateTime: string;
+    exchangeStatus: string | 'Open' | 'Post-market';
+    lastTrade: string;
+    openPrice: number;
 }
 export interface IQuestradeOrder {
   security: {
@@ -280,13 +344,22 @@ export interface IQuestradeSubmitErrorResponse {
   resource: string;
   timestamp: string;
 }
-export interface ITradeCheckResponse extends ICboeQuoteResponse {
+export interface ITradeCheckResponse extends IQuestradeQuoteResponse {
   code: string;
   primaryCode: string;
   confirmationLink: string;
   position: boolean;
   downwardVolatility: boolean;
   immediateExecution: boolean;
+  profitChunk: {
+    isValid: boolean;
+    minDelta: number;
+    links: {
+      confirm: string;
+      chunkConfirm: string;
+    }
+    quantityRemaining?: number | undefined
+  }
 }
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;
@@ -302,9 +375,16 @@ export interface ITradeOrder extends ITradeCheckResponse {
   openQuantity?: number;
   filledQuantity: number;
   timeSubmitted?: string;
+  statusUpdatedTime?: string;
   priceSubmitted?: string|number;
   priceSubmittedHistory?: (string|number)[];
-  entryOrderId?: string | undefined
+  entryOrderId?: string | undefined;
+  accountId?: string;
+}
+
+export interface ITradeFeatureFlags {
+  tinySlowSpeed: boolean;
+  tinyPriceDecision: boolean;
 }
 
 export interface IStockVisionTrade {
@@ -316,20 +396,30 @@ export interface IStockVisionTrade {
   modifyOrderQueueInProgress: boolean;
   newOrdersReceived: boolean;
   keepAwakeInstances: number[];
+  eventSourceInstance: EventSource;
+  investigateIntervalInstance: undefined | number;
   tools: {[key:string]: Function | Object;};
   brokerage: {
     name: 'questrade' | 'ibkr';
   };
-  accountId: string;
+  accounts: {
+    [key: ACCOUNT_NAMES]: {
+      id: string;
+    }
+  };
   securities: {
     [key: string]: {
       securityId: string;
+      sector: string;
     }
   };
   codes: {
     [key: string]: {
       capital: number;
       highRiskThreshold: number;
+      chunkSellThreshold: number;
+      accountName?: ACCOUNT_NAMES;
+      currency?: number;
     }
   };
   orders: ITradeOrder[];
@@ -340,4 +430,5 @@ export interface IStockVisionTrade {
       price: string | number;
     };
   };
+  featureFlags: ITradeFeatureFlags;
 }

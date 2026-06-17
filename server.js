@@ -10,9 +10,13 @@ var axios = require('axios');
 var querystring = require('querystring');
 var fs = require('fs').promises;
 var jsdom = require('jsdom');
+const EventEmitter = require('node:events');
 if (process.env.NODE_ENV !== 'production') {
-    require('dotenv').config()
+    const secondArguement = process.argv[2]?.split('=')
+    const config = secondArguement && secondArguement[0].includes('file') ? { path: secondArguement[1] } : {}
+    require('dotenv').config(config)
 }
+console.log(process.argv[2])
 const stripe = require('stripe')(process.env.STRIPE_PRIVATE_KEY);
 // app.use(bodyParser.json()) // for parsing application/json
 // app.use(bodyParser.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
@@ -448,7 +452,11 @@ const trader = {
         LOCAL_SERVER: 'local',
         CLOUD_SERVER: 'cloud',
         tradingStartTime: [9,30,0],
-        tradingEndTime: [16,0,0]
+        tradingEndTime: [16,0,0],
+        confirmType: {
+            STANDARD: 'standard',
+            PROFIT_CHUNK: 'profitChunk',
+        }
     },
     asyncOperation: {
         historyTimeout: undefined,
@@ -570,10 +578,23 @@ const trader = {
                     if (!(item.code in parsedData)) {
                         parsedData[item.code] = {}
                     }
-                    parsedData[item.code].position = item.position
-                    parsedData[item.code].date = item.payloadDate
-                    parsedData[item.code].price = item.price  
-                    parsedData[item.code].originalPrice = item.originalPrice  
+                    switch(item.confirmType) {
+                        case trader.constants.confirmType.STANDARD:
+                            parsedData[item.code].position = item.position
+                            parsedData[item.code].date = item.payloadDate
+                            parsedData[item.code].price = item.price  
+                            parsedData[item.code].originalPrice = item.originalPrice
+                            if (item.position === trader.constants.OUT) {
+                                parsedData[item.code].profitChunkPrice = undefined 
+                            }
+                            break
+                        case trader.constants.confirmType.PROFIT_CHUNK:
+                            parsedData[item.code].position = item.position
+                            parsedData[item.code].profitChunkDate = item.payloadDate
+                            parsedData[item.code].profitChunkPrice = item.price   
+                            break
+                        default:
+                    }
                 }
                 await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.confirm.splice(0, confirmationAmount)
@@ -616,8 +637,8 @@ const trader = {
 
         },
         orderPreparation: async (req, res, retry = false) => {
-            const primaryCode = req.query.primaryCode
-            const code = req.query.code
+            const primaryCode = req.body.primaryCode
+            const code = req.body.code
             try {
                 if (!retry) {
                     trader.asyncOperation.ordersPreparationRetry[code] = 0
@@ -626,20 +647,36 @@ const trader = {
                     trader.asyncOperation.ordersPreparationRetry[code]++
                 }
                 const prepareOrder = {
-                    primaryCode: req.query.primaryCode,
-                    code: req.query.code,
-                    position: req.query.action === trader.constants.IN ? true : false,
-                    confirmationLink: req.query.confirmationLink,
-                    downwardVolatility: req.query.downwardVolatility === 'true' ? true : false,
-                    immediateExecution: req.query.immediateExecution === 'true' ? true : false,
+                    primaryCode,
+                    code,
+                    position: req.body.action === trader.constants.IN ? true : false,
+                    confirmationLink: req.body.confirmationLink,
+                    downwardVolatility: req.body.downwardVolatility,
+                    immediateExecution: req.body.immediateExecution,
+                    profitChunk: req.body.profitChunk,
                     // observationPrice: req.query.currentPrice,
                     seenByBrokerage: [],
                 }
-                const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
-                if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== prepareOrder.primaryCode.toUpperCase()) {
-                    throw new Error('cannot retrieve price')
-                }
-                trader.asyncOperation.ordersToExecute.push({...prepareOrder,...axiosResponse.data.data})
+                const newOrder = prepareOrder
+                // const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${prepareOrder.primaryCode.toUpperCase()}/quote/`, {})
+                // const cboeData = axiosResponse.data.data
+                
+                
+                // if (!('name' in cboeData) || cboeData.name !== prepareOrder.primaryCode.toUpperCase()) {
+                //     throw new Error('prepareOrder: cannot retrieve price')
+                // }
+
+                // let {bid_price, ask_price} = cboeData
+                // bid_price = Number(bid_price)
+                // ask_price = Number(ask_price)
+                // const bidAskMightBeZero = bid_price === 0 || ask_price === 0
+                // if (bidAskMightBeZero) {
+                //     throw new Error(`prepareOrder: zero value for one of (bid:${bid_price}, ask:${ask_price})`)
+                // }
+
+                // const newOrder = {...prepareOrder,...axiosResponse.data.data}
+                trader.asyncOperation.ordersToExecute.push(newOrder)
+                tradeEvent.emit('sendPreparedOrder', newOrder)
                 if (!retry) {
                     res.sendStatus(200)
                 }
@@ -670,8 +707,8 @@ app.post('/trader/notify', async function(req,res){
     if (process.env.SERVER_NAME === trader.constants.CLOUD_SERVER) {
         try {
             const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
-                subject: req.query.subject,
-                message: req.query.message,
+                subject: req.body.subject || req.query.subject,
+                message: req.body.message || req.query.message,
             })
             res.sendStatus(202)  
         } catch (error) {
@@ -685,6 +722,7 @@ app.post('/trader/notify', async function(req,res){
 app.get('/trader/confirm', async function(req,res){
      res.append('Access-Control-Allow-Origin', '*')
     try {
+        const confirmType = trader.constants.confirmType.STANDARD
         let payloadDate = new Date().toISOString()
         const code = req.query.code.toUpperCase()
         const position = req.query.position
@@ -708,7 +746,41 @@ app.get('/trader/confirm', async function(req,res){
         if (positionDate !== undefined) {
             payloadDate = positionDate
         }
-        trader.asyncOperation.confirm.push({code, price, position, payloadDate, originalPrice})
+        trader.asyncOperation.confirm.push({code, price, position, payloadDate, originalPrice, confirmType})
+        clearTimeout(trader.asyncOperation.confirmTimeout)
+        trader.asyncOperation.confirmTimeout = setTimeout(trader.methods.processConfrimations, 500)
+        
+        res.status(200)
+        res.send('confirmed')
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.get('/trader/confirm/profitChunk', async function(req,res){
+     res.append('Access-Control-Allow-Origin', '*')
+    try {
+        const confirmType = trader.constants.confirmType.PROFIT_CHUNK
+        let payloadDate = new Date().toISOString()
+        const code = req.query.code.toUpperCase()
+        const position = trader.constants.IN
+        const profitChunkDate = req.query.date
+        const price = Number(req.query.price)
+        
+        if (isNaN(price)) {
+            throw new Error('price not valid number')
+        }
+        const data = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+        const parsedData = JSON.parse(data)
+        
+        if (parsedData[code].position === position && parsedData[code].profitChunkPrice === price) {
+            throw new Error('already confirmed')
+        }
+        if (profitChunkDate !== undefined) {
+            payloadDate = profitChunkDate
+        }
+        trader.asyncOperation.confirm.push({code, price, position, payloadDate, confirmType})
         clearTimeout(trader.asyncOperation.confirmTimeout)
         trader.asyncOperation.confirmTimeout = setTimeout(trader.methods.processConfrimations, 500)
         
@@ -734,7 +806,7 @@ app.get('/trader/status', async function(req,res){
             const primaryCode = code.split('_')[0]
             const position = parsedData[code].position
             if (noHistory !== undefined && Boolean(Number(noHistory)) === true) {
-                delete parsedData[primaryCode].peakValleyHistory
+                delete parsedData[primaryCode]?.peakValleyHistory
             }
             const allRelatedCodeEntries = Object.entries(parsedData).filter(item => item[0].includes(primaryCode))
             if (position === 'in') {
@@ -823,6 +895,32 @@ app.put('/trader/history', async function(req, res) {
     
 })
 
+app.delete('/trader/history', async function(req,res){
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage()
+    try {
+        const codes = Array.isArray(req.query.codes) ? req.query.codes : [req.query.codes]
+        if (req.query.codes === undefined || codes.length === 0) {
+            throw new Error('missing items to remove')
+        }
+
+        const currentData = await fs.readFile(process.env.STOCK_VISION_STORAGE_FILE)
+        const parsedCurrentData = JSON.parse(currentData)
+        codes.forEach(code => {
+            const primaryCode = code.split('_')[0].toUpperCase()
+            if (parsedCurrentData[primaryCode] !== undefined && 'peakValleyHistory' in parsedCurrentData[primaryCode]) {
+                parsedCurrentData[primaryCode].peakValleyHistory = []
+            }
+        })
+        await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedCurrentData))
+        res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+
 app.get('/trader/priceCheck', async function(req,res) {
     res.append('Access-Control-Allow-Origin', '*')
     await trader.methods.checkOrSetupFileStorage()
@@ -830,7 +928,7 @@ app.get('/trader/priceCheck', async function(req,res) {
         let primaryCode = req.body?.primaryCode || req.query.primaryCode
         const axiosResponse = await axios.get(`https://www-api.cboe.com/ca/equities/securities/${primaryCode.toUpperCase()}/quote/`, {})
         if (!('name' in axiosResponse.data.data) || axiosResponse.data.data.name !== primaryCode.toUpperCase()) {
-            throw new Error('cannot retrieve price')
+            throw new Error('priceCheck: cannot retrieve price')
         }
         res.status(200)
         res.send(axiosResponse.data.data)
@@ -886,4 +984,99 @@ app.post('/trader/settings', async function(req,res) {
         res.status(404)
         res.send(`${error.toString()}`)
     }
+});
+
+const visionEvent = new EventEmitter()
+visionEvent.clients = new Set()
+const tradeEvent = new EventEmitter()
+tradeEvent.clients = new Set()
+app.post('/trader/notification/executed/:primaryCode', (req, res) => {
+    res.append('Access-Control-Allow-Origin', '*')
+
+    try {
+        if (req.params.primaryCode === undefined) {
+            throw new Error('missing code')
+        }
+        visionEvent.emit('tradeExecuted', req.params.primaryCode)
+        res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.get('/trader/events/vision/:primaryCode', (req, res) => {
+    res.append('Access-Control-Allow-Origin', '*')
+    
+    if (visionEvent.clients.size === 0) {
+        // Set headers to keep the connection alive and tell the client we're sending event-stream data
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        visionEvent.clients.add(req.params.primaryCode)
+        visionEvent.on('tradeExecuted', (code) => {
+            res.write(`event: update\n`)
+            res.write(`data: ${code.toUpperCase()}\n\n`) 
+        })
+
+         // Send an initial message
+        res.write(`data: Connected to server - ${req.params.primaryCode}\n\n`);
+
+        // Simulate sending updates from the server
+        // let counter = 0;
+        // const intervalId = setInterval(() => {
+        //     counter++;
+        //     // Write the event stream format
+        //     res.write(`data: Message ${counter} - ${req.params.name}\n\n`);
+        // }, 2000);
+
+        // When client closes connection, stop sending events
+        req.on('close', () => {
+            // clearInterval(intervalId);
+            visionEvent.clients.clear()
+            res.end();
+        });
+    } else {
+        res.sendStatus(503)
+    }
+});
+
+app.get('/trader/events/trade/:brokerageName', (req, res) => {
+    res.append('Access-Control-Allow-Origin', '*')
+    
+    // Set headers to keep the connection alive and tell the client we're sending event-stream data
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const brokerageName = req.params.brokerageName
+    const sendPreparedOrderCallback = (newOrder) => {
+        res.write(`event: order\n`)
+        res.write(`data: ${JSON.stringify([newOrder])}\n\n`) 
+        newOrder.seenByBrokerage.push(brokerageName)
+    }
+    tradeEvent.clients.add(brokerageName)
+    
+    // Send an initial message
+    res.write(`data: Connected to server - ${brokerageName}\n\n`);
+    
+    tradeEvent.on('sendPreparedOrder', sendPreparedOrderCallback)
+    const ordersToSend = trader.asyncOperation.ordersToExecute.filter((order) => !order.seenByBrokerage.includes(brokerageName))
+
+    if (ordersToSend.length > 0) {
+        res.write(`event: order\n`)
+        res.write(`data: ${JSON.stringify(ordersToSend)}\n\n`) 
+        ordersToSend.forEach((order) => {
+            order.seenByBrokerage.push(brokerageName)
+        })    
+    }
+
+    // When client closes connection, stop sending events
+    req.on('close', () => {
+        // clearInterval(intervalId);
+        tradeEvent.off('sendPreparedOrder',sendPreparedOrderCallback)
+        tradeEvent.clients.delete(brokerageName)
+        res.end();
+    });
 });

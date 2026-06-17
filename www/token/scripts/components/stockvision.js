@@ -8,6 +8,7 @@
  * @typedef { import("token").INTERVAL_FLAGS } IntervalFlags
  * @typedef { import("token").TRADING_FLAGS } TradingFlags
  * @typedef { import("token").PROFIT_PURSUIT } ProfitPursuit
+ * @typedef { import("token").ACTION } Action
  * @typedef { import("token").ICodeBackendSettings } CodeBackendSettings
  * @typedef { import("token").ITradingIntervalInspection } TradingIntervalInspection
  * @typedef { import("token").IPrecisionIntervalInspection } PrecisionIntervalInspection
@@ -16,6 +17,7 @@
  * @typedef { import("token").ITradeCheckResponse } TradeCheckResponse
  * @typedef { import("token").ITradeOrder } TradeOrder
  * @typedef { import("token").ICboeQuoteResponse } CboeQuoteResponse
+ * @typedef { import("token").IQuestradeQuoteResponse } QuestradeQuoteResponse
  * @typedef { import("token").IQuestradeSubmitResponse |  import("token").IQuestradeSubmitErrorResponse} QuestradeSubmitResponse
  * @typedef { import("token").IQuestradeOrdersResponse } QuestradeOrdersResponse
  * @typedef { import("token").IQuestradeOrder } QuestradeOrder
@@ -77,6 +79,7 @@ class ProjectStockVision {
             _peakValleyHistory;
             _currentPrice;
             _currentPosition;
+            _code;
             /** @type {boolean} _isCrypto */
             _isCrypto;
             /** @type {IntervalFlags} _priceTradingInterval */
@@ -143,15 +146,19 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.fiveDay]: 5 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
             }
 
-            static get REVERSED_TRADING_INTERVAL_SECONDS() {
-                return Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS)
+            static swapObjectKeysAndValues(obj) {
+                return Object.entries(obj)
                     .reduce((previous, current) => {
                         previous[current[1]] = current[0]
                         return previous
                     }, {})
             }
 
-            static get TRADING_INTERVAL_DAYS () {
+            static get REVERSED_TRADING_INTERVAL_SECONDS() {
+                return PriceAnalysis.swapObjectKeysAndValues(PriceAnalysis.TRADING_INTERVAL_SECONDS)
+            }
+
+            static get TRADING_INTERVAL_DAYS() {
                 const twentyFourHoursInMiliSeconds = PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS
                 const transformation = Object.entries(PriceAnalysis.TRADING_INTERVAL_SECONDS).map((item) => {
                     if (item[1] < twentyFourHoursInMiliSeconds) {
@@ -169,7 +176,9 @@ class ProjectStockVision {
             static EVENT_NAMES = {
                 destroyCode: `${PriceAnalysis.PROJECT_NAME}_destroyCode`,
                 setFutureInterval: `${PriceAnalysis.PROJECT_NAME}_setFutureInterval`,
-                monitorReport: `${PriceAnalysis.PROJECT_NAME}_monitorReport`
+                monitorReport: `${PriceAnalysis.PROJECT_NAME}_monitorReport`,
+                statusUpdate: `${PriceAnalysis.PROJECT_NAME}_statusUpdate`,
+                tinyExit: `${PriceAnalysis.PROJECT_NAME}_tinyExit`,
             }
 
             /** @type {{[key: string]: TradingFlags}} TRADING_FLAGS */
@@ -195,9 +204,21 @@ class ProjectStockVision {
 
             static entryExitPricePrecisionThreshold = 0.12
 
+            /** @type {{[key: string]: Action}} ACTION */
+            static ACTION = {
+                IN: 'in',
+                OUT: 'out',
+                PROFIT_OUT: 'profit out',
+            }
+
+            /** @type {{[key: string]: string}} REVERSED_ACTION */
+            static get REVERSED_ACTION() {
+                return PriceAnalysis.swapObjectKeysAndValues(PriceAnalysis.ACTION)
+            }
+
             /**
              * 
-             * @param {PriceHistory[]} history 
+             * @param {readonly PriceHistory[]} history 
              * @param {CurrentPrice} currentPrice 
              * @param {Position} currentPosition 
              * @param {boolean} isCrypto 
@@ -205,8 +226,9 @@ class ProjectStockVision {
              * @param {number} exitThreshold 
              * @param {IntervalFlags} priceTradingInterval 
              * @param {IntervalFlags} pricePrecisionInterval 
+             * @param {string} code 
              */
-            constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval, pricePrecisionInterval) {
+            constructor(history = [], currentPrice, currentPosition, isCrypto = false, entryThreshold, exitThreshold, priceTradingInterval, pricePrecisionInterval, code) {
                 try {
                     const now = Date.now()
                     this._isCrypto = isCrypto
@@ -216,6 +238,7 @@ class ProjectStockVision {
                     this._currentPrice = currentPrice
                     this._currentPosition = currentPosition
                     this._priceTradingInterval = priceTradingInterval
+                    this._code = code
 
                     if (this.dateExistsForCurrrentPosition) {
                         this._currentPosition.epochDate = this.transformDateToEpochMiliseconds(this._currentPosition.date)
@@ -227,23 +250,25 @@ class ProjectStockVision {
 
             /** @returns {PriceHistory[]} peakValleyProgressionOrder */
             get peakValleyProgressionOrder() {
-                return this._peakValleyHistory.map((item) => {
-                    // To-do refactor to a reduce that also removes duplicates within the peak/valley using type and epoch date in the map
-                    if (!('epochDate' in item)) {
+                /** @type {PriceHistory[]} */
+                const finalOutput = this._peakValleyHistory.reduce((previous, current) => {
+                    const flagsEmpty = current.flags.length === 0
+                    if (!('epochDate' in current)) {
                         // Needed for manual addition of price histories without epochDate
-                        item.epochDate = this.transformDateToEpochMiliseconds(item.date)
+                        current.epochDate = this.transformDateToEpochMiliseconds(current.date)
                     }
-                    return item
-                })
-                .filter((item) => {
                     if (PriceAnalysis.TRADING_INTERVAL_SECONDS[this._priceTradingInterval] === undefined) {
-                        return true
+                        previous.push(current)
+                        return previous
                     }
-                    const flagsEmpty = item.flags.length === 0
+                    if (current.flags.includes(this._priceTradingInterval) || (flagsEmpty && current.epochDate < this.todaysDateMidnight)){
+                        previous.push(current)
+                    }
 
-                    return item.flags.includes(this._priceTradingInterval) || (flagsEmpty && item.epochDate < this.todaysDateMidnight)
-                })
-                .sort((a,b) => {
+                    return previous
+                }, [])
+
+                finalOutput.sort((a,b) => {
                     // ascending date
                     if (a.epochDate < b.epochDate) {
                         return -1
@@ -253,6 +278,16 @@ class ProjectStockVision {
                     }
                     return 1
                 })
+
+                Object.defineProperty(this, 'peakValleyProgressionOrder', {
+                    // affects only object and not the class
+                    get() {
+                        return finalOutput;
+                    },
+                });
+                // console.log('memoized')
+                
+                return this.peakValleyProgressionOrder
                 
             }
 
@@ -348,6 +383,57 @@ class ProjectStockVision {
                 return this._currentPosition.position === PriceAnalysis.OUT
             }
 
+            get profitChunkPrice() {
+                if (this._currentPosition.profitChunkPrice === undefined) {
+                    return this._currentPosition.price
+                }
+
+                return this._currentPosition.profitChunkPrice
+            }
+
+            get profitChunkPriceToCurrentPriceDelta() {
+                return Vision.percentageDelta(this.profitChunkPrice, this._currentPrice.price, true)
+            }
+
+            /** @returns {boolean} */
+            get isRunAwayFromOpeningPrice() {
+                return false
+
+                const dateStamp = PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
+                if (!window.idaStockVision.cache.has('isRunAwayFromOpeningPrice')) {
+                    window.idaStockVision.cache.set('isRunAwayFromOpeningPrice', new Map())
+                }
+                if (PriceAnalysis.isTinyProfitPursuit(this._code) && window.idaStockVision.priceStore.precisionTimeIntervalsToday.hasOwnProperty(this._code)) {
+                    if (window.idaStockVision.cache.has('isRunAwayFromOpeningPrice') 
+                        && window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').has(dateStamp)
+                    ) {
+                        return window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').get(dateStamp)
+
+                    }
+                    const startTime = '10:31'
+                    const currentPrices = window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].get(startTime)?.currentPrices
+                    // sometimes the array will be genuinely empty at the startTime.
+                    // the last price in the array is most likely the close price of that minute based on observation
+                    const lastCurrentPrice = Array.isArray(currentPrices) && currentPrices.length > 0 ? currentPrices.at(-1) : undefined
+                    const runAwayDelta = window.idaStockVision.settings[this._code].tinyRunAwayDeltaThreshold
+                    if (lastCurrentPrice === undefined || window.idaStockVision.priceStore.marketHighLowRange.low === undefined) {
+                        return false
+                    }
+                    
+                    const result =  window.idaStockVision.priceStore.marketHighLowRange.low.epochDate < lastCurrentPrice.epochDate 
+                        && Vision.percentageDelta(window.idaStockVision.priceStore.marketHighLowRange.low.price, lastCurrentPrice.price, true) >= runAwayDelta
+                    
+                    window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStamp, result)
+                    return result
+                }
+
+                return false
+            }
+
+            get precisionIntervalValues() {
+                return Array.from(window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].values())
+            }
+
             get isCurrentPositionStuck() {
                 const isStuckMaxPeak = this.findAnchorPeak(true)
                 if (this._currentPosition === undefined
@@ -407,7 +493,8 @@ class ProjectStockVision {
             }
 
             targetedProfitAcquired(code) {
-                const profitThreshold = window.idaStockVision.settings[code].profitThreshold
+                // do not get greedy too much risk getting in at the top for tiny code
+                const profitThreshold = this.isRunAwayFromOpeningPrice ? 0.2 : window.idaStockVision.settings[code].profitThreshold
                 if (typeof profitThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
@@ -419,12 +506,24 @@ class ProjectStockVision {
                 return Vision.percentageDelta(this._currentPosition.price, this._currentPrice.price, true) >= profitThreshold
             }
 
+            /**
+             * 
+             * @param {string} code
+             * @returns {boolean}
+             */
             targetedLossAcquired(code) {
                 const lossThreshold = window.idaStockVision.settings[code].lossThreshold
+                const timeToTakeLoss = new Date().setHours(15,35,0,0)
+                const isTinyCode = PriceAnalysis.isTinyProfitPursuit(this._code)
+                const isNotTinyTimeToTakeLoss = isTinyCode && this._currentPrice.epochDate < timeToTakeLoss
+                // const currentTinyPositionToLowestPointSlope = isTinyCode ? this.priceSlope(this._currentPosition, this.lowestPriceOfTheDay) : undefined
+                // const slopeIsNotNegative = currentTinyPositionToLowestPointSlope === undefined || currentTinyPositionToLowestPointSlope?.negative === false
                 if (typeof lossThreshold !== 'number' 
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
+                    || isNotTinyTimeToTakeLoss
+                    // || isNotTinyTimeToTakeLoss && slopeIsNotNegative
                 ) {
                     return false
                 }
@@ -435,20 +534,31 @@ class ProjectStockVision {
             /**
              * 
              * @param {string} code 
+             * @param {number} currentHour 
+             * @returns {boolean}
+             */
+            targetedChunkProfitAcquired(code, currentHour) {
+                const profitChunkThreshold = window.idaStockVision.settings[code].profitChunkThreshold
+                if (typeof profitChunkThreshold !== 'number' 
+                    || this._currentPosition === undefined 
+                    || this._currentPosition.position !== PriceAnalysis.IN
+                    || !this.dateExistsForCurrrentPosition
+                    // || PriceAnalysis.isTinyProfitPursuit(this._code) &&  Number.isFinite(currentHour) && currentHour < 15
+                ) {
+                    return false
+                }
+
+                return this.profitChunkPriceToCurrentPriceDelta >= profitChunkThreshold
+            }
+
+            /**
+             *  
              * @param {number} mutationEpochDate 
              * @param {boolean} ignorePosition 
              * @returns {boolean}
              */
-            exitByTradingEndTime(code, mutationEpochDate, ignorePosition = false) {
-                /* only precision interval should be used here as thats what happens last & some trading interval
-                 might only have 1 in a trading day */
-                const precisionIntervalExist = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] instanceof Map
-                const profitLossThresholdsDefined = this.profitLossThresholdsExist(code)
-                const isTinyProfitPursuit = PriceAnalysis.profitPursuitType(code) === PriceAnalysis.PROFIT_PURSUIT.TINY
-                let lastHourMinute
-
-                if (!isTinyProfitPursuit
-                    ||[precisionIntervalExist, profitLossThresholdsDefined].some(item => item === false)
+            exitByTradingEndTime(mutationEpochDate, ignorePosition = false) {
+                if (!PriceAnalysis.isTinyProfitPursuit(this._code)
                     || mutationEpochDate === undefined 
                     || this._currentPosition === undefined 
                     || !ignorePosition && this._currentPosition.position !== PriceAnalysis.IN
@@ -456,16 +566,9 @@ class ProjectStockVision {
                     return false
                 }
 
-                switch(true) {
-                    case profitLossThresholdsDefined && precisionIntervalExist:
-                        lastHourMinute = Array.from(window.idaStockVision.priceStore.precisionTimeIntervalsToday[code].values()).at(-1)
-                        if (lastHourMinute.epochDate <= mutationEpochDate) {
-                            return true
-                        }
-                        return false
-                    default:
-                        return false
-                }
+                const exitDate = new Date().setHours(...PriceAnalysis.tinyExitTime(this._isCrypto),0)
+                const morningExitDate = new Date().setHours(10,30,0,0)
+                return mutationEpochDate >= exitDate || mutationEpochDate <= morningExitDate
             }
 
             /** 
@@ -518,6 +621,32 @@ class ProjectStockVision {
 
             }
 
+            get openPriceToCurrentPriceIsUpward() {
+                // TO-DO add tiny code logic so it applies to only tiny profit pursuit
+                return Vision.percentageDelta(window.idaStockVision.priceStore.openPrice?.price, this._currentPrice.price, true) >= 0
+            }
+
+            get isHighRiskAndTinyPursuit() {
+                return PriceAnalysis.isTinyProfitPursuit(this._code)
+                    && (window.idaStockVision.priceStore.isUpwardTrendDayToDay === false || this.openPriceToCurrentPriceIsUpward === false)
+            }
+
+            get lowestPriceOfTheDay() {
+                // TO-DO in priceStore setter create a price history and push into peakvalleyhistory to persist across the day
+                // especially when we have to rebuild the tiny code for any reason
+                const low = window.idaStockVision.priceStore.marketHighLowRange.low
+                const executedLows = window.idaStockVision.priceStore.marketHighLowRange.executedLows
+                return executedLows instanceof Map && !executedLows.get(this._code).has(low.price) ? low : undefined
+            }
+
+            get lowToCurrentPositionDelta() {
+                // move to price analysis for specific code usage
+                if (Number.isFinite(this.lowestPriceOfTheDay?.price) && Number.isFinite(this._currentPosition?.price)) {
+                    return Vision.percentageDelta(this.lowestPriceOfTheDay.price, this._currentPosition.price)
+                }
+                return undefined
+            }
+
             /** @returns {PriceHistory | undefined} */
             findAnchorValley() {
                 // find closest highest peak
@@ -525,13 +654,36 @@ class ProjectStockVision {
                 // from deepest valley make sure positive slope between valley price and current price
                 // logic not met do nothing and keep watching
                                     
-                if (this._currentPosition === undefined || this._currentPosition.position !== PriceAnalysis.OUT || this.closestHighestPeak === undefined) {
+                if (this._currentPosition === undefined 
+                    || this._currentPosition.position !== PriceAnalysis.OUT 
+                    || PriceAnalysis.isTinyProfitPursuit(this._code) === false && this.closestHighestPeak === undefined
+                ) {
                     return
                 }
                 const currentPositionDate = this.dateExistsForCurrrentPosition ? this._currentPosition.epochDate : this.closestHighestPeak.epochDate
-                const valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => {
-                    return (item.epochDate > this.closestHighestPeak.epochDate) && this.dateIsGreaterThanOrEqual(item.epochDate, currentPositionDate)
-                })
+                /** @type {PriceHistory[]} */
+                let valleysFromClosestHighestPeak = []
+
+                switch(true) {
+                    case PriceAnalysis.isTinyProfitPursuit(this._code):
+                        if (this.lowestPriceOfTheDay !== undefined) {
+                            const lowestPriceOfTheDayAnchor = {...this.lowestPriceOfTheDay, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY}
+                            const lowestPriceOfDayAnchorHasPrecedingPeaks = this.tinyHasPrecedingPeakFromAnchorValley(lowestPriceOfTheDayAnchor)
+                            const postStartTimePrecisionLow = window.idaStockVision.priceStore.marketHighLowRange.postStartTimePrecisionLow
+                            if (postStartTimePrecisionLow !== undefined && lowestPriceOfDayAnchorHasPrecedingPeaks === true) {
+                                valleysFromClosestHighestPeak.push({...postStartTimePrecisionLow, flags: [this._priceTradingInterval], type: PriceAnalysis.VALLEY})
+                            } else {
+                                valleysFromClosestHighestPeak.push(lowestPriceOfTheDayAnchor)
+                            }
+                        }
+                        break
+                    default:
+                        valleysFromClosestHighestPeak = this.valleyOnlyProgressionOrder.filter((item) => {
+                            return (item.epochDate > this.closestHighestPeak.epochDate) && this.dateIsGreaterThanOrEqual(item.epochDate, currentPositionDate)
+                        })
+
+                }
+
                 const prices = valleysFromClosestHighestPeak.map((item) => item.price)
                 const lowestPrice = Math.min(...prices)
                 const lowestPriceIndex = prices.lastIndexOf(lowestPrice)
@@ -569,7 +721,7 @@ class ProjectStockVision {
             }
 
             /**
-             * 
+             * @description Should have the same result regardless of the order of parameters
              * @param {Price} anchorPrice 
              * @param {Price} currentPrice 
              * @returns {{value: number; positive: boolean; negative: boolean;} | undefined}
@@ -717,6 +869,9 @@ class ProjectStockVision {
                 // make sure it is deep cloned so we do not overwrite a peak type to valley type carelessly
                 // reverse the array to easily loop from the top
                 // the second result of a peak should break out of the loop and return outcome of slope calculation
+                if (PriceAnalysis.isTinyProfitPursuit(this._code)) {
+                    return undefined
+                }
                 let onlyPeaksCloned = [...onlyPeaks]
                 onlyPeaksCloned.reverse()
                 const removeDuplicates = new Map()
@@ -773,6 +928,28 @@ class ProjectStockVision {
                 const lossThresholdExists = typeof window.idaStockVision.settings[code].lossThreshold === 'number'
 
                 return profitThresholdExists && lossThresholdExists
+            }
+
+            /**
+             * 
+             * @param {PriceHistory} anchorValley 
+             * @returns {boolean}
+             */
+            tinyHasPrecedingPeakFromAnchorValley(anchorValley) {
+                if (!PriceAnalysis.isTinyProfitPursuit(this._code) || this.isRunAwayFromOpeningPrice || anchorValley === undefined) {
+                    return false
+                }
+
+                const currentHourMinuteEpochTime = new Date(this._currentPrice.date).setSeconds(0,0)
+                const projectedEntryPrice = PriceAnalysis.percentageFinalAmount(anchorValley.price, this._entryThreshold)
+                const precisionIntervalsClosingPricesFromAnchorValleyGreaterThanProjectedEntryPrice = this.precisionIntervalValues
+                    .filter(item => {
+                        return item.epochDate > anchorValley.epochDate 
+                            && item.epochDate < currentHourMinuteEpochTime
+                            && item.lastCurrentPrice > projectedEntryPrice
+                    })
+                
+                return precisionIntervalsClosingPricesFromAnchorValleyGreaterThanProjectedEntryPrice.length > 0
             }
 
             /**
@@ -1122,8 +1299,9 @@ class ProjectStockVision {
                 }
 
                 try {
+                    const dateToConfirm = history?.at(0) ? new Date(history.at(0).date): undefined
                     const formatedCode = PriceAnalysis.codeFormat(code)
-                    const businessDaysOfTheYear = PriceAnalysis.confirmDateInMultipleDaysInterval().businessDaysOfTheYear
+                    const businessDaysOfTheYear = PriceAnalysis.confirmDateInMultipleDaysInterval(undefined,dateToConfirm,undefined,12).businessDaysOfTheYear
                     const businessDaysBeforeToday = businessDaysOfTheYear.filter(day => day <= Date.now())
                     // TO-DO explore taking less data for intervals smaller than 30min if needed
                     const historyToUpload = history.filter(item => item.epochDate >= businessDaysBeforeToday.at(-1 * historyDaysNeeded))
@@ -1224,14 +1402,14 @@ class ProjectStockVision {
             /**
              * 
              * @param {boolean} isCrypto 
-             * @returns {number[]}
+             * @returns {[number, number, number]}
              */
-            static tradingStartTime (isCrypto = false, minuteOffset = 1) {
+            static tradingStartTime(isCrypto = false, minuteOffset = 1, hourOffset = 0) {
                 // Hour, Minute, Seconds
                 // Add 1 minute to the minute time to have the close price of that minute
                 return isCrypto 
-                    ? [0, 0 + minuteOffset, 0] 
-                    : [9, 30 + minuteOffset, 0]
+                    ? [0 + hourOffset, 0 + minuteOffset, 0] 
+                    : [9 + hourOffset, 30 + minuteOffset, 0]
             }
             
             /**
@@ -1239,11 +1417,11 @@ class ProjectStockVision {
              * @param {boolean} isCrypto 
              * @returns {[number, number, number]}
              */
-            static tradingEndTime (isCrypto = false) {
+            static tradingEndTime(isCrypto = false, minuteOffset = 0, hourOffset = 0) {
                 // Hour, Minute, Seconds
                 return isCrypto 
-                    ? [23, 58, 0] 
-                    : [15, 59, 59]
+                    ? [23 + hourOffset, 58 + minuteOffset, 0] 
+                    : [15 + hourOffset, 59 + minuteOffset, 59]
             }
 
             /**
@@ -1251,7 +1429,25 @@ class ProjectStockVision {
              * @param {boolean} isCrypto 
              * @returns {[number, number, number]}
              */
-            static tradingHistoryUploadTime (isCrypto = false) {
+            static tinyExitTime(isCrypto = false) {
+                return PriceAnalysis.tradingEndTime(isCrypto, -9)
+            }
+
+            /**
+             * 
+             * @param {boolean} isCrypto 
+             * @returns {[number, number, number]}
+             */
+            static tinyStartTime(isCrypto = false) {
+                return PriceAnalysis.tradingStartTime(isCrypto, undefined, 1)
+            }
+
+            /**
+             * 
+             * @param {boolean} isCrypto 
+             * @returns {[number, number, number]}
+             */
+            static tradingHistoryUploadTime(isCrypto = false) {
                 // Hour, Minute, Seconds
                 return isCrypto 
                     ? PriceAnalysis.tradingEndTime(true)
@@ -1292,6 +1488,15 @@ class ProjectStockVision {
                     default:
                         return PriceAnalysis.PROFIT_PURSUIT.LARGE
                 }
+            }
+
+            /**
+             * 
+             * @param {string} code 
+             * @returns {boolean}
+             */
+            static isTinyProfitPursuit(code) {
+                return PriceAnalysis.profitPursuitType(code) === PriceAnalysis.PROFIT_PURSUIT.TINY
             }
 
             /**
@@ -1393,6 +1598,26 @@ class ProjectStockVision {
             }
             
         }
+
+        static constants = {
+            server: {
+                production: {
+                    cloud: 'https://styleminions.co/ninja', // [cs]
+                    local: 'http://localhost:9000' // [ls]
+                },
+                development: {
+                    cloud: 'http://localhost:7000',
+                    local: 'http://localhost:9000'
+                },
+            },
+            serverApi: {
+                notify: '/trader/notify'
+            },
+            notification: {
+                subjectGeneral: '[QWA] NOTIFICATION'
+            }
+        }
+        
         /**
          * 
          * @param {string} val 
@@ -1469,6 +1694,81 @@ class ProjectStockVision {
             }
 
             return delta >= 0 && delta <= absolutePercentageLimit
+        }
+
+        /**
+         * 
+         * @param {number|string} num 
+         * @param {number} decimalPlaces 
+         * @returns {number|string}
+         */
+        static decimalPrecision(num, decimalPlaces = 2) {
+            // this only work for normal currency numbers. really small numbers very close to 0 become zero or exponential eg 0.005 || 0.00000005
+            if (!['string', 'number'].includes(typeof num) || Number.isNaN(num)) {
+                return num
+            }
+            const numberString = num.toString()
+            const [first, second] = numberString.split('.')
+
+            if (second === undefined) {
+                return num
+            }
+            
+            return Number(`${first}.${second.substring(0, decimalPlaces)}`)
+        }
+
+        /**
+         * @param {number} profitToTake
+         * @returns {number | undefined}
+         */
+        static calculateProfitChunk(profitToTake) {
+            const half = Number(profitToTake)/2
+            switch(true) {
+                case !(Number.isFinite(profitToTake)):
+                case Math.sign(profitToTake) < 0:
+                    return undefined
+                case profitToTake >= 6:
+                    return 3
+                case profitToTake > 0.5:
+                case profitToTake > 0.01 && profitToTake <= 0.5:
+                    return Number(Vision.decimalPrecision(half, 2))
+                default:
+                    return half
+                    
+            }
+        }
+
+        /**
+         * 
+         * @param {string} code 
+         * @param {number} price 
+         * @param {string} dayMonthYearString 
+         * @param {IntervalFlags} tradingInterval 
+         * @param {boolean} addToPriceStore 
+         * @returns {PriceHistory[]}
+         */
+        static createHistory(code, price, dayMonthYearString, tradingInterval, addToPriceStore = false) {
+            const formatedCode = Vision.PriceAnalysis.codeFormat(code)
+            const interval = tradingInterval || window.idaStockVision.settings[formatedCode]?.tradingInterval
+            const date = new Date(dayMonthYearString).toISOString()
+            if (interval === undefined || date === undefined || Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[interval] === undefined) {
+                throw new Error('something is wrong') 
+            }
+            /** @type {PriceHistory[]} */
+            const history = [Vision.PriceAnalysis.PEAK,Vision.PriceAnalysis.VALLEY].map(type => {
+                return {
+                    type,
+                    price,
+                    date,
+                    flags: [interval]
+                }
+            })
+
+            if (addToPriceStore) {
+                window.idaStockVision.priceStore.peakValleyHistory.push(...history)
+            }
+
+            return history
         }
 
         /**
@@ -1624,12 +1924,23 @@ class ProjectStockVision {
                 const timeOutSeconds = window.idaStockVision.statusTimeoutList.at(window.idaStockVision.statusCounter)
                 codes.forEach((item) => {
                     if (item in data) {
-                        const position = data[item].position === 'in' ? true : false
+                        const position = data[item].position === Vision.PriceAnalysis.ACTION.IN ? true : false
                         window.idaStockVision.positionIn[item] = position
                         window.idaStockVision.priceStore.currentPosition[item].position = position
                         window.idaStockVision.priceStore.currentPosition[item].date = data[item]?.date
                         window.idaStockVision.priceStore.currentPosition[item].price = data[item]?.price
                         window.idaStockVision.priceStore.currentPosition[item].originalPrice = data[item]?.originalPrice
+                        window.idaStockVision.priceStore.currentPosition[item].profitChunkPrice  = data[item]?.profitChunkPrice
+                        const backendConfirmedProfitChunkPrice = 'isProfitChunkExit' in window.idaStockVision.lastNotificationSent[item] 
+                            && window.idaStockVision.lastNotificationSent[item].isProfitChunkExit === true
+                            && data[item].profitChunkPrice === window.idaStockVision.lastNotificationSent[item].currentPrice
+                        const tradeFailedToExecuteTinyCode = Vision.PriceAnalysis.isTinyProfitPursuit(item)
+                            && window.idaStockVision.statusTimeoutList.length === window.idaStockVision.statusCounter + 1
+                            && 'action' in window.idaStockVision.lastNotificationSent[item]
+                            && window.idaStockVision.priceStore.currentPosition[item].position !== Vision.PriceAnalysis[Vision.PriceAnalysis.REVERSED_ACTION[window.idaStockVision.lastNotificationSent[item].action]]
+                        if (backendConfirmedProfitChunkPrice || tradeFailedToExecuteTinyCode) {
+                            Vision.purgeNotificationLastSent(item)
+                        }
                     }
                 })
                 if (timeOutSeconds !== undefined) {
@@ -1637,7 +1948,9 @@ class ProjectStockVision {
                     window.idaStockVision.statusCounter++
                 }
             } catch (error) {
-                console.log('Ida Trader Bot - POSITION STATUS POLLING', error)
+                const errorMessage = ['Vision - POSITION STATUS POLLING', error.toString()]
+                console.log(...errorMessage)
+                Vision.notify(errorMessage.join('-'))
             }
             
         }
@@ -1646,7 +1959,8 @@ class ProjectStockVision {
             try {
                 const origin = location.origin
                 const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
-                let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver, lowMutationObserver, highMutationObserver
+                let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver,
+                    lowMutationObserver, highMutationObserver, openPriceElement, prevClosePriceElement
                 window.idaStockVision.mutationObservers[this.#code] = new MutationObserver(this.mutationObserverCallback)
                 const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
                     if (lowElementText !== undefined) {
@@ -1654,6 +1968,21 @@ class ProjectStockVision {
                     }
                     if (highElementText !== undefined) {
                         window.idaStockVision.priceStore.marketHighLowRange.high = Vision.decimalConvert(Vision.sanitizePrice(highElementText))
+                    }
+                }
+                const storeGeneral = (object, property, elementOrNode, shouldObserve=false) => {
+                    if (elementOrNode !== undefined) {
+                        object[property] = Vision.decimalConvert(Vision.sanitizePrice(elementOrNode.innerText || elementOrNode.nodeValue))
+
+                        if(shouldObserve){
+                            const observer = new MutationObserver((mutationArray, observerInstance) => {
+                                const lastRecord = mutationArray[mutationArray.length - 1]
+                                // const targetValue = lastRecord.target.nodeValue
+                                storeGeneral(object, property, lastRecord.target, false)                      
+                            })
+                            observer.observe(elementOrNode, observeOptions)
+
+                        }
                     }
                 }
                 const storeJointHighLowRange = (elementText) => {
@@ -1685,6 +2014,7 @@ class ProjectStockVision {
                         const websiteName = origin.includes('google') ? 'google' : 'nasdaq'
                         priceElement = window.idaStockVision.cssSelectors[websiteName].price()
                         priceHighAndLowRangeElement = window.idaStockVision.cssSelectors[websiteName].highLowRange()
+                        prevClosePriceElement = window.idaStockVision.cssSelectors[websiteName].previousClosePrice()
                         if (priceHighAndLowRangeElement !== null) {
                             storeJointHighLowRange(priceHighAndLowRangeElement.innerText)
                             highAndLowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
@@ -1694,6 +2024,7 @@ class ProjectStockVision {
                             })
                             highAndLowMutationObserver.observe(priceHighAndLowRangeElement, observeOptions)
                         }
+                        storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
                         break
                     case origin.includes('cboe'):
                         priceElement = window.idaStockVision.cssSelectors.cboe.price()
@@ -1705,10 +2036,17 @@ class ProjectStockVision {
                         priceElement = window.idaStockVision.cssSelectors.webull.price()
                         priceLowRangeElement = window.idaStockVision.cssSelectors.webull.lowRange()
                         priceHighRangeElement = window.idaStockVision.cssSelectors.webull.highRange()
+                        prevClosePriceElement = window.idaStockVision.cssSelectors.webull.previousClosePrice()
+                        openPriceElement = window.idaStockVision.cssSelectors.webull.openPrice()
                         setUpGeneralHighLowRangeMutations()
+                        storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
+                        storeGeneral(window.idaStockVision.priceStore, 'openPrice', openPriceElement, true)
                         break
                     case origin.includes('livecoinwatch'):
                         priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
+                        priceLowRangeElement = window.idaStockVision.cssSelectors.livecoinwatch.lowRange()
+                        priceHighRangeElement = window.idaStockVision.cssSelectors.livecoinwatch.highRange()
+                        setUpGeneralHighLowRangeMutations()
                         break
                     default:
                         // add tradingview, google finance
@@ -1739,6 +2077,12 @@ class ProjectStockVision {
             const codeUpperCase = code.toUpperCase()
             window.idaStockVision.mutationObservers[codeUpperCase].disconnect()
         }
+        static calcDayToDayUpwardTrend() {
+            const priceStore = window.idaStockVision.priceStore
+            const prevCloseToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.openPrice?.price, true) >= 0
+            const prevCloseToHighestPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.marketHighLowRange.high?.price, true) >= 0
+            priceStore.isUpwardTrendDayToDay = prevCloseToOpenPrice || prevCloseToHighestPrice
+        }
         /**
          * 
          * @param {string} code 
@@ -1754,12 +2098,14 @@ class ProjectStockVision {
                     // window.idaStockVision is deleted before function fires rendering it usless
                     // windowCloseEventListener: window.addEventListener('beforeunload', () => {uploadTodaysPriceHistory(undefined,false)}),
                     code: code,
-                    statusTimeoutList: [60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60],
+                    statusTimeoutList: [60*1000,60*1000,60*1000,60*1000,60*1000*3,60*1000*5,60*1000*10,60*1000*20,60*1000*20,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60,60*1000*60],
                     statusTimeoutInstance: undefined,
                     statusCounter: 0,
                     intervalInspectorInstance: {},
                     timeoutInspectorInstance: {},
+                    tinyExitTimeoutInstance: undefined,
                     serverUrl: '',
+                    localServerUrl: '',
                     notificationServerUrl: '',
                     tradingStartTime: Vision.PriceAnalysis.tradingStartTime(this.#isCrypto),
                     tradingEndTime: Vision.PriceAnalysis.tradingEndTime(this.#isCrypto),
@@ -1767,9 +2113,52 @@ class ProjectStockVision {
                         lastPrice: undefined,
                         previousLastPrice: undefined,
                         marketHighLowRange: {
-                            low: undefined,
-                            high: undefined
+                            _low: undefined,
+                            get low(){return this._low},
+                            set low(val) {
+                                const now = new Date()
+                                // @ts-ignore
+                                this._low = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
+                                Vision.calcDayToDayUpwardTrend()
+                                Vision.detectAnomaly()
+                            },
+                            _high: undefined,
+                            get high(){return this._high},
+                            set high(val) {
+                                const now = new Date()
+                                // @ts-ignore
+                                this._high = {price: val, epochDate: now.getTime(), date: now.toISOString()}
+                                Vision.calcDayToDayUpwardTrend()
+                            },
+                            get lowToHighDelta(){
+                                if (Number.isFinite(this.low?.price) && Number.isFinite(this.high?.price) && this.high.epochDate > this.low.epochDate) {
+                                    return Vision.percentageDelta(this.low.price,this.high.price)
+                                }
+                                return undefined
+                            },
+                            executedLows: new Map(),
+                            postStartTimePrecisionLow: undefined,
+                            postStartTimePrecisionHigh: undefined,
                         },
+                        isUpwardTrendDayToDay: false,
+                        _yesterdayClosePrice: undefined,
+                        _openPrice: undefined,
+                        set yesterdayClosePrice(val){
+                            const now = new Date()
+                                // @ts-ignore
+                            this._yesterdayClosePrice = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
+                            Vision.calcDayToDayUpwardTrend()
+                            Vision.detectAnomaly()
+                        },
+                        set openPrice(val){
+                            const now = new Date()
+                                // @ts-ignore
+                            this._openPrice = {price: Number(Vision.decimalPrecision(val)), epochDate: now.getTime(), date: now.toISOString()}
+                            Vision.calcDayToDayUpwardTrend()
+                            Vision.detectAnomaly()
+                        },
+                        get yesterdayClosePrice(){return this._yesterdayClosePrice},
+                        get openPrice(){return this._openPrice},
                         peakValleyHistory: [],
                         highestPeakAndLowestValleyToday: {},
                         todaysPeakValleySnapshot: {},
@@ -1792,18 +2181,25 @@ class ProjectStockVision {
                     processTracker: {
                         tradingInterval: {},
                         uploadHistory: undefined,
+                        tinyExit: undefined,
                     },
                     server: {
-                        // development: 'http://localhost:9000',
-                        // developmentNotification: 'http://10.0.0.148:9000',
-                        production: 'https://styleminions.co/ninja', // [cs]
-                        localServer: 'http://localhost:9000', // [ls]
+                        production: {
+                            cloud: 'https://styleminions.co/ninja', // [cs]
+                            local: 'http://localhost:9000' // [ls]
+                        },
+                        development: {
+                            cloud: 'http://localhost:7000',
+                            local: 'http://localhost:9000'
+                        },
                     },
                     cssSelectors: {
                         nasdaq: {
+                            // use summary page of quote to get all elements & must scroll down to load components that have summary data
                             price: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'),
                             highLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-day-range-info'),
-                            fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span')
+                            fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span'),
+                            previousClosePrice: () => document.querySelector('nsdq-table').shadowRoot.querySelector('.table:last-child .table-body .table-row:nth-child(2) .table-cell:last-child body')
                         },
                         yahoo: {
                             // csp locked
@@ -1813,7 +2209,8 @@ class ProjectStockVision {
                         },
                         livecoinwatch: {
                             price: () => document.querySelector('.coin-price-large .price'),
-                            highLowRange: () => null
+                            lowRange: () => document.evaluate('//*[@id="__next"]/div/div[1]/main/div/div[2]/div[1]/div/div/section/div[3]/div[2]/div[2]/div[2]/span',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            highRange: () => document.evaluate('//*[@id="__next"]/div/div[1]/main/div/div[2]/div[1]/div/div/section/div[3]/div[2]/div[2]/div[3]/span',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                         },
                         cboe: {
                             price: () => document.querySelector('#singleSecurityQuote > div > div > div > div> div:nth-child(2) > h2'),
@@ -1832,6 +2229,8 @@ class ProjectStockVision {
                             preMarketAndAfterHoursPrice: () => document.querySelector("#app > section > div > div > div > div > div > div:nth-child(2) > div > div > span"),
                             lowRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                             highRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            openPrice: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[1]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            previousClosePrice: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[1]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                         },
                         tradingview: {
                             // https only
@@ -1847,17 +2246,35 @@ class ProjectStockVision {
                     },
                     constants: {},
                     reports: [],
+                    cache: new Map()
                 }
 
-                const broadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.monitorReport)
-                broadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
+                const monitorBroadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.monitorReport)
+                const statusBroadcastChannel = new BroadcastChannel(Vision.PriceAnalysis.EVENT_NAMES.statusUpdate)
+                monitorBroadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
                     const isEndOfDay = messageEvent.data
                     console.log(`monitor inspection: ${Vision.monitorReport(isEndOfDay, this.#isCrypto)}`)
                 })
+                statusBroadcastChannel.addEventListener('message', (/** @type{MessageEvent} */messageEvent) => {
+                    const messagePrimaryCode = messageEvent.data
+                    if (messagePrimaryCode === Vision.PriceAnalysis.primaryCode(window.idaStockVision.code) || messagePrimaryCode === 'all') {
+                        console.log(`starting status polling: ${messagePrimaryCode}`)
+                        window.idaStockVision.tools.positionStatusPolling(undefined, true)
+                    }
+                })
+                Vision.connectServerSentEvents(Vision.PriceAnalysis.primaryCode(code))
+
+                // when we gain back internet connection
+                window.addEventListener('online', (event) => {
+                    console.log('Vision - Back Online!!')
+                    window.idaStockVision.tools.positionStatusPolling(undefined, true)
+                })
+                
             }
 
             if (!(code in window.idaStockVision.positionIn)) {
                 const codeStartTime = window.idaStockVision.tradingStartTime
+                const isTinyCode = Vision.PriceAnalysis.isTinyProfitPursuit(this.#code)
                 window.idaStockVision.positionIn[code] = false
                 window.idaStockVision.notificationInProgress[code] = false
                 window.idaStockVision.lastNotificationSent[code] = {}
@@ -1865,10 +2282,19 @@ class ProjectStockVision {
                     /** @type {Position}*/ 
                     ({
                         position: false,
+                        _price: undefined,
+                        get price() {
+                            return this._price
+                        },
+                        set price(val) {
+                            this._price = val
+                            Vision.adjustTinyProfitChunkThreshold(code, this.price)
+                        }
                     })
-                window.idaStockVision.priceStore.analysis[code] = undefined
+                window.idaStockVision.priceStore.analysis[code] = () => Vision.deriveAnalysis(code)
                 window.idaStockVision.priceStore.todaysPeakValleySnapshot[code] = []
                 window.idaStockVision.priceStore.highestPeakAndLowestValleyToday[code] = []
+                window.idaStockVision.priceStore.marketHighLowRange.executedLows.set(code, new Set())
                 window.idaStockVision.intervalInspectorInstance[code] = undefined
                 window.idaStockVision.timeoutInspectorInstance[code] = undefined
                 window.idaStockVision.tools[`watch_${code}`] = this.watch
@@ -1878,21 +2304,46 @@ class ProjectStockVision {
                 window.idaStockVision.settings[code] = {
                     tradingInterval: this.#tradingInterval,
                     precisionInterval: this.#precisionInterval,
+                    isCrypto: this.#isCrypto,
                     experiment: false,
                     entryPercentageThreshold: this.#entryPercentage || undefined,
                     exitPercentageThreshold: this.#exitPercentage || undefined,
                     entryMultiplier: Vision.PriceAnalysis.ENTRY_MULTIPLIER[Vision.PriceAnalysis.profitPursuitType(code)] || undefined,
                     manualEntryPriceThreshold: this.#manualEntryPrice || undefined,
                     manualExitPriceThreshold: this.#manualExitPrice || undefined,
-                    profitThreshold: undefined,
+                    _profitThreshold: undefined,
+                    set profitThreshold(val){
+                        this._profitThreshold = val
+                        if (this.profitChunkThreshold !== undefined) {
+                            this.profitChunkThreshold = Vision.calculateProfitChunk(val)
+                        }
+                    },
+                    get profitThreshold(){return this._profitThreshold},
                     lossThreshold: undefined,
                     entryPrecisionThreshold: Vision.PriceAnalysis.entryExitPricePrecisionThreshold,
+                    profitChunkThreshold: undefined,
+                    maxTinyEntryPercentageThreshold: 2,
+                    tinyRunAwayDeltaThreshold: 1,
+                    tinyObservedDailyProfitWindow: 2,
                 }
                 Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2])
                 const setFutureIntervalListener = () => {
                     Vision.setTradingTimeInterval(code, Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval], codeStartTime[0], codeStartTime[1], codeStartTime[2], true)
                 }
                 window.addEventListener(Vision.PriceAnalysis.EVENT_NAMES.setFutureInterval, setFutureIntervalListener)
+                if (isTinyCode) {
+                    window.addEventListener(Vision.PriceAnalysis.EVENT_NAMES.tinyExit, () => {
+                        const record = {
+                            target: {
+                                nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
+                            }
+                        }
+                        if (window.idaStockVision.positionIn[this.#code] === Vision.PriceAnalysis.IN) {
+                            // if condition is necessary to make sure we do not trigger tiny codes that are out -> in, via regular flag on current price
+                            this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true)
+                        }
+                    })
+                }
                 window.addEventListener(Vision.PriceAnalysis.EVENT_NAMES.destroyCode, (/** @type{CustomEvent} */customEvent) => {
                     const eventCode = customEvent.detail.code
                     if (eventCode === code) {
@@ -1910,12 +2361,15 @@ class ProjectStockVision {
             }
 
             try {
-                window.idaStockVision.serverUrl = 'production' in window.idaStockVision.server 
-                    ? window.idaStockVision.server.production
-                    : window.idaStockVision.server.development
-                window.idaStockVision.notificationServerUrl = 'production' in window.idaStockVision.server 
-                    ? window.idaStockVision.server.production
-                    : window.idaStockVision.server.development
+                window.idaStockVision.serverUrl = window.idaStockVision.server.production 
+                    ? window.idaStockVision.server.production.cloud
+                    : window.idaStockVision.server.development.cloud
+                window.idaStockVision.localServerUrl = window.idaStockVision.server.production
+                    ? window.idaStockVision.server.production.local
+                    : window.idaStockVision.server.development.local
+                window.idaStockVision.notificationServerUrl = window.idaStockVision.server.production
+                    ? window.idaStockVision.server.production.cloud
+                    : window.idaStockVision.server.development.cloud
                 window.idaStockVision.notificationInProgress[code] = true
                 const primaryCode = Vision.PriceAnalysis.primaryCode(code)
                 const resp = await Vision.statusHTTP(code, false)
@@ -1935,6 +2389,7 @@ class ProjectStockVision {
                     window.idaStockVision.priceStore.currentPosition[code].date = data[code]?.date
                     window.idaStockVision.priceStore.currentPosition[code].price = data[code]?.price
                     window.idaStockVision.priceStore.currentPosition[code].originalPrice = data[code]?.originalPrice
+                    window.idaStockVision.priceStore.currentPosition[code].profitChunkPrice  = data[code]?.profitChunkPrice 
                 }
                 if (
                     primaryCode in data && 
@@ -1960,20 +2415,22 @@ class ProjectStockVision {
          * @param {string} tokenOrStockCode 
          * @param {string} messageBody 
          * @param {number} currentPrice 
-         * @param {string} action 
+         * @param {Action} action 
          * @param {number | string} anchorPrice 
          * @param {string} confirmationLink 
-         * @param {{[key: string]: string|boolean} | {}} otherQueryParams 
+         * @param {TradeCheckResponse | {}} otherBodyParams 
          * @returns {Promise<void>}
          */
-        static async sendNotification(tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink, otherQueryParams = {}) {
+        static async sendNotification(tokenOrStockCode, messageBody = 'manual confirmation', currentPrice, action, anchorPrice, confirmationLink, otherBodyParams = {}) {
             const lastNotification = window.idaStockVision.lastNotificationSent[tokenOrStockCode]
+            const isProfitChunkExit = action === Vision.PriceAnalysis.ACTION.OUT && 'profitChunk' in otherBodyParams && otherBodyParams.profitChunk.isValid
+            const actionText = isProfitChunkExit ? Vision.PriceAnalysis.ACTION.PROFIT_OUT : action
             const priceDifferencePercentage = 'currentPrice' in lastNotification
                 ? Vision.percentageDelta(lastNotification.currentPrice, currentPrice) 
                 : 0
             const percentageThreshold = 5
-            const notificationSubject = `${tokenOrStockCode} - Get [${action.toUpperCase()}] (${currentPrice})`
-            const queryParams = new URLSearchParams()
+            const notificationSubject = `${tokenOrStockCode} - Get [${actionText.toUpperCase()}] (${currentPrice})`
+            const httpPostBody = {}
             const sameActionAsLast = 'action' in lastNotification 
                 ? lastNotification.action === action 
                 : false
@@ -1986,10 +2443,10 @@ class ProjectStockVision {
             let currentStatus
             switch (window.idaStockVision.positionIn[tokenOrStockCode]) {
                 case true:
-                    currentStatus = 'in'
+                    currentStatus = Vision.PriceAnalysis.ACTION.IN
                     break
                 case false:
-                    currentStatus = 'out'
+                    currentStatus = Vision.PriceAnalysis.ACTION.OUT
             }
             const sameActionAsCurrentStatus = currentStatus === action
 
@@ -2002,28 +2459,30 @@ class ProjectStockVision {
 
             try {
                 window.idaStockVision.notificationInProgress[tokenOrStockCode] = true
-                queryParams.append('message', messageBody)
-                queryParams.append('subject', notificationSubject)
-                queryParams.append('code', tokenOrStockCode)
-                queryParams.append('primaryCode', Vision.PriceAnalysis.primaryCode(tokenOrStockCode))
-                queryParams.append('action', action)
-                queryParams.append('currentPrice', currentPrice.toString())
-                queryParams.append('confirmationLink', confirmationLink)
-                Object.entries(otherQueryParams).forEach((item) => queryParams.append(item[0], String(item[1])))
-
-                const cloudServerRequest = fetch(`${window.idaStockVision.serverUrl}/trader/notify?${queryParams.toString()}`, {
+                httpPostBody.message = messageBody
+                httpPostBody.subject = notificationSubject
+                httpPostBody.code = tokenOrStockCode
+                httpPostBody.primaryCode =  Vision.PriceAnalysis.primaryCode(tokenOrStockCode)
+                httpPostBody.action = action
+                httpPostBody.currentPrice = currentPrice
+                httpPostBody.confirmationLink = confirmationLink
+                Object.entries(otherBodyParams).forEach((item) => httpPostBody[item[0]] = item[1])
+                
+                /** @type RequestInit */
+                const httpOptions = {
                     method: 'POST',
                     mode: 'cors',
-                })
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(httpPostBody),
+                }
+
+                const cloudServerRequest = fetch(`${window.idaStockVision.serverUrl}/trader/notify`, httpOptions)
                 const localServerRequest = () => {
                     if (experimentMode) {
                         // we do not want to auto trade in experiment mode
                         return Promise.resolve()
                     }
-                    return fetch(`${window.idaStockVision.server.localServer}/trader/notify?${queryParams.toString()}`, {
-                        method: 'POST',
-                        mode: 'cors',
-                    })
+                    return fetch(`${window.idaStockVision.localServerUrl}/trader/notify`, httpOptions)
                 }
                 const resp = await Promise.allSettled([cloudServerRequest,localServerRequest()])
                 // const data = await resp[0].value.json()
@@ -2034,7 +2493,7 @@ class ProjectStockVision {
                         mode: 'cors',
                     })
                 }
-                if (action === 'out') {
+                if (action === Vision.PriceAnalysis.ACTION.OUT) {
                     Vision.addReport('message' in lastNotification ? lastNotification.message : undefined, messageBody)
                 }
                 window.idaStockVision.lastNotificationSent[tokenOrStockCode] = {
@@ -2042,13 +2501,33 @@ class ProjectStockVision {
                     message: messageBody,
                     currentPrice,
                     action,
-                    anchorPrice
+                    anchorPrice,
+                    isProfitChunkExit
                 }
                 window.idaStockVision.notificationInProgress[tokenOrStockCode] = false
                 new Notification(notificationSubject, {body: messageBody})
                 Vision.positionStatusPolling(tokenOrStockCode, true)
             } catch (error) {
                 console.log('Ida Trader Bot - NOTIFY ERROR', error)
+            }
+        }
+        /**
+         * 
+         * @param {string} message 
+         * @param {string} subject 
+         * @param {string} tabCode 
+         */
+        static notify = async (message, subject = Vision.constants.notification.subjectGeneral, tabCode = window.idaStockVision.code) => {
+            try {
+                let tabSubject = `${subject} (${tabCode})`
+                const queryParams = new URLSearchParams()
+                queryParams.set('subject', tabSubject)
+                queryParams.set('message', message)
+                fetch(`${window.idaStockVision.notificationServerUrl}${Vision.constants.serverApi.notify}?${queryParams.toString()}`, {
+                    method: 'POST',
+                })
+            } catch (error) {
+                
             }
         }
         /**
@@ -2060,10 +2539,6 @@ class ProjectStockVision {
         updatePrices(currentPrice, peakValleyDetected, intervalFlag) {
             try {
                 const priceStore = window.idaStockVision.priceStore
-                const {low, high} = priceStore.marketHighLowRange
-                const isHighLowRangeValid = [low, high].every((item) => typeof item === 'number' && item > 0)
-                // Reduce market noise from outlier price trades(pre-market & after market hours especially)
-                const isCurrentPriceWithinMarketRange = isHighLowRangeValid ? (currentPrice.price >= low && currentPrice.price <= high) : true
 
                 if (priceStore.lastPrice?.price !== currentPrice.price) {
                     priceStore.previousLastPrice = priceStore.lastPrice
@@ -2185,6 +2660,8 @@ class ProjectStockVision {
                     hourMinute: hourMinuteString,
                     index,
                     currentPrices: [],
+                    peakCurrentPrice: undefined,
+                    lastCurrentPrice: undefined,
                 })
             })
 
@@ -2208,6 +2685,25 @@ class ProjectStockVision {
             Vision.tradingTimeInterval(code, precisionIntervalsBag, precisionIntervalInSeconds, startHour, startMinute, startSeconds, forTomorrow)
             window.idaStockVision.priceStore.priceTimeIntervalsToday[code] = Vision.tradingTimeIntervalForPeakDetection(tradingIntervalsBag)
             window.idaStockVision.priceStore.precisionTimeIntervalsToday[code] = Vision.precisionTimeIntervalForPricePrecision(precisionIntervalsBag)
+            if (Vision.PriceAnalysis.isTinyProfitPursuit(code)) {
+                const priceTimeIntervalsToday = window.idaStockVision.priceStore.priceTimeIntervalsToday[code]
+                const precisionTimeIntervalsToday = window.idaStockVision.priceStore.precisionTimeIntervalsToday[code]
+                // TO-DO make this universal for crypto and non crypto
+                // const contextDate = new Date(priceTimeIntervalsToday.get('9:31').epochDate)
+                // contextDate.setHours(...Vision.PriceAnalysis.tradingStartTime(false,undefined,1),0)
+                // Array.from(priceTimeIntervalsToday.values()).forEach(item => {
+                //     if (item.epochDate !== contextDate.getTime()) {
+                //         priceTimeIntervalsToday.delete(item.hourMinute)
+                //     }
+                // })
+                priceTimeIntervalsToday.clear()
+
+                // Array.from(precisionTimeIntervalsToday.values()).forEach(item => {
+                //     if (item.epochDate <= contextDate.getTime()) {
+                //         precisionTimeIntervalsToday.delete(item.hourMinute)
+                //     }
+                // })
+            }
             Vision.trackProcess('tradingInterval', code)
         }
 
@@ -2302,6 +2798,48 @@ class ProjectStockVision {
 
                 precisionIntervalSettings.currentPriceExecuted = true
                 precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
+                precisionIntervalSettings.lastCurrentPrice = peakValleyDetectedOrCurrentPrice.price
+                // set tiny lowest point amont precision intervals
+                const tinyStartTime = new Date().setHours(...Vision.PriceAnalysis.tinyStartTime(),0)
+                const codePrecisionIntervals = priceStore.precisionTimeIntervalsToday[code]
+                const codePrecionIntervalValues = Array.from(codePrecisionIntervals.values())
+                const precisionToEvaluate = codePrecionIntervalValues[precisionIntervalSettings.index - 1]
+                const todayMidnight = new Date().setHours(0,0,0,0)
+                const postStartTimePrecisionLow = priceStore.marketHighLowRange.postStartTimePrecisionLow
+                const postStartTimePrecisionHigh = priceStore.marketHighLowRange.postStartTimePrecisionHigh
+                if (postStartTimePrecisionLow !== undefined && postStartTimePrecisionLow.epochDate < todayMidnight) {
+                    priceStore.marketHighLowRange.postStartTimePrecisionLow = undefined
+                    priceStore.marketHighLowRange.postStartTimePrecisionHigh = undefined
+                }
+                if (precisionToEvaluate !== undefined && precisionToEvaluate.epochDate > tinyStartTime) {
+                    if (postStartTimePrecisionLow === undefined 
+                        || precisionToEvaluate.lastCurrentPrice < postStartTimePrecisionLow.price
+                    ) {
+                        priceStore.marketHighLowRange.postStartTimePrecisionLow = {
+                            price: precisionToEvaluate.lastCurrentPrice,
+                            epochDate: precisionToEvaluate.epochDate,
+                            date: new Date(precisionToEvaluate.epochDate).toISOString()
+                        }
+                    }
+
+                    if (postStartTimePrecisionHigh === undefined 
+                        || precisionToEvaluate.lastCurrentPrice > postStartTimePrecisionHigh.price
+                    ) {
+                        priceStore.marketHighLowRange.postStartTimePrecisionHigh = {
+                            price: precisionToEvaluate.lastCurrentPrice,
+                            epochDate: precisionToEvaluate.epochDate,
+                            date: new Date(precisionToEvaluate.epochDate).toISOString()
+                        }
+                    }
+                }
+                
+
+
+                // precisionIntervalSettings.peakCurrentPrice = precisionIntervalSettings.peakCurrentPrice !== undefined
+                //     ? peakValleyDetectedOrCurrentPrice.price > precisionIntervalSettings.peakCurrentPrice.price
+                //         ? peakValleyDetectedOrCurrentPrice
+                //         : precisionIntervalSettings.peakCurrentPrice
+                //     : peakValleyDetectedOrCurrentPrice
             }
         }
 
@@ -2472,6 +3010,36 @@ class ProjectStockVision {
 
         }
 
+        runTinyExitSetup() {
+            const now = new Date()
+            const processTracker = window.idaStockVision.processTracker.tinyExit
+            const trackerDate = Number.isFinite(processTracker) ? new Date(processTracker) : now
+            const idaStockVision = window.idaStockVision
+            const isTinyCode = Vision.PriceAnalysis.isTinyProfitPursuit(this.#code)
+            if (!isTinyCode || trackerDate.getDate() === now.getDate() && idaStockVision.tinyExitTimeoutInstance !== undefined) {
+                return
+            }
+            
+            const exitDate = new Date()
+            exitDate.setHours(...Vision.PriceAnalysis.tinyExitTime(this.#isCrypto), 0)
+            const tradingEndTime = Vision.PriceAnalysis.tradingEndTime(this.#isCrypto)
+            const runTime = exitDate.getTime() - now.getTime()
+            clearTimeout(idaStockVision.tinyExitTimeoutInstance)
+            const callback = () => {
+                const timeAtCallback = Date.now()
+                const endTime = new Date(now).setHours(...tradingEndTime, 0)
+                if (timeAtCallback > endTime) {
+                    return
+                }
+                
+                window.dispatchEvent(new CustomEvent(Vision.PriceAnalysis.EVENT_NAMES.tinyExit))
+                window.setTimeout(callback, 1000 * 60 * 0.5)
+            }
+            idaStockVision.tinyExitTimeoutInstance = window.setTimeout(callback, runTime)
+            Vision.trackProcess('tinyExit')
+            console.log(`will force exit by: ${exitDate.getTime()}`)
+        }
+
         /**
          * 
          * @param {string} code 
@@ -2479,6 +3047,76 @@ class ProjectStockVision {
         static purgeNotificationLastSent(code) {
             const codeFormatted = Vision.PriceAnalysis.codeFormat(code)
             window.idaStockVision.lastNotificationSent[codeFormatted] = {}
+        }
+
+        /**
+         * 
+         * @param {string} code 
+         * @param {number} positionPrice
+         */
+        static adjustTinyProfitChunkThreshold(code, positionPrice) {
+            try {
+                if (Vision.PriceAnalysis.isTinyProfitPursuit(code)) {
+                    // inputs - code, positionPrice
+                    const idaStockVision = window.idaStockVision
+                    const observedDailyProfitWindow = idaStockVision.settings[code].tinyObservedDailyProfitWindow
+                    const lowToCurrentPositionDelta = Vision.percentageDelta(idaStockVision.priceStore.marketHighLowRange.low.price, positionPrice)
+                    const originalProfitChunk = Vision.calculateProfitChunk(idaStockVision.settings[code].profitThreshold)
+                    const usableProfitWindow = observedDailyProfitWindow - lowToCurrentPositionDelta
+                    if (lowToCurrentPositionDelta !== undefined) {
+                        switch(true) {
+                            case lowToCurrentPositionDelta >= observedDailyProfitWindow:
+                                idaStockVision.settings[code].profitChunkThreshold = 0
+                                break
+                            case usableProfitWindow < originalProfitChunk:
+                                idaStockVision.settings[code].profitChunkThreshold = usableProfitWindow
+                                break
+                            default:
+                                idaStockVision.settings[code].profitChunkThreshold = originalProfitChunk
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Ida Trader Bot - ADJUST TINY PROFITCHUNK THRESHOLD', error)
+            }
+        }
+
+        static detectAnomaly() {
+            try {
+                const anomalyThreshold = -4
+                const priceStore = window.idaStockVision.priceStore
+                const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
+                const startTime = new Date().setHours(...Vision.PriceAnalysis.tradingStartTime(),0)
+                const previousClosePriceIsAfterStartTime = priceStore.yesterdayClosePrice?.epochDate >= startTime
+                const openPriceIsAfterStartTime = priceStore.openPrice?.epochDate >= startTime
+                const lowPriceIsAfterStartTime = priceStore.marketHighLowRange.low?.epochDate >= startTime
+                const allPricesNeededAreAfterStartTime = previousClosePriceIsAfterStartTime && openPriceIsAfterStartTime && lowPriceIsAfterStartTime
+                if (!window.idaStockVision.cache.has('anomaly')) {
+                    window.idaStockVision.cache.set('anomaly', new Map())
+                }
+                const previousClosePriceToOpenPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.openPrice?.price, true)
+                const previousClosePriceToLowPrice = Vision.percentageDelta(priceStore.yesterdayClosePrice?.price, priceStore.marketHighLowRange.low?.price, true)
+                const lowestDelta = Math.min(previousClosePriceToOpenPrice, previousClosePriceToLowPrice)
+                const lowestAnchor = Math.min(priceStore.openPrice?.price, priceStore.marketHighLowRange.low?.price)
+                const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
+                const anomalyExists = lowestDelta <= anomalyThreshold
+    
+                if (anomalyExists && allPricesNeededAreAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
+                    let message = 'Manual assessment from data source & execution needed.\r\n'
+                    message = message.concat(`PrevClose: ${priceStore.yesterdayClosePrice.price}\r\n`)
+                    message = message.concat(`Open: ${priceStore.openPrice.price}\r\n`)
+                    message = message.concat(`Low: ${priceStore.marketHighLowRange.low.price}\r\n`)
+                    Vision.notify(
+                        message,
+                        `${primaryCode} - Anomaly[${priceStore.yesterdayClosePrice.price}->${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
+                    )
+                    window.idaStockVision.cache.get('anomaly').set(dateStamp, true)
+                }
+
+                return anomalyExists
+            } catch (error) {
+                console.log('Ida Trader Bot - DETECT ANOMALY', error)
+            }
         }
 
         /**
@@ -2497,21 +3135,23 @@ class ProjectStockVision {
                 const retrieveData = (notificationMessage) => {
                     //TO-DO use array.find to get the specific data needed as the index order will vary dynamically
                     const message = notificationMessage.split('\n')
-                    let anchorPrice, downwardVolatility, link, profitLoss
+                    let anchorPrice, downwardVolatility, link, profitLoss, isProfitChunk
                     anchorPrice = message.find(item => item.toLowerCase().includes('anchor'))
                     downwardVolatility = message.find(item => item.toLowerCase().includes('volatility'))
                     link = message.find(item => item.toLowerCase().includes('link'))
                     profitLoss = message.find(item => item.toLowerCase().includes('gross'))
+                    isProfitChunk = message.find(item => item.toLowerCase().includes('profit chunk'))
                     const url = new URL(link.split(': ').at(-1).trim())
                     const date = url.searchParams.get('date')
-                    const position = url.searchParams.get('position') === 'in' ? Vision.PriceAnalysis.IN : Vision.PriceAnalysis.OUT
+                    const position = url.searchParams.get('position') === Vision.PriceAnalysis.ACTION.IN ? Vision.PriceAnalysis.IN : Vision.PriceAnalysis.OUT
                     const price = Number(url.searchParams.get('price'))
                     const code = url.searchParams.get('code')
                     anchorPrice = anchorPrice !== undefined ? Number(anchorPrice.split(':').at(-1).trim()) : undefined
                     profitLoss = profitLoss !== undefined ? Number(profitLoss.split(':').at(-1).trim()) : undefined
-                    downwardVolatility = downwardVolatility.split(':').at(-1).trim() === 'true' ? true : false
+                    downwardVolatility = downwardVolatility !== undefined ? downwardVolatility.split(':').at(-1).trim() === 'true' : false
+                    isProfitChunk = isProfitChunk !== undefined ? isProfitChunk.split(':').at(-1).trim() === 'true' : false
     
-                    return {anchorPrice, downwardVolatility, date, position, price, code, profitLoss}
+                    return {anchorPrice, downwardVolatility, date, position, price, code, profitLoss, isProfitChunk}
                 }
                 
                 const exit = retrieveData(messageExit)
@@ -2531,19 +3171,42 @@ class ProjectStockVision {
                     priceOut: exit.price,
                     profitLoss: exit.profitLoss,
                     anchorProfitLoss: Vision.percentageDelta(anchorIn, exit.anchorPrice, true),
+                    chunkOut: exit.isProfitChunk
                 }
     
                 idaStockVision.reports.push(report)
-
+                
                 if (!localStorage.hasOwnProperty(localStorageKey)){
                     localStorage.setItem(localStorageKey, JSON.stringify([]))
                 }
                 // save to localstorage
                 localStorage.setItem(localStorageKey, JSON.stringify([...JSON.parse(localStorage.getItem(localStorageKey)), report]))
                 
+                // make sure you add the lowest point of the day as well just in case we use the tiny PoststartLow as the anchor to not trigger re-entry by the same lowest point
+                idaStockVision.priceStore.marketHighLowRange.executedLows.get(report.code)
+                    .add(report.anchorIn)
+                    .add(idaStockVision.priceStore.marketHighLowRange.low.price)
+
+                // remove isRunawayPrice from tiny start time
+                if (Vision.PriceAnalysis.isTinyProfitPursuit(report.code)) {
+                    // to make sure we maximize profit when next we get in at a lower valley anchor
+                    const now = Date.now()
+                    const tinyStartTime = new Date()
+                    tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
+                    const dateStamp = Vision.PriceAnalysis.dateStringFormat(now, 'YMD')
+                    const dateStampChanged = `${dateStamp}-${now}`
+                    const isRunAwayFromOpeningPrice = idaStockVision.cache.get('isRunAwayFromOpeningPrice')?.get(dateStamp)
+                    if (now > tinyStartTime.getTime() && isRunAwayFromOpeningPrice === true) {
+                        idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStamp, false)
+                        idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStampChanged, true)
+                    }
+                }
+                
                 
             } catch (error) {
-                console.log('cannot add report', error.toString())
+                const errorMessage = ['Vision - CANNOT ADD REPORT', error.toString()]
+                console.log(...errorMessage)
+                Vision.notify(errorMessage.join('-'))
             }
         }
 
@@ -2560,6 +3223,7 @@ class ProjectStockVision {
             reports.filter(report => specificCodes.length === 0 || formatedSpecificCodes.includes(report.code))
             .forEach((report) => {
                 profitLossPercentage += report.profitLoss
+                const profitCapture = report.chunkOut === true ? 'chunk' : 'total'
                 
                 if (!Number.isNaN(report.anchorProfitLoss)) {
                     anchorProfitLossPercentage += report.anchorProfitLoss
@@ -2577,6 +3241,7 @@ class ProjectStockVision {
                     report.volatilityOut,
                     Vision.PriceAnalysis.dateStringFormat(report.dateIn, 'D/M h:m'),
                     Vision.PriceAnalysis.dateStringFormat(report.dateOut, 'D/M h:m'),
+                    profitCapture
                 ])
             })
 
@@ -2616,6 +3281,7 @@ class ProjectStockVision {
             const codes = Object.keys(idaStockVision.positionIn)
             const currentPrice = {price: 0, date: today.toISOString(), flags: []}
             const result = {}
+            result.productionCheck = {pass: typeof idaStockVision.server.production === 'object' && typeof idaStockVision.server.production.cloud === 'string' && typeof idaStockVision.server.production.local === 'string'}
             if (isEndOfDay) {
                 today.setTime(today.getTime() +  priceAnalysisClass.TWENTYFOUR_HOURS_IN_MILLISECONDS)
                 result.uploadHistoryCheck = {pass: undefined}
@@ -2641,7 +3307,7 @@ class ProjectStockVision {
                 // we check the length of the result of lastFiveBusinessDays because of how empty array is evaluated => [].every(logic) will always be true.
                 const lastFiveBusinessDaysCheck = lastFiveBusinessDays.length > 0 && lastFiveBusinessDays.every(outcome => outcome === true)
                 const historyDistance = Date.now() - Date.parse(idaStockVision.priceStore.peakValleyHistory[0].date)
-                const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval)
+                const analysisInstance = new priceAnalysisClass(idaStockVision.priceStore.peakValleyHistory, currentPrice, currentPosition, isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,code)
                 let peakValleySnapshotCheck = true
                 let squashedPeakValleyCheck = true
                 let tinyCodeIsPositonOutCheck = true
@@ -2704,6 +3370,48 @@ class ProjectStockVision {
             }
         }
 
+        static deriveAnalysis(code) {
+            const formattedCode = Vision.PriceAnalysis.codeFormat(code)
+            const priceStore = window.idaStockVision.priceStore
+            const codeSettings = window.idaStockVision.settings[formattedCode]
+            /** @type {CurrentPrice} */  // @ts-ignore
+            const currentPrice = priceStore.lastPrice !== undefined ? {...priceStore.lastPrice} : {...priceStore.peakValleyHistory.at(-1)}
+            
+            return new ProjectStockVision.vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, priceStore.currentPosition[formattedCode], codeSettings.isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,formattedCode)
+        }
+
+        static connectServerSentEvents(code, retry = false) {
+            try {
+                // TO-DO remove hard coded link and refactor urls to a class or object before use in traderSetup
+                const eventSource = new EventSource(`http://localhost:9000/trader/events/vision/${code}`)
+                let chosenByServer = false
+                const attemptReconnection = () => {
+                    setTimeout(() => {
+                        console.log('trying to connect to SSE again')
+                        ProjectStockVision.vision.connectServerSentEvents(code, true)
+                    }, 1000*60*0.5)
+                }
+                eventSource.addEventListener("message", (event) => {console.log(event.data)})
+                // TO-DO create retry logic when server is disconnected permanently
+                eventSource.addEventListener("error", (event) => {
+                    console.log('SSE error', event)
+                    eventSource.close()
+                    if (retry || chosenByServer === true) {
+                        attemptReconnection()
+                    }
+                })
+                eventSource.addEventListener("open", (event) => {
+                    chosenByServer = true
+                })
+                eventSource.addEventListener("update", (event) => {
+                    ProjectStockVision.visionStatusUpdateAll(event.data)
+                })
+                
+            } catch (error) {
+                
+            }
+        }
+
         /**
          * 
          * @param {MutationRecord[]} mutationArray 
@@ -2724,20 +3432,31 @@ class ProjectStockVision {
                 const targetValue =  Vision.decimalConvert(Vision.sanitizePrice(lastRecord.target.nodeValue))
                 const windowStockVision = window.idaStockVision
                 const priceStore = window.idaStockVision.priceStore
+                const currentPosition = priceStore.currentPosition[this.#code]
+                const settings = windowStockVision.settings[this.#code]
                 /** @type {CurrentPrice} */
                 const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
                 this.#mutationCurrentPrice = currentPrice
+                const positionPriceToCurrentPriceDelta = Vision.percentageDelta(currentPosition.price, currentPrice.price, true)
                 this.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, currentPrice, this.#tradingInterval)
                 if (inspectorTrigger === true) {
                     currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.REGULAR)
                 }
-                const confirmationLink = `${window.idaStockVision.notificationServerUrl}/trader/confirm?`
+                if (inspectorTrigger === false
+                    && Vision.PriceAnalysis.isTinyProfitPursuit(this.#code) 
+                    && currentPosition.position === Vision.PriceAnalysis.IN
+                    && currentPrice.price > currentPosition.price
+                    && (positionPriceToCurrentPriceDelta >= settings.profitThreshold || positionPriceToCurrentPriceDelta >= settings.profitChunkThreshold)
+                ) {
+                    currentPrice.flags.push(this.#tradingInterval, Vision.PriceAnalysis.TRADING_FLAGS.PRECISION)
+                }
+                let confirmationLink = new URL(`${window.idaStockVision.notificationServerUrl}/trader/confirm`)
                 const confirmationQueryParams = new URLSearchParams()
                 let entryPrice = windowStockVision.settings[this.#code].manualEntryPriceThreshold
                 let exitPrice = windowStockVision.settings[this.#code].manualExitPriceThreshold
                 const entryPercentageThreshold = windowStockVision.settings[this.#code].entryPercentageThreshold
                 const exitPercentageThreshold = windowStockVision.settings[this.#code].exitPercentageThreshold
-                const entryPrecisionThreshold = windowStockVision.settings[this.#code].entryPrecisionThreshold
+                let entryPrecisionThreshold = windowStockVision.settings[this.#code].entryPrecisionThreshold
                 let analysis, anchor
                 /** @type {number | string} */
                 let anchorPrice = ''
@@ -2747,38 +3466,50 @@ class ProjectStockVision {
                 let downwardVolatilityTrail = undefined
                 let exitByTradingEndTime = false
                 let shouldBeExitingByTradingEndTime = false
+                let isProfitChunkExit = false
                 const otherNotificationQueryParams = {}
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
                 if (autoEntryExitMode) {
-                    const currentPosition = priceStore.currentPosition[this.#code]
                     const peakValleyDetected = Vision.PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
                     this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
                     this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
+                    this.runTinyExitSetup()
                     if (Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval] !== undefined 
                         && 'flags' in currentPrice 
                         && !currentPrice.flags.includes(this.#tradingInterval)
                     ) {
                         return
                     }
-                    analysis = new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval)
-                    priceStore.analysis[this.#code] = analysis
+                    analysis = new WeakRef(new Vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, currentPosition, this.#isCrypto, entryPercentageThreshold, exitPercentageThreshold, this.#tradingInterval, this.#precisionInterval, this.#code))
+                    analysis = analysis.deref()
+                    if (analysis === undefined) {
+                        throw new Error('cannot get analysis object')
+                    }
+                    // priceStore.analysis[this.#code] = analysis
                     anchor = analysis.findAnchor()
                     downwardVolatilityTrail = analysis.downwardVolatility()
                     if (analysis.currentPositionOut) {
-                        shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate, true)
+                        shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
-                        entryPrice = !shouldBeExitingByTradingEndTime
+                        const maxTinyEntryPercentage = windowStockVision.settings[this.#code].maxTinyEntryPercentageThreshold
+                        const tinyHasPrecedingPeakFromAnchorValley = analysis.tinyHasPrecedingPeakFromAnchorValley(anchor)
+                        entryPrecisionThreshold = analysis.isRunAwayFromOpeningPrice ? maxTinyEntryPercentage - entryPercentageThreshold : entryPrecisionThreshold
+                        entryPrice = !shouldBeExitingByTradingEndTime && !tinyHasPrecedingPeakFromAnchorValley
                             ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                             : undefined
                     }
                     if (analysis.currentPositionIn) {
-                        exitByTradingEndTime = analysis.exitByTradingEndTime(this.#code, nowEpochDate)
-                        exitPrice = analysis.isCurrentPositionStuck || analysis.targetedProfitAcquired(this.#code) || analysis.targetedLossAcquired(this.#code) || exitByTradingEndTime
+                        exitByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate)
+                        const targetedProfitAcquired = analysis.targetedProfitAcquired(this.#code)
+                        const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code, now.getHours())
+                        const targetedLossAcquired = analysis.targetedLossAcquired(this.#code)
+                        isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
+                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime
                             ? currentPrice.price 
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
                     }
-                    priceStore.highestPeakAndLowestValleyToday[this.#code] = analysis.highestPeakAndLowestValleyToday
-                    priceStore.todaysPeakValleySnapshot[this.#code] = analysis.peakValleyToday
+                    // priceStore.highestPeakAndLowestValleyToday[this.#code] = [...analysis.highestPeakAndLowestValleyToday]
+                    priceStore.todaysPeakValleySnapshot[this.#code] = [...analysis.peakValleyToday]
                     anchorPrice = anchor !== undefined ? anchor.price : 'no-anchor'
                     // should be set after all flags have been possibly set
                     onlyPrecisionFlagExistsOnCurrentPrice = currentPrice.flags.includes(Vision.PriceAnalysis.TRADING_FLAGS.PRECISION) 
@@ -2792,15 +3523,27 @@ class ProjectStockVision {
                         notificationBody = notificationBody.concat(`Anchor Type: ${anchor.type} \r\n`)
                     }
                     notificationBody = window.idaStockVision.positionIn[this.#code] 
-                        ? notificationBody.concat(`Gross Profit(%): ${Vision.percentageDelta(currentPosition.price, currentPrice.price, true)} \r\n`)
+                        ? notificationBody.concat(`Gross Profit(%): ${isProfitChunkExit ? analysis.profitChunkPriceToCurrentPriceDelta : positionPriceToCurrentPriceDelta} \r\n`)
                         : notificationBody
                     notificationBody = analysis.isCurrentPositionStuck
                         ? notificationBody.concat(`Stuck: true \r\n`)
                         : notificationBody
                     notificationBody =  notificationBody.concat(`Downward volatility: ${downwardVolatilityTrail} \r\n`)
                     otherNotificationQueryParams.downwardVolatility = downwardVolatilityTrail === true
-                    otherNotificationQueryParams.immediateExecution = 
-                        exitByTradingEndTime === true && Vision.PriceAnalysis.profitPursuitType(this.#code) === Vision.PriceAnalysis.PROFIT_PURSUIT.TINY
+                    otherNotificationQueryParams.immediateExecution = exitByTradingEndTime === true
+                    if (isProfitChunkExit && exitByTradingEndTime === false) {
+                        const chunkConfirmationLink = new URL(`${window.idaStockVision.notificationServerUrl}/trader/confirm/profitChunk`)
+                        notificationBody =  notificationBody.concat(`Profit chunk: true \r\n`)
+                        otherNotificationQueryParams.profitChunk = {
+                            isValid: isProfitChunkExit,
+                            minDelta: analysis.profitChunkPriceToCurrentPriceDelta,
+                            links: {
+                                confirm: confirmationLink,
+                                chunkConfirm: chunkConfirmationLink
+                            }
+                        }
+                        confirmationLink = chunkConfirmationLink
+                    }
                 }
                 const stockRangeDecision = {
                     // No need for <= to logic since probability of exact match is very low
@@ -2829,15 +3572,16 @@ class ProjectStockVision {
                     // No need for equals to logic since probabiloty of exact match is very low
                     message = `[${this.#code}] SWAP IN AT ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     color = 'green'
-                    confirmationQueryParams.append('position', 'in')
-                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
+                    confirmationQueryParams.append('position', Vision.PriceAnalysis.ACTION.IN)
+                    confirmationLink.search = confirmationQueryParams.toString()
+                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink.toString()} \r\n`)
                     Vision.sendNotification(
                         this.#code, 
                         notificationBody, 
                         currentPrice.price, 
-                        'in', 
+                        Vision.PriceAnalysis.ACTION.IN, 
                         anchorPrice, 
-                        `${confirmationLink}${confirmationQueryParams.toString()}`,
+                        confirmationLink.toString(),
                         otherNotificationQueryParams
                     )
                     if (window.idaStockVision.positionIn[this.#code]) {
@@ -2848,15 +3592,20 @@ class ProjectStockVision {
                 if (exitPrice !== undefined && exitDecision) {
                     message = `[${this.#code}] SWAP OUT AT ${currentPrice.price}[${anchorPrice}] - ${nowDateFullString}`
                     color = 'orange'
-                    confirmationQueryParams.append('position', 'out')
-                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink}${confirmationQueryParams.toString()} \r\n`)
+                    confirmationQueryParams.append('position', Vision.PriceAnalysis.ACTION.OUT)
+                    confirmationLink.search = confirmationQueryParams.toString()
+                    notificationBody = notificationBody.concat(`Action Link: ${confirmationLink.toString()} \r\n`)
+                    if (isProfitChunkExit && otherNotificationQueryParams.profitChunk !== undefined) {
+                        otherNotificationQueryParams.profitChunk.links.confirm.search = confirmationLink.search
+                        otherNotificationQueryParams.profitChunk.links.chunkConfirm.search = confirmationLink.search
+                    }
                     Vision.sendNotification(
                         this.#code,
                         notificationBody,
                         currentPrice.price,
-                        'out',
+                        Vision.PriceAnalysis.ACTION.OUT,
                         anchorPrice,
-                        `${confirmationLink}${confirmationQueryParams.toString()}`,
+                        confirmationLink.toString(),
                         otherNotificationQueryParams
                     )
                     if (!window.idaStockVision.positionIn[this.#code]) {
@@ -2884,6 +3633,7 @@ class ProjectStockVision {
      * @param {IntervalFlags | undefined} [tradingInterval] 
      * @param {IntervalFlags | undefined} [precisionInterval]
      * @param {boolean} [isCrypto]
+     * @param {number | 'none'} [profitChunkThreshold]
      * @returns {string}
      */
     static visionLarge(
@@ -2896,7 +3646,8 @@ class ProjectStockVision {
         lossThreshold,
         tradingInterval,
         precisionInterval,
-        isCrypto = false
+        isCrypto = false,
+        profitChunkThreshold
     ) {
         const codeFormatted = code.toUpperCase()
         try {
@@ -2912,6 +3663,11 @@ class ProjectStockVision {
             window.idaStockVision.settings[codeFormatted].profitThreshold = profitThreshold
             window.idaStockVision.settings[codeFormatted].lossThreshold = lossThreshold
             window.idaStockVision.settings[codeFormatted].entryMultiplier = entryMultiplierThreshold
+            window.idaStockVision.settings[codeFormatted].profitChunkThreshold = profitChunkThreshold 
+                ? profitChunkThreshold !== 'none'
+                    ? profitChunkThreshold
+                    : undefined
+                : ProjectStockVision.vision.calculateProfitChunk(profitThreshold)
 
             visionInstance.watch()
 
@@ -2936,12 +3692,13 @@ class ProjectStockVision {
      * @returns {string}
      */
     static visionSmall(code, entry, exit, entryMultiplier, experiment = false, profit, tradingInterval = '4hour', precisionInterval = '5min') {
-        return ProjectStockVision.visionLarge(`${code}_short`, entry, exit, entryMultiplier, experiment, profit, undefined, tradingInterval, precisionInterval)
+        return ProjectStockVision.visionLarge(`${code}_small`, entry, exit, entryMultiplier, experiment, profit, undefined, tradingInterval, precisionInterval)
     }
 
     /**
      * 
      * @param {string} code 
+     * @param {number} [tinyObservedDailyProfitWindow]
      * @param {number} [entry]
      * @param {number} [exit] 
      * @param {boolean} [experiment] 
@@ -2949,10 +3706,22 @@ class ProjectStockVision {
      * @param {number} [loss] 
      * @param {IntervalFlags} [tradingInterval]
      * @param {IntervalFlags} [precisionInterval]
+     * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionTiny(code, entry = 0.2, exit = 0.2, experiment = false, profit = 0.3, loss = 0.3, tradingInterval = '15min', precisionInterval) {
-        return ProjectStockVision.visionLarge(`${code}_tiny`, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval)
+    static visionTiny(code, tinyObservedDailyProfitWindow, entry = 0.85, exit = 0.4, experiment = false, profit = 0.96, loss = 0.5, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+        const codeFormatted = String(`${code}_tiny`).toUpperCase()
+        const output = ProjectStockVision.visionLarge(codeFormatted, entry, exit, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
+        const idaStockVision = window.idaStockVision
+        if (!(codeFormatted in idaStockVision.settings)) {
+            throw new Error(`settings not found for ${codeFormatted}. Please destroy and restart`)
+        }
+        
+        idaStockVision.settings[codeFormatted].tinyObservedDailyProfitWindow = tinyObservedDailyProfitWindow !== undefined 
+            ? tinyObservedDailyProfitWindow
+            : idaStockVision.settings[codeFormatted].tinyObservedDailyProfitWindow
+        
+        return output
     }
 
     /**
@@ -2990,6 +3759,12 @@ class ProjectStockVision {
         broadcastChannel.postMessage(isEndOfDay)
         broadcastChannel.close()
     }
+
+    static visionStatusUpdateAll(code = 'all') {
+        const broadcastChannel = new BroadcastChannel(ProjectStockVision.vision.PriceAnalysis.EVENT_NAMES.statusUpdate)
+        broadcastChannel.postMessage(code)
+        broadcastChannel.close()
+    }
 }
 
 class StockVisionTrade {
@@ -3006,22 +3781,33 @@ class StockVisionTrade {
 
     constructor() {}
 
+    static sectors =  {
+        IT: 'it',
+        AUTO: 'auto',
+        HEALTH: 'health',
+        ENERGY: 'energy',
+        STAPLE: 'staple',
+        INDUSTRIAL: 'industrial',
+        FINANCE: 'finance',
+        TELECOM: 'telecom',
+        UTILITIES: 'utilities',
+        TRANSPORTATION: 'transportation',
+    }
+
+    /**
+     * @type {Readonly<{[key: string]: number;}>}
+     */
+    static currencies = {
+        CAD: 1,
+        USD: 2
+    }
+
     static questradeTradeProcess = () => {
         // access token is needed in the request header
         // use scope to find access token in sessionStorage. access token gets updated frequently
         // request headers can be flaky so make sure you are sending exactly what they are looking for
         // you will get a new orderId when you modify an existing order and the previoud orderId becomes a rootOrderId
-        const securityIds = [ 
-            {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO"},
-            {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO"},
-            {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO"},
-            {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO"},
-            {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO"},
-            {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO"},
-            {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO"},
-            {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO"},
-            {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO"},
-        ]
+        
 
         const submit = {
             requestType: 'post',
@@ -3379,7 +4165,7 @@ class StockVisionTrade {
         }
 
         const orders = {
-            fetch: (accessToken, fromDateISO) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=20&sort-by=-createdDateTime`, {
+            fetch: (accessToken, fromDateISO) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=100&sort-by=-createdDateTime`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
@@ -3738,11 +4524,11 @@ class StockVisionTrade {
         }
 
         const searchStockCode = {
-            fetch: () => fetch("https://api.questrade.com/v1/securities?pattern=nvda&have-options=false&limit=8", {
+            fetch: (accessToken,pattern) => fetch(`https://api.questrade.com/v1/securities?pattern=${pattern}&have-options=false&limit=8`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
-                    "authorization": "Bearer aSeS7Dva9ZKG7E5qBy5Gr4Dal0txbQUgZ7XBOuSR2kuAS0404OmFrNqPa3BaEKk39G20DfBEMDbtyQuMk9O7EA",
+                    "authorization": `Bearer ${accessToken}`,
                     "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
                     "sec-ch-ua-mobile": "?0",
                     "sec-ch-ua-platform": "\"Windows\"",
@@ -3755,15 +4541,19 @@ class StockVisionTrade {
                 "method": "GET",
                 "mode": "cors",
                 "credentials": "include"
-            }).then((data) => {return data.json()}).then((data) => {console.log(data)})
+            })
         }
 
         const getMarketData = {
-            fetch: () => fetch("https://api.questrade.com/v1/market-data/update?symbols=515c3938-2281-4122-0285-869320320824&symbols=1f2c511b-0b83-4f92-0dac-66503e9d0a9d&symbols=7502295d-2255-4592-0ada-a6911f5a1d9b&symbols=67063f4c-2e03-4772-014c-37523481047d&symbols=0d45156a-12a3-4d32-0454-c4943e440535&symbols=1921123f-154c-4962-0c4e-6697040c446f&symbols=0b022952-501c-4b12-0b03-0892834b1012&symbols=22187e06-039b-4272-0001-039849600070", {
+            statusCode: 200,
+            failureStatusCode: 400,
+            // you can set multiple (symbols) query parameters to get results for multiple securities all at once
+            // make sense to get one at a time by default as prices can change drastically between sequential processing
+            fetch: (accessToken,securityId) => fetch(`https://api.questrade.com/v1/market-data/update?symbols=${securityId}`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
-                    "authorization": "Bearer aSeS7Dva9ZKG7E5qBy5Gr4Dal0txbQUgZ7XBOuSR2kuAS0404OmFrNqPa3BaEKk39G20DfBEMDbtyQuMk9O7EA",   
+                    "authorization": `Bearer ${accessToken}`,   
                     "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
                     "sec-ch-ua-mobile": "?0",
                     "sec-ch-ua-platform": "\"Windows\"",
@@ -3776,12 +4566,68 @@ class StockVisionTrade {
                 "method": "GET",
                 "mode": "cors",
                 "credentials": "include"
-            }).then((data) => {return data.json()}).then((data) => {console.log(data)})
+            }),
+            response: [
+                {
+                    "securityUuid": "74591a1c-134a-4412-07e5-a4970f270e14",
+                    "symbol": "CEGS.TO",
+                    "currency": "CAD",
+                    "lastPrice": 19.44,
+                    "priceChangeAmount": -1.22,
+                    "priceChangePercent": -0.059051,
+                    "bidPrice": 18.97,
+                    "bidSize": 5,
+                    "askPrice": 19.08,
+                    "askSize": 5,
+                    "midPrice": 19.025,
+                    "dailyHighPrice": 19.44,
+                    "dailyLowPrice": 18.99,
+                    "volume": 3892,
+                    "isRealtime": true,
+                    "afterHourLastPrice": 19.44,
+                    "afterHourPriceChangeAmount": null,
+                    "afterHourPriceChangePercent": null,
+                    "snapDateTime": "2026-03-31T13:32:51Z",
+                    "exchangeStatus": "Open",
+                    "lastTrade": "2026-03-31T13:31:27Z",
+                    "openPrice": 19.09
+                },
+            ]
+        }
+
+        const cancelOrder = {
+            response: null,
+            failureResponse: {
+                "resource": "orderEntry",
+                "message": "This order has already been cancelled",
+                "code": "400",
+                "timestamp": "2026-04-21T23:25:57.691Z"
+            },
+            statusCode: 204,
+            failureStatusCode: 400,
+            fetch: (accessToken,orderId) => fetch(`https://api.questrade.com/v1/order-entry/${orderId}`, {
+                "headers": {
+                    "accept": "application/json, text/plain, */*",
+                    "accept-language": "en-US,en;q=0.9",
+                    "authorization": `Bearer ${accessToken}`,
+                    "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": "\"macOS\"",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-site"
+                },
+                "referrer": "https://myportal.questrade.com/",
+                "body": null,
+                "method": "DELETE",
+                "mode": "cors",
+                "credentials": "include"
+            })
         }
 
         const scopeToFindAccessToken = "openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read"
 
-        return {submit,modify,balance,orders,scopeToFindAccessToken}
+        return {submit,modify,balance,orders,cancelOrder,getMarketData,searchStockCode,scopeToFindAccessToken}
 
     }
 
@@ -4076,6 +4922,7 @@ class StockVisionTrade {
             // Make sure the element(s) are not triggering network events to not crash the browser eg menu buttons, page scroll, etc
             firstElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
             secondElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
+            sideMenuBackdrop: () => document.querySelector('shell-root').querySelector('shell-sidebar .sidebar-backdrop'),
             trade: {
                 buy: 'Buy',
                 sell: 'Sell',
@@ -4093,8 +4940,63 @@ class StockVisionTrade {
                 }
             },
             tradeProcess: this.questradeTradeProcess(),
+            securityIds: [
+                {securityUuid: "70362c18-013e-4022-04fd-19826d640f2c", symbol: "SMCI.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "515c3938-2281-4122-0285-869320320824", symbol: "NVDA.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "15203112-167e-4502-01ec-9e4294810e0d", symbol: "TSLA.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "2a101833-8e5a-4a92-072a-00921187129b", symbol: "INTC.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "9f4c3d4e-1f26-4f72-0825-639e57381274", symbol: "CSCO.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "0f1e8ea0-0878-4f02-0b86-0b1c946b0807", symbol: "AMZN.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "0e190f77-0a1b-4e02-0a47-8f9f976a1406", symbol: "AAPL.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "7b13479e-0991-4b22-00f6-2d5761600f27", symbol: "MU.TO", sector: this.sectors.IT, currency: "CAD"},
+                {securityUuid: "5e200780-1613-4e32-0997-8b946d591936", symbol: "PFE.TO", sector: this.sectors.HEALTH, currency: "CAD"},
+                {securityUuid: "241f5446-0d09-4482-00ed-a79a5f500e8c", symbol: "LLY.TO", sector: this.sectors.HEALTH, currency: "CAD"},
+                {securityUuid: "439a2953-0d8d-4322-0cb2-770f5d5c0b23", symbol: "F.TO", sector: this.sectors.AUTO, currency: "CAD"},
+                {securityUuid: "12910d3f-164a-4202-0964-97986c590605", symbol: "GEV.TO", sector: this.sectors.INDUSTRIAL, currency: "CAD"},
+                {securityUuid: "5d012344-69a4-4d72-02bb-252ca1520b7a", symbol: "VZ.TO", sector: this.sectors.TELECOM, currency: "CAD"},
+                {securityUuid: "2d171b36-1c8a-4d92-0d5f-08958d5d059e", symbol: "XOM.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "054d0f5c-1e0a-4512-0c24-3482a94c0215", symbol: "ENB.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "2727298f-0689-4782-0cd6-3f283c5c1d87", symbol: "OXY.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "28121091-1785-4832-0868-d39088581639", symbol: "CHEV.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO", sector: this.sectors.STAPLE, currency: "CAD"},
+                {securityUuid: "22302c83-3b3a-4222-0ea7-8895575e0a26", symbol: "WMT.TO", sector: this.sectors.STAPLE, currency: "CAD"},
+                {securityUuid: "10210935-170f-4012-09d4-32a494591d15", symbol: "PG.TO", sector: this.sectors.STAPLE, currency: "CAD"},
+                {securityUuid: "2a29270e-0834-4a42-0b17-5087796b0146", symbol: "VISA.TO", sector: this.sectors.FINANCE, currency: "CAD"},
+                {securityUuid: "6f571411-05be-4f32-0275-89925c220734", symbol: "MA.TO", sector: this.sectors.FINANCE, currency: "CAD"},
+                {securityUuid: "231e5345-5e4f-4302-08ca-a4990d880c0b", symbol: "JNJ.TO", sector: this.sectors.HEALTH, currency: "CAD"},
+                {securityUuid: "74591a1c-134a-4412-07e5-a4970f270e14", symbol: "CEGS.TO", sector: this.sectors.UTILITIES, currency: "CAD"},
+                {securityUuid: "a5813b4d-2458-4582-0732-14137e670383", symbol: "UNP.TO", sector: this.sectors.TRANSPORTATION, currency: "CAD"},
+                // USD
+                {securityUuid: "14246129-1360-4452-09b0-2185a5591b51", symbol: "SMCI", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "1f2c511b-0b83-4f92-0dac-66503e9d0a9d", symbol: "NVDA", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "2a213c25-2d57-4a22-096c-2b617d89062d", symbol: "TSLA", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "681b2b44-1859-4882-02ff-0d667062cf8e", symbol: "INTC", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "15540005-182f-4582-02a3-91a02e521a82", symbol: "CSCO", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "011f0a2d-0a0f-4152-0f5e-188a070f455f", symbol: "AMZN", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "5a380a4e-1e94-4a32-0c8b-0c79af4c183a", symbol: "AAPL", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "2c064146-109f-4c92-0bc9-1980205b1c98", symbol: "MU", sector: this.sectors.IT, currency: "USD"},
+                {securityUuid: "411b118c-003b-4132-01b8-078a07412b39", symbol: "PFE", sector: this.sectors.HEALTH, currency: "USD"},
+                {securityUuid: "02261f37-070e-4282-08bf-1f627a48bb8e", symbol: "LLY", sector: this.sectors.HEALTH, currency: "USD"},
+                {securityUuid: "541a8d63-1d2d-4462-04e9-7e9902140e68", symbol: "F", sector: this.sectors.AUTO, currency: "USD"},
+                {securityUuid: "7b0e1026-8a46-4b92-084a-4da02468049b", symbol: "GEV", sector: this.sectors.INDUSTRIAL, currency: "USD"},
+                {securityUuid: "6c2c0371-172f-4c02-0368-62969f435609", symbol: "VZ", sector: this.sectors.TELECOM, currency: "USD"},
+                {securityUuid: "3015025f-1789-4002-0849-91973d080408", symbol: "XOM", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "03221f0b-305d-4342-0d67-3783ae4d0646", symbol: "ENB", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "4737304c-0c30-4792-006f-1d55ae60669e", symbol: "OXY", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "0d0b223f-668d-4d82-09bb-1f1374591b8a", symbol: "CVX", sector: this.sectors.ENERGY, currency: "USD"},
+                {securityUuid: "0f482004-0177-4f72-03b0-1e9b99531b71", symbol: "COST", sector: this.sectors.STAPLE, currency: "USD"},
+                {securityUuid: "011d3e46-5f46-4172-0aca-978e177a1c7b", symbol: "WMT", sector: this.sectors.STAPLE, currency: "USD"},
+                {securityUuid: "1c370211-1e51-4c42-040c-a9652d84004d", symbol: "PG", sector: this.sectors.STAPLE, currency: "USD"},
+                {securityUuid: "1e12101d-163e-4e12-0d04-678e0f5d6015", symbol: "V", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "5b1f17ae-3923-4b62-0247-0a948b520466", symbol: "MA", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "432a503b-16e5-4332-08fc-095046881f3d", symbol: "IBKR", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "50070502-1d4a-4052-036a-06821e03065b", symbol: "NDAQ", sector: this.sectors.FINANCE, currency: "USD"},
+                {securityUuid: "16280c20-0447-46a2-035f-1d33276375ae", symbol: "JNJ", sector: this.sectors.HEALTH, currency: "USD"},
+                {securityUuid: "7e3a3b11-0204-4e22-0fbd-949b2a5f1b2c", symbol: "CEG", sector: this.sectors.UTILITIES, currency: "USD"},
+                {securityUuid: "13270d2c-1fa3-4322-0ca4-35880c5c6a25", symbol: "UNP", sector: this.sectors.TRANSPORTATION, currency: "USD"},
+            ]
         },
-        ibkr: {}
+        ibkr: {},
     }
 
     /**
@@ -4106,7 +5008,7 @@ class StockVisionTrade {
         const host = location.host.includes('questrade') ? 'questrade' : 'ibkr'
         const storage = localStorage.getItem(this.constants.localStorageName) !== null 
             ? JSON.parse(localStorage.getItem(this.constants.localStorageName)) 
-            : undefined
+            : {}
         storage.brokerage = {
             name: host,
         }
@@ -4116,27 +5018,33 @@ class StockVisionTrade {
 
     /**
      * 
-     * @param {{[key: string]: {securityId: string; capital: number}}[]} securities 
+     * @param {{securityUuid: string; symbol: string; sector: string;}[]} securities 
      * @param {string} accountId 
+     * @param {boolean} cashAccount
      */
-    static defaultBrokerageVariables = (securities, accountId) => {
-        // securityIds, capital, accountId
+    static defaultBrokerageVariables = (securities, accountId, cashAccount = false) => {
+        /** @type {SVisionTrade} */
         const storage = localStorage.getItem(this.constants.localStorageName) !== null 
             ? JSON.parse(localStorage.getItem(this.constants.localStorageName)) 
             : {}
         if (accountId) {
-            storage.accountId = accountId
+            storage.accounts = storage.accounts || {}
+            storage.accounts[cashAccount ? 'cash' : 'rsp'] = {id: accountId}
         }
         if (securities) {
-            const allSecurityInfoNotDefine = Object.values(securities).some((security) => !security.securityId || !security.capital)
+            storage.securities = storage.securities || {}
+            const allSecurityInfoNotDefine = securities.some((security) => !security.securityUuid)
             if (allSecurityInfoNotDefine) {
                 throw new Error('define all security information')
             }
-            const entries =  Object.entries(securities).map(i => {
-                i[0] = i[0].toUpperCase()
-                return i
-            })
-            storage.securities = Object.fromEntries(entries)
+            const entries =  securities.reduce((previous, current) => {
+                previous[current.symbol.split('.TO')[0].toUpperCase()] = {
+                    securityId: current.securityUuid,
+                    sector: current.sector
+                }
+                return previous
+            }, {})
+            storage.securities = {...storage.securities, ...entries}
         }
 
         this.storeBrokerageVariables(storage)
@@ -4154,6 +5062,7 @@ class StockVisionTrade {
         storage.orderHistory = idaStockVisionTrade.orderHistory
         storage.codes = idaStockVisionTrade.codes
         storage.securities = idaStockVisionTrade.securities
+        storage.featureFlags = idaStockVisionTrade.featureFlags
 
         this.storeBrokerageVariables(storage)
     }
@@ -4162,13 +5071,20 @@ class StockVisionTrade {
      * 
      * @param {string} code 
      * @param {number} capital 
+     * @param {boolean} isUSD
+     * @param {boolean} cashAccount
      * @param {number} highRiskThreshold 
+     * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, highRiskThreshold = 0.5) => {
+    static setCodeSettings = (code, capital = 5000, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
+        const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyProfitPursuit(code)
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
-            highRiskThreshold
+            highRiskThreshold: isTinyCode ? 1 : highRiskThreshold,
+            chunkSellThreshold: isTinyCode ? 1 : chunkSellThreshold,
+            accountName: cashAccount === true ? 'cash' : undefined,
+            currency: isUSD === true ? this.currencies.USD : undefined
         }
 
         this.backUp()
@@ -4176,10 +5092,10 @@ class StockVisionTrade {
 
     /**
      * 
-     * @param {string} brokerage 
+     * @param {SVisionTrade['brokerage']['name']} brokerage 
      * @returns {string | undefined}
      */
-    static getAccessToken = (brokerage) => {
+    static getAccessToken = (brokerage = window.idaStockVisionTrade?.brokerage.name) => {
         let accessToken = undefined
         switch(brokerage) {
             case 'questrade':
@@ -4228,6 +5144,7 @@ class StockVisionTrade {
             const idaStockVisionTrade = window.idaStockVisionTrade
             const brokerageName = idaStockVisionTrade.brokerage.name
             idaStockVisionTrade.keepAwakeInstances = this.keepAwake(this.constants[brokerageName].firstElement(), this.constants[brokerageName].secondElement())
+            this.constants[brokerageName].sideMenuBackdrop()?.setAttribute('style','opacity:0')
             const intervalCallback = async () => {
                 try {
                     if (idaStockVisionTrade.pollServerInProgress) {
@@ -4273,6 +5190,47 @@ class StockVisionTrade {
         }
     }
 
+    static connectServerSentEvents(brokerageName, retry = false) {
+        try {
+            const idaStockVisionTrade = window.idaStockVisionTrade
+            // TO-DO remove hard coded link and refactor urls to a class or object before use in traderSetup
+            const eventSource = new EventSource(`${this.constants.localServer.serverUrl}/trader/events/trade/${brokerageName}`)
+            let isConnected = false
+            const attemptReconnection = () => {
+                setTimeout(() => {
+                    console.log('trying to connect to SSE again')
+                    this.connectServerSentEvents(brokerageName, true)
+                }, 1000*60*0.5)
+            }
+            eventSource.addEventListener("message", (event) => {console.log(event.data)})
+            // TO-DO create retry logic when server is disconnected permanently
+            eventSource.addEventListener("error", (event) => {
+                console.log('SSE error', event)
+                eventSource.close()
+                if (retry || isConnected) {
+                    attemptReconnection()
+                }
+            })
+            eventSource.addEventListener("open", (event) => {
+                isConnected = true
+                idaStockVisionTrade.eventSourceInstance = eventSource
+            })
+            eventSource.addEventListener("order", (event) => {
+                /** @type {TradeCheckResponse} */
+                const orders = JSON.parse(event.data)
+                if (Array.isArray(orders) && orders.length > 0) {
+                    window.idaStockVisionTrade.orders.push(...orders)
+                    this.backUp()
+                    this.processOrderQueue()
+                    return
+                }
+            })
+            
+        } catch (error) {
+            console.log('Trade - CONNECT SERVER SENT EVENTS', error)
+        }
+    }
+
     static stopPollLocalServer = () => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const [first, second] = idaStockVisionTrade.keepAwakeInstances
@@ -4284,52 +5242,44 @@ class StockVisionTrade {
      * 
      * @param {string|number} price 
      * @param {number} capitalAmount 
+     * @param {boolean} limitToCapital helps us stay under capital amount and not over when needed
      * @returns {number}
      */
-    static sharesAmount = (price, capitalAmount) => {
-        return Math.ceil(capitalAmount / Number(price))
+    static sharesAmount = (price, capitalAmount, limitToCapital = false) => {
+        const result = capitalAmount / Number(price)
+        if (limitToCapital) {
+            return Math.floor(result)
+        }
+
+        return Math.ceil(result)
     }
     
     /**
      * 
      * @param {string} primaryCode 
+     * @param {SVisionTrade['brokerage']['name']} brokerageName 
      * @returns {Promise<Response>} 
      */
-    static priceCheck = (primaryCode) => {
-        const payload = new URLSearchParams()
-        payload.set('primaryCode', primaryCode)
-        return fetch(`${this.constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
-            method: 'GET',
-            mode: 'cors',
-        })
+    static priceCheck = (primaryCode, brokerageName) => {
+        // const payload = new URLSearchParams()
+        // payload.set('primaryCode', primaryCode)
+        // return fetch(`${this.constants.localServer.serverUrl}/trader/priceCheck?${payload.toString()}`, {
+        //     method: 'GET',
+        //     mode: 'cors',
+        // })
+
+        const securityId = window.idaStockVisionTrade.securities[primaryCode].securityId
+        const accessToken = this.getAccessToken(brokerageName)
+        return this.constants[brokerageName].tradeProcess.getMarketData.fetch(accessToken,securityId)
     }
+
+    static decimalPrecision = ProjectStockVision.vision.decimalPrecision
 
     /**
      * 
-     * @param {number|string} num 
-     * @param {number} decimalPlaces 
-     * @returns {number|string}
-     */
-    static decimalPrecision = (num, decimalPlaces = 2) => {
-        // this only work for normal currency numbers. really small numbers very close to 0 become zero or exponential eg 0.005 || 0.00000005
-        if (!['string', 'number'].includes(typeof num) || Number.isNaN(num)) {
-            return num
-        }
-        const numberString = num.toString()
-        const [first, second] = numberString.split('.')
-
-        if (second === undefined) {
-            return num
-        }
-        
-        return Number(`${first}.${second.substring(0, decimalPlaces)}`)
-    }
-
-    /**
-     * 
-     * @param {string} last 
-     * @param {string} bid 
-     * @param {string} ask 
+     * @param {string | number} last 
+     * @param {string | number} bid 
+     * @param {string | number} ask 
      * @param {TradeOrder} order
      * @returns {string|number}
      */
@@ -4343,14 +5293,22 @@ class StockVisionTrade {
         const askPrice = Number(ask)
         const parametersHasZero = [bidPrice, askPrice].some((price) => price === 0)
         if (lastPrice === 0) {
-            lastPrice = bidPrice
+            switch(order.position) {
+                case ProjectStockVision.vision.PriceAnalysis.IN:
+                    lastPrice = bidPrice
+                    break
+                case ProjectStockVision.vision.PriceAnalysis.OUT:
+                    lastPrice = askPrice
+                    break
+                default:
+            }
         }
         const lastPriceInMiddle = lastPrice >= bidPrice && lastPrice <= askPrice
         const midAskBidPrice = this.decimalPrecision((bidPrice + askPrice)/2)
         if (parametersHasZero) {
             throw new Error('zero value exists for at least one of the parameters (bidPrice, askPrice)')
         }
-        if (isTinyOrder) {
+        if (isTinyOrder && Boolean(this.feature.tinyPriceDecision)) {
             if (!order.position) {
                 return this.decimalPrecision(Math.max(askPrice,bidPrice))
             }
@@ -4367,12 +5325,12 @@ class StockVisionTrade {
     /**
      * 
      * @param {string} code 
-     * @returns {number | undefined}
+     * @returns {SVisionTrade["orderHistory"]["string"] | undefined}
      */
-    static getLatestOrderedQuantity = (code) => {
+    static getLatestOrderedHistory = (code) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         if (code in idaStockVisionTrade.orderHistory) {
-            return idaStockVisionTrade.orderHistory[code].quantity
+            return idaStockVisionTrade.orderHistory[code]
         }
 
         return
@@ -4419,7 +5377,9 @@ class StockVisionTrade {
         orders
             .filter((order) => order.position === false && Date.parse(order.timeSubmitted) > fromDateEpoch && (specificCodes.length === 0 || specificCodesUppercase.includes(order.code)))
             .forEach((order) => {
-                const entryOrder = orders.filter(i => i.code === order.code && Date.parse(i.timeSubmitted) < Date.parse(order.timeSubmitted)).at(-1)
+                const entryOrder = orders
+                    .filter(i => i.code === order.code && i.position === true && Date.parse(i.timeSubmitted) < Date.parse(order.timeSubmitted))
+                    .at(-1)
                 if (!entryOrder) {
                     return
                 }
@@ -4429,10 +5389,17 @@ class StockVisionTrade {
                 const exitIncome = exitPrice * order.quantity
                 const percentageDifference = ((exitPrice - entryPrice)/entryPrice) * 100
                 const profitLoss = exitIncome - entryCost
-                const date = new Date(order.timeSubmitted)
-                const dateDisplay = 
-                    `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${date.getMinutes()}`
+                // to handle both past and present data structure
+                const entryDate = new Date(entryOrder['ts'] || entryOrder.snapDateTime)
+                const entryDateDisplay = 
+                    `${entryDate.getDate()}/${entryDate.getMonth() + 1} ${entryDate.getHours()}:${entryDate.getMinutes()}`
+                const exitDate = new Date(order['ts'] || order.snapDateTime)
+                const exitDateDisplay = 
+                    `${exitDate.getDate()}/${exitDate.getMonth() + 1} ${exitDate.getHours()}:${exitDate.getMinutes()}`
                 const capitalUtilization = entryOrder.downwardVolatility ? 'half' : 'full'
+                const profitCapture = order.profitChunk && order.profitChunk.isValid && order.profitChunk.quantityRemaining > 0 
+                    ? 'chunk' 
+                    : 'total'
 
                 profitLossAmount += profitLoss
                 profitLossPercentage += percentageDifference
@@ -4440,8 +5407,10 @@ class StockVisionTrade {
                     `${percentageDifference.toFixed(2)}%`,
                     profitLoss.toFixed(2),
                     order.code,
-                    dateDisplay,
-                    capitalUtilization
+                    entryDateDisplay,
+                    exitDateDisplay,
+                    capitalUtilization,
+                    profitCapture
                 ])
             })
         
@@ -4471,6 +5440,100 @@ class StockVisionTrade {
         return
     }
 
+    /**
+     * 
+     * @param {string} code 
+     * @returns {string}
+     */
+    static getAccountId(code) {
+        const codeUpperCase = code.toUpperCase()
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const accountName = idaStockVisionTrade.codes[codeUpperCase]?.accountName
+        if (accountName !== undefined) {
+            return idaStockVisionTrade.accounts[accountName].id
+        }
+
+        return idaStockVisionTrade.accounts['rsp'].id
+    }
+
+    static get feature() {
+        return window.idaStockVisionTrade.featureFlags
+    }
+
+    static get unexecutedOrders() {
+        return window.idaStockVisionTrade.orders.filter(order => !order.executed)
+    }
+
+    static get todaysOrders() {
+        const today = new Date()
+        today.setHours(0,0,0,0)
+        return window.idaStockVisionTrade.orders.filter(order => Date.parse(order.timeSubmitted) >= today.getTime())
+    }
+
+    static get todaysCodes() {
+        return this.todaysOrders.reduce((previous,current) => previous.add(current.code), new Set())
+    }
+
+    static get ordersTodayWithZeroLastPrice() {
+        return this.todaysOrders.filter(order => Number(order.lastPrice) === 0)
+    }
+
+    /**
+     * 
+     * @param {string} name 
+     * @returns 
+     */
+    static toggleFeature(name) {
+        if (!(name in this.feature)) {
+            console.log(`feature does not exist`)
+            return
+        }
+
+        window.idaStockVisionTrade.featureFlags[name] = !this.feature[name]
+        this.backUp()
+        return window.idaStockVisionTrade.featureFlags[name]
+    }
+
+    /**
+     * 
+     * @param {number} numberOfStocks 
+     * @param {number} capitalPerStock 
+     * @param {number} reserve 
+     * @returns {number}
+     */
+    static workingCapital(numberOfStocks, capitalPerStock, reserve = 20) {
+        return numberOfStocks * ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(capitalPerStock, reserve)
+    }
+
+    /**
+     * 
+     * @param {number} totalCapital 
+     * @param {number} capitalPerStock 
+     * @param {number} reserve 
+     */
+    static capitalToAllocate(totalCapital, capitalPerStock, reserve = 20) {
+        const numberOfStocks = Math.floor(totalCapital / ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(capitalPerStock, reserve))
+        const reserves = Math.round(numberOfStocks * (capitalPerStock * reserve/100))
+        const leftOver = totalCapital - reserves - (numberOfStocks * capitalPerStock)
+        return {numberOfStocks, reserves, leftOver}
+    }
+
+    /**
+     * 
+     * @param {string} pattern 
+     * @param {SVisionTrade['brokerage']['name']} brokerage 
+     */
+    static async searchStock(pattern, brokerage = window.idaStockVisionTrade?.brokerage.name) {
+        try {
+            const res = await this.constants[brokerage].tradeProcess.searchStockCode.fetch(this.getAccessToken(), pattern)
+            const resFormatted = await res.json()
+            return Promise.resolve(resFormatted)
+        } catch (error) {
+            return Promise.reject(error)
+        }
+
+    }
+
     static processOrderQueue = async () => {
         //always store orders in localstorage as backup in case of forced logout
         const idaStockVisionTrade = window.idaStockVisionTrade
@@ -4486,26 +5549,55 @@ class StockVisionTrade {
             return 
         }
 
-        // sequential promise fulfliment as forEach doe not respect asyc/await
+        // sequential promise fulfliment as forEach does not respect asyc/await
         for(const order of orders) {
             try {
+                // tO-DO refactore to use pricecheck method
+                let accessToken = this.getAccessToken(brokerageName)
+                const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
+                /** @type Response */
+                const quoteRes = await this.constants[brokerageName].tradeProcess.getMarketData.fetch(accessToken,securityId)
+                /** @type QuestradeQuoteResponse[] */
+                const quoteResFormatted = await quoteRes.json()
+                if (!quoteRes.ok || Array.isArray(quoteResFormatted) && quoteResFormatted.length === 0) {
+                    const resText = await quoteRes.text()
+                    throw new Error(`cannot retrieve price - ${order.code} - ${resText}`)
+                }
+                Object.assign(order, quoteResFormatted[0])
                 const action = order.position === true ? this.constants[brokerageName].trade.buy : this.constants[brokerageName].trade.sell
-                const price = this.priceDecision(order.last, order.bid_price, order.ask_price, order)
+                let price = this.priceDecision(order.lastPrice, order.bidPrice, order.askPrice, order)
+                const codeSettings = idaStockVisionTrade.codes[order.code]
                 const defaultCapital = idaStockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
-                const quantity = order.position === true 
-                    ? this.sharesAmount(price, realCapital) 
-                    : this.getLatestOrderedQuantity(order.code)
-                const securityId = idaStockVisionTrade.securities[order.primaryCode].securityId
-                if (quantity === undefined) {
+                let quantity = order.position === true 
+                    ? this.sharesAmount(price, realCapital, codeSettings.currency === this.currencies.USD) 
+                    : this.getLatestOrderedHistory(order.code).quantity
+                let quantityToRecord = quantity
+                const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
+                if (quantity === undefined || quantity === 0) {
                     throw new Error(`no quantity to process order - ${order.code}`)
                 }
                 if (securityId === undefined) {
                     throw new Error(`no security Id to process order - ${order.code}`)
                 }
-                const accountId = idaStockVisionTrade.accountId
-                const accessToken = this.getAccessToken(brokerageName)
+                if (isProfitChunkSell) {
+                    const orderedHistory = this.getLatestOrderedHistory(order.code)
+                    const visionPriceDeltaReached = ProjectStockVision.vision.percentageDelta(Number(orderedHistory.price), Number(price), true) >= order.profitChunk.minDelta
+                    const quantityToSell = Math.ceil(orderedHistory.quantity * idaStockVisionTrade.codes[order.code].chunkSellThreshold)
+                    order.profitChunk.quantityRemaining = quantity - quantityToSell
+                    quantity = quantityToSell
+                    quantityToRecord = order.profitChunk.quantityRemaining
+                    if (!visionPriceDeltaReached) {
+                        price = this.decimalPrecision(ProjectStockVision.vision.PriceAnalysis.percentageFinalAmount(Number(orderedHistory.price), order.profitChunk.minDelta))
+                    }
+                    if (quantityToRecord === 0) {
+                        // swap out url pathname for regular confirm endpoint
+                        order.confirmationLink = order.profitChunk.links.confirm
+                    }
+                }
+                const accountId = this.getAccountId(order.code)
+                accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
                 const res = await this.constants[brokerageName].tradeProcess.submit.fetch(accessToken,securityId,accountId,action,quantity,price)
                 /** @type {QuestradeSubmitResponse} */
@@ -4522,11 +5614,14 @@ class StockVisionTrade {
                     order.executed = false
                     order.modify = false
                     order.partialExecution = false
+                    order.accountId = accountId 
                     if (order.position === false) {
+                        /* in the case of profit chunk orders, this will also create a chain link that can be navigated whenever
+                        eg in -> profit-out -> profit-out -> out */
                         order.entryOrderId = idaStockVisionTrade.orderHistory[order.code]?.orderId
                     }
                     idaStockVisionTrade.orderHistory[order.code] = {
-                        quantity,
+                        quantity: quantityToRecord,
                         orderId: order.orderId,
                         price: undefined, // will be defined on execution status
                     }
@@ -4586,7 +5681,7 @@ class StockVisionTrade {
         
         try {
             let orderToModifyExist = false
-            const fromDateISO = orders.at(0).timeSubmitted
+            const fromDateISO = new Date(orders.at(0).snapDateTime).toISOString()
             const brokerageName = idaStockVisionTrade.brokerage.name
             const orderStatuses = this.constants[brokerageName].trade.orderStatus
             const accessToken = this.getAccessToken(brokerageName)
@@ -4609,6 +5704,7 @@ class StockVisionTrade {
                     const priceGap = order.position 
                         ? ProjectStockVision.vision.percentageDelta(Number(order.priceSubmittedHistory[0]), Number(order.priceSubmitted), true)
                         : undefined
+                    order.statusUpdatedTime = orderFromBrokerage.updatedDateTime
                     switch(orderFromBrokerage.status) {
                         case orderStatuses.executed:
                             order.executed = true
@@ -4627,7 +5723,7 @@ class StockVisionTrade {
                         case orderStatuses.pending:
                         case orderStatuses.queued:
                         case orderStatuses.activated:
-                            const isTinyCode = order.code.includes('_TINY') && !order.immediateExecution
+                            const isTinyCode = order.code.includes('_TINY') && !order.position && Boolean(this.feature.tinySlowSpeed) && !order.immediateExecution
                             const localModifyThreshold = isTinyCode ? (60/5) * 60 : this.constants.modifyThreshold
                             if (order.checkCount >= localModifyThreshold) {
                                 order.modify = true
@@ -4666,9 +5762,12 @@ class StockVisionTrade {
      * @param {number | undefined} sharesQuantity 
      * @param {number | undefined} priceGap 
      */
-    static confirmOrderWithLink = (link, sharesQuantity, priceGap) => {
+    static confirmOrderWithLink = async (link, sharesQuantity, priceGap) => {
         try {
             const url = new URL(link)
+            const code = url.searchParams.has('code') 
+                ? ProjectStockVision.vision.PriceAnalysis.primaryCode(url.searchParams.get('code')) 
+                : undefined
             if (sharesQuantity !== undefined) {
                 url.searchParams.set('quantity', sharesQuantity.toString())
             }
@@ -4680,10 +5779,17 @@ class StockVisionTrade {
                 url.searchParams.set('price', adjustedPositionPrice.toString())
             }
 
-            fetch(`${url.toString()}`, {
+            await fetch(`${url.toString()}`, {
                 method: 'GET',
                 mode: 'cors',
             })
+            
+            if (code !== undefined) {
+                fetch(`${this.constants.localServer.serverUrl}/trader/notification/executed/${code}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                })
+            }
         } catch (error) {
             const errorMessage = ['Ida Trader Bot - CONFIRM ORDER WITH LINK', error.toString()]
             console.log(...errorMessage)
@@ -4713,17 +5819,20 @@ class StockVisionTrade {
 
         for(const order of orders) {
             try {
-                const newPricesResponse = await this.priceCheck(order.primaryCode)
-                /** @type {CboeQuoteResponse} */
+                const newPricesResponse = await this.priceCheck(order.primaryCode, brokerageName)
+                /** @type {QuestradeQuoteResponse[]} */
                 const newPriceJson = await newPricesResponse.json()
-                const newPrice = this.priceDecision(newPriceJson.last, newPriceJson.bid_price, newPriceJson.ask_price, order)
+                const newPrice = this.priceDecision(newPriceJson[0].lastPrice, newPriceJson[0].bidPrice, newPriceJson[0].askPrice, order)
+                const codeSettings = idaStockVisionTrade.codes[order.code]
                 const defaultCapital = idaStockVisionTrade.codes[order.code].capital
                 const lowRiskCapital = defaultCapital * idaStockVisionTrade.codes[order.code].highRiskThreshold
                 const realCapital = order.downwardVolatility ? lowRiskCapital : defaultCapital
+                const isProfitChunkSell = order.profitChunk !== undefined && order.profitChunk.isValid
                 const quantity = order.position === true 
-                    ? this.sharesAmount(newPrice, realCapital) 
-                    : this.getLatestOrderedQuantity(order.code)
-                if (quantity === undefined) {
+                    ? this.sharesAmount(newPrice, realCapital, codeSettings.currency === this.currencies.USD) 
+                    : order.quantity
+                let quantityToRecord = quantity
+                if (quantity === undefined || quantity === 0) {
                     order.accepted = true
                     order.executed = true
                     throw new Error(`MODIFY ORDERS - no quantity to process - ${order.code}`)
@@ -4733,9 +5842,13 @@ class StockVisionTrade {
                     order.modify = false
                     continue
                 }
+                if (isProfitChunkSell) {
+                    quantityToRecord = order.profitChunk.quantityRemaining
+                }
                 const accessToken = this.getAccessToken(brokerageName)
                 const now = new Date().toISOString()
-                const res = await this.constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, idaStockVisionTrade.accountId, quantity, newPrice)
+                const accountId = order.accountId
+                const res = await this.constants[brokerageName].tradeProcess.modify.fetch(accessToken, order.orderId, accountId, quantity, newPrice)
                 /** @type {QuestradeSubmitResponse} */
                 const formattedRes = await res.json()
                 if (this.constants[brokerageName].trade.orderId in formattedRes) {
@@ -4751,7 +5864,7 @@ class StockVisionTrade {
                     order.executed = false
                     order.modify = false
                     idaStockVisionTrade.orderHistory[order.code] = {
-                        quantity,
+                        quantity: quantityToRecord,
                         orderId: order.orderId,
                         price: undefined
                     }
@@ -4765,6 +5878,7 @@ class StockVisionTrade {
                 }
 
             } catch (error) {
+                order.modify = false
                 const errorMessage = ['Ida Trader Bot - MODIFY ORDER QUEUE', error.toString()]
                 console.log(...errorMessage)
                 this.notify(errorMessage.join('-'))
@@ -4772,6 +5886,31 @@ class StockVisionTrade {
         }
 
         idaStockVisionTrade.modifyOrderQueueInProgress = false
+    }
+
+    /**
+     * 
+     * @param {TradeOrder} order 
+     */
+    static cancelOrder = async (order) => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const brokerageName = idaStockVisionTrade.brokerage.name
+        const accessToken = this.getAccessToken(brokerageName)
+        try {
+            /** @type {Response} */
+            const res = await this.constants[brokerageName].tradeProcess.cancelOrder.fetch(accessToken, order.orderId)
+            if (!res.ok) {
+                const resText = await res.text()
+                // status code 404 & 400-ish isn't rejected in the fetch promise
+                throw new Error(resText)
+            }
+            this.fixBrokenOrder(order.orderId)
+            
+        } catch (error) {
+            const errorMessage = ['Ida Trader Bot - CANCEL ORDER', error.toString()]
+            console.log(...errorMessage)
+        }
+
     }
 
     static setUp = () => {
@@ -4786,9 +5925,14 @@ class StockVisionTrade {
                 pollServerInstance: undefined,
                 pollServerErrorCount: 0,
                 keepAwakeInstances: [],
+                eventSourceInstance: undefined,
                 orders: [],
                 orderHistory: {},
                 codes: {},
+                featureFlags: {
+                    tinySlowSpeed: true,
+                    tinyPriceDecision: true,
+                },
                 tools: {
                     start: StockVisionTrade.start,
                     stop: StockVisionTrade.stop,
@@ -4804,7 +5948,7 @@ class StockVisionTrade {
                     notify: StockVisionTrade.notify,
                     keepAwake: StockVisionTrade.keepAwake,
                     backUp: StockVisionTrade.backUp,
-                    prisetCodeSettingsceDecision: StockVisionTrade.setCodeSettings,
+                    setCodeSettings: StockVisionTrade.setCodeSettings,
                     getProfitLossReturn: StockVisionTrade.getProfitLossReturn,
                 },
                 ...brokerageVariables,
@@ -4820,17 +5964,35 @@ class StockVisionTrade {
 
     }
 
-    static start = (noPolling = false) => {
+    static start = (noServerConnection = false) => {
         const isEndOfDay = new Date().getHours() >= 16
         this.setUp()
-        if (!noPolling) {
-            this.pollLocalServer()
+        if (!noServerConnection) {
+            // this.pollLocalServer()
+            const idaStockVisionTrade = window.idaStockVisionTrade
+            const brokerageName = idaStockVisionTrade.brokerage.name
+            idaStockVisionTrade.keepAwakeInstances = this.keepAwake(this.constants[brokerageName].firstElement(), this.constants[brokerageName].secondElement())
+            this.constants[brokerageName].sideMenuBackdrop()?.setAttribute('style','opacity:0')
+            this.connectServerSentEvents(brokerageName)
+
+            idaStockVisionTrade.investigateIntervalInstance = window.setInterval(() => {
+                if (!idaStockVisionTrade.processOrderQueueInProgress && !idaStockVisionTrade.investigateOrderQueueInProgress) {
+                    this.investigateOrderQueue()
+                }
+            }, this.constants.pingPongInterval)
         }
         console.log(`monitor inspection: ${this.monitorReport(isEndOfDay)}`)
     }
 
     static stop = () => {
-        this.stopPollLocalServer()
+        // this.stopPollLocalServer()
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        const [first, second] = idaStockVisionTrade.keepAwakeInstances
+        if (idaStockVisionTrade.eventSourceInstance !== undefined) {
+            idaStockVisionTrade.eventSourceInstance.close()
+        }
+        clearInterval(idaStockVisionTrade.investigateIntervalInstance)
+        this.keepAwake(first, second, true)
     }
 
     static monitorReport(isEndOfDay = false, maxCapital = 5000) {
@@ -4850,7 +6012,9 @@ class StockVisionTrade {
         }, {})
         const capitalCheck = Object.values(codePrimaryCapital).every(item => item <= maxCapital)
         const projectStockVisionCheck = typeof ProjectStockVision === 'function'
-        const result = {executionCheck, capitalCheck, projectStockVisionCheck}
+        const accountsCheck = Object.keys(idaStockVisionTrade.accounts).every(i => /rsp|cash/.test(i))
+        const accessTokenCheck = typeof this.getAccessToken(idaStockVisionTrade.brokerage.name) === 'string'
+        const result = {executionCheck, capitalCheck, projectStockVisionCheck, accountsCheck, accessTokenCheck}
         console.log(result)
 
         return Object.values(result).every(item => item === true)

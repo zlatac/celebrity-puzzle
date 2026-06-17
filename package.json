@@ -21,7 +21,9 @@
     "dev:bmr": "webpack --config-name bmr --watch",
     "dev:cbt": "webpack --config-name cbt --watch",
     "dev:token": "webpack --config-name token --watch",
-    "dev:puzzle": "webpack --config-name puzzle --watch"
+    "dev:puzzle": "webpack --config-name puzzle --watch",
+    "dev:local": "node server.js file=.env",
+    "dev:cloud": "node server.js file=.env.cloud"
   },
   "author": "zlatac",
   "license": "UNLICENSED",
@@ -29,21 +31,22 @@
     "babel-core": "^6.26.3",
     "babel-preset-env": "^1.6.1",
     "jest": "^28.1.3",
-    "webpack": "4.46.0",
-    "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.2.1"
+    "webpack": "5.82.0",
+    "webpack-cli": "^6.0.0",
+    "webpack-dev-server": "^5.0.0"
   },
   "dependencies": {
     "axios": "^0.21.4",
-    "css-loader": "^2.1.0",
+    "css-loader": "^7.1.4",
     "dotenv": "^8.2.0",
     "express": "^4.18.2",
     "jsdom": "^24.0.0",
     "lodash": "^4.17.21",
     "socket.io": "^2.4.1",
     "stripe": "^8.145.0",
-    "style-loader": "^0.23.1",
+    "style-loader": "^4.0.0",
     "stylus": "^0.59.0",
-    "stylus-loader": "^3.0.2"
+    "stylus-loader": "^9.0.0",
+    "typescript": "5.9.3"
   }
 }
