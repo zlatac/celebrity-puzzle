@@ -1424,6 +1424,14 @@ class ProjectStockVision {
                     : [15 + hourOffset, 59 + minuteOffset, 59]
             }
 
+            static marketStartTime(isCrypto = false) {
+                return PriceAnalysis.tradingStartTime(isCrypto, 0, 0)
+            }
+
+            static marketEndTime(isCrypto = false) {
+                return PriceAnalysis.tradingEndTime(isCrypto, 0, 0)
+            }
+
             /**
              * 
              * @param {boolean} isCrypto 
@@ -3086,7 +3094,7 @@ class ProjectStockVision {
                 const anomalyThreshold = -4
                 const priceStore = window.idaStockVision.priceStore
                 const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
-                const startTime = new Date().setHours(...Vision.PriceAnalysis.tradingStartTime(),0)
+                const startTime = new Date().setHours(...Vision.PriceAnalysis.marketStartTime(),0)
                 const previousClosePriceIsAfterStartTime = priceStore.yesterdayClosePrice?.epochDate >= startTime
                 const openPriceIsAfterStartTime = priceStore.openPrice?.epochDate >= startTime
                 const lowPriceIsAfterStartTime = priceStore.marketHighLowRange.low?.epochDate >= startTime
