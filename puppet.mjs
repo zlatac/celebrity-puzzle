@@ -18,15 +18,15 @@ const enums = {
 }
 
 const stocks = [
-  {
-    website: enums.WEBSITE.LIVE_COIN_WATCH,
-    urlCode: 'toby-TOBY',
-    primaryCode: 'toby',
-    exchange: '',
-    script: () => {
-      ProjectStockVision.visionLarge('toby',0.1,0.1,1,true,undefined,undefined,'10min','2min',true)
-    }
-  },
+  // {
+  //   website: enums.WEBSITE.LIVE_COIN_WATCH,
+  //   urlCode: 'toby-TOBY',
+  //   primaryCode: 'toby',
+  //   exchange: '',
+  //   script: () => {
+  //     ProjectStockVision.visionLarge('toby',0.1,0.1,1,true,undefined,undefined,'10min','2min',true)
+  //   }
+  // },
   {
     website: enums.WEBSITE.WEBULL,
     urlCode: 'ibkr',
@@ -103,7 +103,7 @@ const stocks = [
   },
   {
     website: enums.WEBSITE.WEBULL,
-    urlCode: 'chev',
+    urlCode: 'cvx',
     primaryCode: 'chev',
     exchange: enums.EXCHANGE.NYSE,
     script: () => {
@@ -161,7 +161,7 @@ const generateUrl = (website, urlCode, exchange) => {
 }
 
 const setupStocks = async (browser, stocks) => {
-  for(const stock of [stocks[0]]) {
+  for(const stock of stocks) {
     const url = generateUrl(stock.website, stock.urlCode, stock.exchange)
     const page = await browser.newPage({type: 'window',  windowBounds: {height: 500, width: 800}})
     await page.goto(url)

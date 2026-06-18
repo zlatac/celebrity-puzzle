@@ -5,13 +5,14 @@
   "main": "",
   "private": true,
   "engines": {
-    "node": "16.20",
-    "npm": "6.14"
+    "node": "24.17.0",
+    "npm": "11.13.0"
   },
   "scripts": {
     "start": "node server.js",
     "build": "webpack",
     "test": "jest",
+    "puppet": "node puppet.mjs",
     "develop": "gulp build",
     "build:engine": "webpack --config-name bmr-engine",
     "build:bmr": "webpack --config-name bmr",
