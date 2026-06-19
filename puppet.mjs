@@ -1,25 +1,12 @@
 import puppeteer from 'puppeteer';
-import {ProjectStockVision, StockVisionTrade} from './www/token/scripts/components/stockvision.js'
+import { ProjectStockVision } from './www/token/scripts/components/stockvision.js'
 // Or import puppeteer from 'puppeteer-core';
 
-const enums = {
-  WEBSITE: {
-    LIVE_COIN_WATCH: 'livecoinwatch',
-    WEBULL: 'webull',
-    NASDAQ: 'nasdaq',
-    GOOGLE: 'google',
-    CBOE: 'cboe',
-    YAHOO: 'yahoo'
-  },
-  EXCHANGE: {
-    NASDAQ: 'nasdaq',
-    NYSE: 'nyse',
-  }
-}
+const PriceAnalysis = ProjectStockVision.vision.PriceAnalysis
 
 const stocks = [
   // {
-  //   website: enums.WEBSITE.LIVE_COIN_WATCH,
+  //   website: PriceAnalysis.QUOTE_WEBSITES.LIVE_COIN_WATCH,
   //   urlCode: 'toby-TOBY',
   //   primaryCode: 'toby',
   //   exchange: '',
@@ -28,120 +15,120 @@ const stocks = [
   //   }
   // },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'ibkr',
     primaryCode: 'ibkr',
-    exchange: enums.EXCHANGE.NASDAQ,
+    exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
       ProjectStockVision.visionTiny('ibkr',2.5)
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'ndaq',
     primaryCode: 'ndaq',
-    exchange: enums.EXCHANGE.NASDAQ,
+    exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
       ProjectStockVision.visionTiny('ndaq')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'aapl',
     primaryCode: 'aapl',
-    exchange: enums.EXCHANGE.NASDAQ,
+    exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
       ProjectStockVision.visionTiny('aapl')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'amzn',
     primaryCode: 'amzn',
-    exchange: enums.EXCHANGE.NASDAQ,
+    exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
       ProjectStockVision.visionTiny('amzn')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'vz',
     primaryCode: 'vz',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionTiny('vz',1.9)
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'gev',
     primaryCode: 'gev',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionLarge('gev',2,2,1.25,true,3,undefined,'1day','5min')
       ProjectStockVision.visionTiny('gev',2.9)
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'pfe',
     primaryCode: 'pfe',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionLarge('pfe_small',0.8,0.5,1.88,true,0.81,undefined,'4hour','5min')
       ProjectStockVision.visionTiny('pfe')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'xom',
     primaryCode: 'xom',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionTiny('xom')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'cvx',
     primaryCode: 'chev',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionTiny('chev')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'wmt',
     primaryCode: 'wmt',
-    exchange: enums.EXCHANGE.NASDAQ,
+    exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
       ProjectStockVision.visionTiny('wmt')
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'cost',
     primaryCode: 'cost',
-    exchange: enums.EXCHANGE.NASDAQ,
+    exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
       ProjectStockVision.visionTiny('cost',1.8)
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'jnj',
     primaryCode: 'jnj',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionTiny('jnj',1.7)
     }
   },
   {
-    website: enums.WEBSITE.WEBULL,
+    website: PriceAnalysis.QUOTE_WEBSITES.WEBULL,
     urlCode: 'unp',
     primaryCode: 'unp',
-    exchange: enums.EXCHANGE.NYSE,
+    exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
       ProjectStockVision.visionTiny('unp',1.89)
     }
@@ -151,37 +138,59 @@ const stocks = [
 const generateUrl = (website, urlCode, exchange) => {
   const site = website.toLowerCase()
   switch(true) {
-    case site.includes(enums.WEBSITE.LIVE_COIN_WATCH):
+    case site.includes(PriceAnalysis.QUOTE_WEBSITES.LIVE_COIN_WATCH):
       return `https://livecoinwatch.com/price/${urlCode}`
-    case site.includes(enums.WEBSITE.WEBULL):
+    case site.includes(PriceAnalysis.QUOTE_WEBSITES.WEBULL):
       return `https://www.webull.com/quote/${exchange}-${urlCode}`
     default:
       return undefined
   }
 }
 
-const setupStocks = async (browser, stocks) => {
+const setupStocks = async (stocks) => {
+  let loadedCounter = 0
+  const now = Date.now()
+  const todaySevenInTheMorning = new Date().setHours(7,0,0,0)
+  const RestartInMiliseconds = (todaySevenInTheMorning + PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS) - now
+
+  // Local storage usage https://scrapingant.com/blog/puppeteer-local-storage
+  // Launch the browser and open a new blank page.
+  const browser = await puppeteer.launch({headless: false, args: ['--disable-features=LocalNetworkAccessChecks']})
+  // only permissions exposed by puppeteer will work. For unsupported permissions use Page.createCDPSession
+  await browser.setPermission('*', ...[{permission: {name: 'notifications'}, state: 'granted'}])
+
   for(const stock of stocks) {
-    const url = generateUrl(stock.website, stock.urlCode, stock.exchange)
-    const page = await browser.newPage({type: 'window',  windowBounds: {height: 500, width: 800}})
-    await page.goto(url)
-    await page.evaluate(ProjectStockVision.toString())
-    await page.evaluate(stock.script)
-    if (stock.website === enums.WEBSITE.WEBULL) {
-      const cookieRejectButton = await page.$('[data-i18n-key="H5_BIZ_CONCENT_0005"]')
-      if (cookieRejectButton !== null) {
-        await cookieRejectButton.click()
+    try {
+      const url = generateUrl(stock.website, stock.urlCode, stock.exchange)
+      const page = await browser.newPage({type: 'window',  windowBounds: {height: 500, width: 800}})
+      await page.goto(url)
+      await page.evaluate(ProjectStockVision.toString())
+      await page.evaluate(stock.script)
+      if (stock.website === PriceAnalysis.QUOTE_WEBSITES.WEBULL) {
+        const cookieRejectButton = await page.$('[data-i18n-key="H5_BIZ_CONCENT_0005"]')
+        if (cookieRejectButton !== null) {
+          await cookieRejectButton.click()
+        }
       }
+      loadedCounter++
+    } catch (error) {
+      console.error('Setup stocks',error)
     }
   }
-  console.log('finished loading stocks')
+  console.log(`Finished loading ${loadedCounter}/${stocks.length} stocks`)
+
+  setTimeout(async () => {
+    await browser.close()
+    console.log('Closed browser session & restarting stocks setup')
+    setupStocks(stocks)
+  }, RestartInMiliseconds)
 }
 
 // Local storage usage https://scrapingant.com/blog/puppeteer-local-storage
 // Launch the browser and open a new blank page.
-const browser = await puppeteer.launch({headless: false, args: ['--disable-features=LocalNetworkAccessChecks']})
+// const browser = await puppeteer.launch({headless: false, args: ['--disable-features=LocalNetworkAccessChecks']})
 // only permissions exposed by puppeteer will work. For unsupported permissions use Page.createCDPSession
-await browser.setPermission('*', ...[{permission: {name: 'notifications'}, state: 'granted'}])
+// await browser.setPermission('*', ...[{permission: {name: 'notifications'}, state: 'granted'}])
 // await browser.setPermission('https://livecoinwatch.com', ...[{permission: {name: 'notifications'}, state: 'granted'}])
 // const browser2 = await puppeteer.launch({headless: false})
 
@@ -198,8 +207,7 @@ await browser.setPermission('*', ...[{permission: {name: 'notifications'}, state
 //   ProjectStockVision.visionLarge('toby',0.1,0.1,1,true,undefined,undefined,'10min','2min',true)
 // });
 
-setupStocks(browser, stocks)
-
+setupStocks(stocks)
 
 
 // const context = await browser.createBrowserContext();
@@ -238,8 +246,4 @@ setupStocks(browser, stocks)
 // // Print the full title.
 // console.log('The title of this blog post is "%s".', fullTitle);
 
-setTimeout(async() => {
-  // await context.close();
-  // await browser.close();
-  // await browser2.close();
-}, 1000*60*2)
+// await browser.close();

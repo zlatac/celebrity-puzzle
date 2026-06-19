@@ -146,6 +146,20 @@ class ProjectStockVision {
                 [PriceAnalysis.TRADING_INTERVAL.fiveDay]: 5 * PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS,
             }
 
+            static QUOTE_WEBSITES = {
+                LIVE_COIN_WATCH: 'livecoinwatch',
+                WEBULL: 'webull',
+                NASDAQ: 'nasdaq',
+                GOOGLE: 'google',
+                CBOE: 'cboe',
+                YAHOO: 'yahoo'
+            }
+
+            static EXCHANGES = {
+                NASDAQ: 'nasdaq',
+                NYSE: 'nyse',
+            }
+
             static swapObjectKeysAndValues(obj) {
                 return Object.entries(obj)
                     .reduce((previous, current) => {
