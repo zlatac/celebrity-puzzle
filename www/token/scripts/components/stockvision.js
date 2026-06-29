@@ -1764,15 +1764,15 @@ class ProjectStockVision {
          * 
          * @param {string} code 
          * @param {number} price 
-         * @param {string} dayMonthYearString 
+         * @param {string} monthDayYearString 
          * @param {IntervalFlags} tradingInterval 
          * @param {boolean} addToPriceStore 
          * @returns {PriceHistory[]}
          */
-        static createHistory(code, price, dayMonthYearString, tradingInterval, addToPriceStore = false) {
+        static createHistory(code, price, monthDayYearString, tradingInterval, addToPriceStore = false) {
             const formatedCode = Vision.PriceAnalysis.codeFormat(code)
             const interval = tradingInterval || window.idaStockVision.settings[formatedCode]?.tradingInterval
-            const date = new Date(dayMonthYearString).toISOString()
+            const date = new Date(monthDayYearString).toISOString()
             if (interval === undefined || date === undefined || Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[interval] === undefined) {
                 throw new Error('something is wrong') 
             }
@@ -2509,8 +2509,11 @@ class ProjectStockVision {
                 const resp = await Promise.allSettled([cloudServerRequest,localServerRequest()])
                 // const data = await resp[0].value.json()
                 if (experimentMode) {
+                    let experimentLink = Vision.PriceAnalysis.isTinyProfitPursuit(tokenOrStockCode) 
+                        ?  confirmationLink.replace('/profitChunk', '') 
+                        : confirmationLink
                     // auto confirm in experiment mode
-                    fetch(`${confirmationLink}`, {
+                    fetch(`${experimentLink}`, {
                         method: 'GET',
                         mode: 'cors',
                     })
@@ -3124,14 +3127,16 @@ class ProjectStockVision {
                 const anomalyExists = lowestDelta <= anomalyThreshold
     
                 if (anomalyExists && allPricesNeededAreAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
+                    const notificationSubject = `${primaryCode} - Anomaly[${priceStore.yesterdayClosePrice.price}->${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
                     let message = 'Manual assessment from data source & execution needed.\r\n'
                     message = message.concat(`PrevClose: ${priceStore.yesterdayClosePrice.price}\r\n`)
                     message = message.concat(`Open: ${priceStore.openPrice.price}\r\n`)
                     message = message.concat(`Low: ${priceStore.marketHighLowRange.low.price}\r\n`)
                     Vision.notify(
                         message,
-                        `${primaryCode} - Anomaly[${priceStore.yesterdayClosePrice.price}->${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
+                        notificationSubject
                     )
+                    new Notification(notificationSubject, {body: message})
                     window.idaStockVision.cache.get('anomaly').set(dateStamp, true)
                 }
 
@@ -3223,6 +3228,13 @@ class ProjectStockVision {
                         idaStockVision.cache.get('isRunAwayFromOpeningPrice').set(dateStampChanged, true)
                     }
                 }
+
+                fetch(`${idaStockVision.localServerUrl}/trader/reports/vision`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(report)
+                })
                 
                 
             } catch (error) {

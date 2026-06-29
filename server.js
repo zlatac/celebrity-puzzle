@@ -456,7 +456,8 @@ const trader = {
         confirmType: {
             STANDARD: 'standard',
             PROFIT_CHUNK: 'profitChunk',
-        }
+        },
+        VISION_REPORTS_FILE: 'reports_vision.json'
     },
     asyncOperation: {
         historyTimeout: undefined,
@@ -466,15 +467,17 @@ const trader = {
         ordersToExecute: [],
         notificationOrders: [],
         pingPongTracker: {},
-        ordersPreparationRetry: {}
+        ordersPreparationRetry: {},
+        visionReports: [],
+        visionReportsTimeout: undefined,
     },
     methods: {
-        checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE) => {
+        checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE, defaultObject = {}) => {
             try {
                 const fileExist = await fs.lstat(file)
             } catch (error) {
                 // Create file to store trader api data
-                await fs.writeFile(file, JSON.stringify({}))
+                await fs.writeFile(file, JSON.stringify(defaultObject))
             }
         },
         processHistories: async () => {
@@ -599,6 +602,22 @@ const trader = {
                 await fs.writeFile(process.env.STOCK_VISION_STORAGE_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.confirm.splice(0, confirmationAmount)
                 console.log('confirmation set')
+            } catch (error) {
+                console.log(error)
+            }
+        },
+        processVisionReports: async () => {
+            try {
+                const visionReportsAmount = trader.asyncOperation.visionReports.length
+                if (visionReportsAmount === 0) {
+                    return
+                }
+                const data = await fs.readFile(trader.constants.VISION_REPORTS_FILE)
+                const parsedData = JSON.parse(data)
+                parsedData.push(...trader.asyncOperation.visionReports.slice(0, visionReportsAmount))
+                await fs.writeFile(trader.constants.VISION_REPORTS_FILE, JSON.stringify(parsedData))
+                trader.asyncOperation.visionReports.splice(0, visionReportsAmount)
+                console.log('vision reports set')
             } catch (error) {
                 console.log(error)
             }
@@ -980,6 +999,36 @@ app.post('/trader/settings', async function(req,res) {
         console.log(tradingInterval)
         trader.asyncOperation.historyTimeout = setTimeout(trader.methods.processHistories, 1500)
         res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.post('/trader/reports/vision', async function(req,res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage(trader.constants.VISION_REPORTS_FILE, [])
+    try {
+        if (typeof req.body !== 'object'){
+            throw new Error('request body is not an object')
+        }
+        trader.asyncOperation.visionReports.push(req.body)
+        clearTimeout(trader.asyncOperation.visionReportsTimeout)
+        trader.asyncOperation.visionReportsTimeout = setTimeout(trader.methods.processVisionReports, 1500)
+        res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+app.get('/trader/reports/vision', async function(req,res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    await trader.methods.checkOrSetupFileStorage(trader.constants.VISION_REPORTS_FILE, [])
+    try {
+        const data = await fs.readFile(trader.constants.VISION_REPORTS_FILE)
+        const parsedData = JSON.parse(data)
+        res.status(200)
+        res.send(parsedData)
     } catch (error) {
         res.status(404)
         res.send(`${error.toString()}`)
