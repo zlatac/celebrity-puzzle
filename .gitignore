@@ -9,5 +9,5 @@ www/bmr/dist/
 playlist.json
 trader.json
 trader_reserve.json
-reports_vision.json
+reports_*.json
 runQuick.js

@@ -4991,7 +4991,7 @@ class StockVisionTrade {
                 {securityUuid: "2d171b36-1c8a-4d92-0d5f-08958d5d059e", symbol: "XOM.TO", sector: this.sectors.ENERGY, currency: "CAD"},
                 {securityUuid: "054d0f5c-1e0a-4512-0c24-3482a94c0215", symbol: "ENB.TO", sector: this.sectors.ENERGY, currency: "CAD"},
                 {securityUuid: "2727298f-0689-4782-0cd6-3f283c5c1d87", symbol: "OXY.TO", sector: this.sectors.ENERGY, currency: "CAD"},
-                {securityUuid: "28121091-1785-4832-0868-d39088581639", symbol: "CHEV.TO", sector: this.sectors.ENERGY, currency: "CAD"},
+                {securityUuid: "28121091-1785-4832-0868-d39088581639", symbol: "CVX.TO", sector: this.sectors.ENERGY, currency: "CAD"},
                 {securityUuid: "5719561c-23b9-4752-02ae-828d02026a5f", symbol: "COST.TO", sector: this.sectors.STAPLE, currency: "CAD"},
                 {securityUuid: "22302c83-3b3a-4222-0ea7-8895575e0a26", symbol: "WMT.TO", sector: this.sectors.STAPLE, currency: "CAD"},
                 {securityUuid: "10210935-170f-4012-09d4-32a494591d15", symbol: "PG.TO", sector: this.sectors.STAPLE, currency: "CAD"},
@@ -5086,6 +5086,7 @@ class StockVisionTrade {
 
     static storeBrokerageVariables = (objectToStore) => {
         localStorage.setItem(this.constants.localStorageName, JSON.stringify(objectToStore))
+        this.remoteStorage(objectToStore)
     }
 
     static backUp = () => {
@@ -5099,6 +5100,26 @@ class StockVisionTrade {
         storage.featureFlags = idaStockVisionTrade.featureFlags
 
         this.storeBrokerageVariables(storage)
+    }
+
+    static remoteStorage = (objectToStore) => {
+        const idaStockVisionTrade = window.idaStockVisionTrade
+        window.clearTimeout(idaStockVisionTrade.remoteStorageTimeoutInstance)
+        idaStockVisionTrade.remoteStorageTimeoutInstance = window.setTimeout(() => {
+            try {
+                const brokerageName = idaStockVisionTrade.brokerage.name.toLowerCase()
+                fetch(`${this.constants.localServer.serverUrl}/trader/reports/trade/${brokerageName}`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(objectToStore)
+                })
+            } catch (error) {
+                const errorMessage = ['Ida Trader Bot - REMOTE STORAGE', error.toString()]
+                console.log(...errorMessage)
+                this.notify(errorMessage.join('-'))
+            }
+        }, 60 * 1000)
     }
 
     /**
@@ -5150,9 +5171,10 @@ class StockVisionTrade {
      * @param {HTMLElement | number} firstElement 
      * @param {HTMLElement | number} secondElement 
      * @param {boolean} stop 
+     * @param {HTMLElement} [backDropElement] 
      * @returns {number[]}
      */
-    static keepAwake = (firstElement, secondElement, stop = false) => {
+    static keepAwake = (firstElement, secondElement, stop = false, backDropElement) => {
         // switch between 2 elements to keep browser tab active
         if (!stop && ![firstElement, secondElement].every((element) => element instanceof HTMLElement)) {
             throw new Error('Need all elements to keep tab awake')
@@ -5164,6 +5186,9 @@ class StockVisionTrade {
                     window.clearInterval(item)
                 }
             })
+            if (backDropElement instanceof HTMLElement) {
+                backDropElement.click()
+            }
             return
         }
 
@@ -5960,6 +5985,8 @@ class StockVisionTrade {
                 pollServerErrorCount: 0,
                 keepAwakeInstances: [],
                 eventSourceInstance: undefined,
+                investigateIntervalInstance: undefined,
+                remoteStorageTimeoutInstance: undefined,
                 orders: [],
                 orderHistory: {},
                 codes: {},
@@ -6021,12 +6048,13 @@ class StockVisionTrade {
     static stop = () => {
         // this.stopPollLocalServer()
         const idaStockVisionTrade = window.idaStockVisionTrade
+        const brokerageName = idaStockVisionTrade.brokerage.name
         const [first, second] = idaStockVisionTrade.keepAwakeInstances
         if (idaStockVisionTrade.eventSourceInstance !== undefined) {
             idaStockVisionTrade.eventSourceInstance.close()
         }
         clearInterval(idaStockVisionTrade.investigateIntervalInstance)
-        this.keepAwake(first, second, true)
+        this.keepAwake(first, second, true, this.constants[brokerageName].sideMenuBackdrop())
     }
 
     static monitorReport(isEndOfDay = false, maxCapital = 5000) {

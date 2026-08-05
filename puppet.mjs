@@ -1,6 +1,10 @@
+import { loadEnvFile } from 'node:process';
+loadEnvFile('./.env');
 import puppeteer from 'puppeteer';
 import { ProjectStockVision } from './www/token/scripts/components/stockvision.js'
 // Or import puppeteer from 'puppeteer-core';
+// import dotenv from 'dotenv';
+// dotenv.config()
 
 const PriceAnalysis = ProjectStockVision.vision.PriceAnalysis
 
@@ -155,7 +159,7 @@ const setupStocks = async (stocks) => {
 
   // Local storage usage https://scrapingant.com/blog/puppeteer-local-storage
   // Launch the browser and open a new blank page.
-  const browser = await puppeteer.launch({headless: false, args: ['--disable-features=LocalNetworkAccessChecks']})
+  const browser = await puppeteer.launch({headless: false, args: ['--disable-features=LocalNetworkAccessChecks'], debuggingPort: process.env.BROWSER_DEBUGGING_PORT_VISION})
   // only permissions exposed by puppeteer will work. For unsupported permissions use Page.createCDPSession
   await browser.setPermission('*', ...[{permission: {name: 'notifications'}, state: 'granted'}])
 

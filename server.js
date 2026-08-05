@@ -469,9 +469,14 @@ const trader = {
         pingPongTracker: {},
         ordersPreparationRetry: {},
         visionReports: [],
+        tradeReports: new Map(),
         visionReportsTimeout: undefined,
+        tradeReportsTimeout: new Map(),
     },
     methods: {
+        tradeReportsFile: (brokerageName) => {
+            return `reports_trade_${brokerageName.toLowerCase()}.json`
+        },
         checkOrSetupFileStorage: async (file = process.env.STOCK_VISION_STORAGE_FILE, defaultObject = {}) => {
             try {
                 const fileExist = await fs.lstat(file)
@@ -618,6 +623,22 @@ const trader = {
                 await fs.writeFile(trader.constants.VISION_REPORTS_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.visionReports.splice(0, visionReportsAmount)
                 console.log('vision reports set')
+            } catch (error) {
+                console.log(error)
+            }
+        },
+        processTradeReports: async (brokerageName) => {
+            try {
+                const fileName = trader.methods.tradeReportsFile(brokerageName)
+                const brokerageReport = trader.asyncOperation.tradeReports.get(brokerageName)
+                const tradeReportsAmount = brokerageReport.length
+                if (tradeReportsAmount === 0 || !Number.isFinite(tradeReportsAmount)) {
+                    return
+                }
+                const data = brokerageReport.at(tradeReportsAmount - 1)
+                await fs.writeFile(fileName, JSON.stringify(data))
+                brokerageReport.splice(0, tradeReportsAmount)
+                console.log(`trade reports set - ${brokerageName}`)
             } catch (error) {
                 console.log(error)
             }
@@ -1026,6 +1047,52 @@ app.get('/trader/reports/vision', async function(req,res) {
     await trader.methods.checkOrSetupFileStorage(trader.constants.VISION_REPORTS_FILE, [])
     try {
         const data = await fs.readFile(trader.constants.VISION_REPORTS_FILE)
+        const parsedData = JSON.parse(data)
+        res.status(200)
+        res.send(parsedData)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+
+app.post('/trader/reports/trade/:brokerageName', async function(req,res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    try {
+        if (req.params.brokerageName === undefined || typeof req.params.brokerageName !== 'string'){
+            throw new Error('brokerage name missing')
+        }
+        if (typeof req.body !== 'object'){
+            throw new Error('request body is not an object')
+        }
+        const brokerageName = req.params.brokerageName.toLowerCase()
+        if (!trader.asyncOperation.tradeReports.has(brokerageName)) {
+            trader.asyncOperation.tradeReports.set(brokerageName, [])
+            trader.asyncOperation.tradeReportsTimeout.set(brokerageName, 0)
+        }
+        const brokerageReport = trader.asyncOperation.tradeReports.get(brokerageName)
+        const brokerageReportTimeoutInstance = trader.asyncOperation.tradeReportsTimeout.get(brokerageName)
+        brokerageReport.push(req.body)
+        clearTimeout(brokerageReportTimeoutInstance)
+        const timeOutInstance = setTimeout(() => {
+            trader.methods.processTradeReports(brokerageName)
+        }, 1500)
+        trader.asyncOperation.tradeReportsTimeout.set(brokerageName, timeOutInstance)
+        res.sendStatus(202)
+    } catch (error) {
+        res.status(404)
+        res.send(`${error.toString()}`)
+    }
+});
+app.get('/trader/reports/trade/:brokerageName', async function(req,res) {
+    res.append('Access-Control-Allow-Origin', '*')
+    try {
+         if (req.params.brokerageName === undefined || typeof req.params.brokerageName !== 'string'){
+            throw new Error('brokerage name missing')
+        }
+        const brokerageName = req.params.brokerageName.toLowerCase()
+        const fileName = trader.methods.tradeReportsFile(brokerageName)
+        const data = await fs.readFile(fileName)
         const parsedData = JSON.parse(data)
         res.status(200)
         res.send(parsedData)

@@ -398,6 +398,7 @@ export interface IStockVisionTrade {
   keepAwakeInstances: number[];
   eventSourceInstance: EventSource;
   investigateIntervalInstance: undefined | number;
+  remoteStorageTimeoutInstance: undefined | number;
   tools: {[key:string]: Function | Object;};
   brokerage: {
     name: 'questrade' | 'ibkr';
