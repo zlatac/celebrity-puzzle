@@ -4,7 +4,7 @@ export type INTERVAL_DAY_FLAGS = '1day' | '2day' | '3day' | '4day' | '5day'
 export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
   | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | INTERVAL_DAY_FLAGS | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
-export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large'
+export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large' | 'intra'
 export type ACTION = 'in' | 'out' | 'profit out'
 
 export interface IPrice {
@@ -97,6 +97,9 @@ export interface IPriceStore {
     executedLows: Map<string, Set<number>>;
     postStartTimePrecisionLow: IPrice | undefined
     postStartTimePrecisionHigh: IPrice | undefined
+    postCurrentPositionLow: IPrice | undefined
+    postCurrentPositionHigh: IPrice | undefined
+    eventTarget: EventTarget
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
@@ -183,6 +186,11 @@ export interface IStockVision {
       maxTinyEntryPercentageThreshold: undefined | number;
       tinyRunAwayDeltaThreshold: undefined | number;
       tinyObservedDailyProfitWindow: undefined | number;
+      intraLowEntry?: undefined | number;
+      intraLowExit?: undefined | number;
+      intraHighEntry?: undefined | number;
+      intraHighExit?: undefined | number;
+      intraTimeoutInstance?: undefined | number;
     };
   };
   server: {
@@ -214,7 +222,7 @@ export interface IStockVision {
 }
 
 /** STOCK_VISION_TRADE */
-export type ACCOUNT_NAMES = 'rsp' | 'cash' 
+export type ACCOUNT_NAMES = 'rsp' | 'cash' | 'tfsa' | 'margin' 
 export interface ICboeQuoteResponse {
     symbol_name: string;
     trade_time: string;
@@ -406,6 +414,17 @@ export interface IStockVisionTrade {
   accounts: {
     [key: ACCOUNT_NAMES]: {
       id: string;
+      accountNumber: number;
+      accountType?: number;
+      strategyType?: number;
+      currencies: {
+        [key: 'CAD|USD']: {
+          capital: number;
+          balance: number;
+          reservePercentage: number | 20;
+          capitalPerStock?: number;
+        }
+      };
     }
   };
   securities: {

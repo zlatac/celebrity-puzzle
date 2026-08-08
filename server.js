@@ -20,8 +20,8 @@ console.log(process.argv[2])
 const stripe = require('stripe')(process.env.STRIPE_PRIVATE_KEY);
 // app.use(bodyParser.json()) // for parsing application/json
 // app.use(bodyParser.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
-app.use(express.json()) // for parsing application/json
-app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
+app.use(express.json({ limit: '100mb' })) // for parsing application/json
+app.use(express.urlencoded({ extended: true, limit: '100mb' })) // for parsing application/x-www-form-urlencoded
 
 app.set('port', process.env.PORT || 8000);
 server.listen(app.get('port'));
@@ -622,7 +622,7 @@ const trader = {
                 parsedData.push(...trader.asyncOperation.visionReports.slice(0, visionReportsAmount))
                 await fs.writeFile(trader.constants.VISION_REPORTS_FILE, JSON.stringify(parsedData))
                 trader.asyncOperation.visionReports.splice(0, visionReportsAmount)
-                console.log('vision reports set')
+                // console.log('vision reports set')
             } catch (error) {
                 console.log(error)
             }

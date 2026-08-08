@@ -13,6 +13,7 @@
     "build": "webpack",
     "test": "jest",
     "puppet": "node puppet.mjs",
+    "puppet:trade": "node puppet_trade.mjs",
     "develop": "gulp build",
     "build:engine": "webpack --config-name bmr-engine",
     "build:bmr": "webpack --config-name bmr",

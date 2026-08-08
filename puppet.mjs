@@ -156,6 +156,7 @@ const setupStocks = async (stocks) => {
   const now = Date.now()
   const todaySevenInTheMorning = new Date().setHours(7,0,0,0)
   const RestartInMiliseconds = (todaySevenInTheMorning + PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS) - now
+  const dateTodayFormatted = ProjectStockVision.vision.PriceAnalysis.dateStringFormat(Date.now(), 'M/D h:m')
 
   // Local storage usage https://scrapingant.com/blog/puppeteer-local-storage
   // Launch the browser and open a new blank page.
@@ -181,7 +182,7 @@ const setupStocks = async (stocks) => {
       console.error('Setup stocks',error)
     }
   }
-  console.log(`Finished loading ${loadedCounter}/${stocks.length} stocks`)
+  console.log(`Finished loading ${loadedCounter}/${stocks.length} stocks - ${dateTodayFormatted}`)
 
   setTimeout(async () => {
     await browser.close()
