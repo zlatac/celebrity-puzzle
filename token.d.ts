@@ -223,6 +223,8 @@ export interface IStockVision {
 
 /** STOCK_VISION_TRADE */
 export type ACCOUNT_NAMES = 'rsp' | 'cash' | 'tfsa' | 'margin' 
+export type STRATEGY_NAMES = 'gen' | 'wave' | 'anom' | 'baby' | 'tiny' | 'intra' | 'hold'
+export type ACCOUNT_STRATEGY_NAMES = string
 export interface ICboeQuoteResponse {
     symbol_name: string;
     trade_time: string;
@@ -412,12 +414,12 @@ export interface IStockVisionTrade {
     name: 'questrade' | 'ibkr';
   };
   accounts: {
-    [key: ACCOUNT_NAMES]: {
+    [key: ACCOUNT_STRATEGY_NAMES]: {
       id: string;
-      accountNumber: number;
-      accountType?: number;
-      strategyType?: number;
-      currencies: {
+      accountType: number;
+      strategyType: number;
+      accountNumber?: number; 
+      currencies?: {
         [key: 'CAD|USD']: {
           capital: number;
           balance: number;
@@ -438,7 +440,7 @@ export interface IStockVisionTrade {
       capital: number;
       highRiskThreshold: number;
       chunkSellThreshold: number;
-      accountName?: ACCOUNT_NAMES;
+      accountName?: ACCOUNT_STRATEGY_NAMES;
       currency?: number;
     }
   };

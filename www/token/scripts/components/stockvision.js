@@ -4022,7 +4022,7 @@ class StockVisionTrade {
     static reversedCurrencies = ProjectStockVision.vision.PriceAnalysis.swapObjectKeysAndValues(this.currencies)
 
     /**
-     * @type {Readonly<{[key: string]: number;}>}
+     * @type {Readonly<{[Property in keyof {WAVE: number; ANOMALY: number; PROFIT_BABY:number; TINY:number; HOLD: number; INTRA:number; GENERAL:number;}]: number;}>}
      */
     static accountStrategy = {
         WAVE: 1,
@@ -4049,7 +4049,7 @@ class StockVisionTrade {
     }
 
     /**
-     * @type {Readonly<{[key: string]: number;}>}
+     * @type {Readonly<{[Poperty in keyof {RSP: number; CASH:number; TFSA:number; MARGIN:number;}]: number;}>}
      */
     static accountType = {
         RSP: 1,
@@ -5352,7 +5352,14 @@ class StockVisionTrade {
             : {}
         if (accountId) {
             storage.accounts = storage.accounts || {}
-            storage.accounts[cashAccount ? 'cash' : 'rsp'] = {id: accountId}
+            const accountStrategyName = cashAccount 
+                ? this.accountStrategyName(this.accountStrategy.GENERAL, this.accountType.CASH)
+                : this.accountStrategyName(this.accountStrategy.GENERAL, this.accountType.RSP)
+            storage.accounts[accountStrategyName] = {
+                id: accountId,
+                accountType: cashAccount ? this.accountType.CASH : this.accountType.RSP,
+                strategyType: this.accountStrategy.GENERAL
+            }
         }
         if (securities) {
             storage.securities = storage.securities || {}
@@ -5415,19 +5422,22 @@ class StockVisionTrade {
      * 
      * @param {string} code 
      * @param {number} capital 
+     * @param {number} strategyType
      * @param {boolean} isUSD
      * @param {boolean} cashAccount
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
+    static setCodeSettings = (code, capital = 5000, strategyType = this.accountStrategy.GENERAL, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
-        const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyProfitPursuit(code)
+        const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyOrIntraProfitPursuit(code)
+        const acccountType = cashAccount ? this.accountType.CASH : this.accountType.RSP
+        const accountStrategyTypeName = this.accountStrategyName(strategyType, acccountType)
         idaStockVisionTrade.codes[code.toUpperCase()] = {
             capital,
             highRiskThreshold: isTinyCode ? 1 : highRiskThreshold,
             chunkSellThreshold: isTinyCode ? 1 : chunkSellThreshold,
-            accountName: cashAccount === true ? 'cash' : undefined,
+            accountName: accountStrategyTypeName,
             currency: isUSD === true ? this.currencies.USD : undefined
         }
 
@@ -5797,11 +5807,12 @@ class StockVisionTrade {
         const codeUpperCase = code.toUpperCase()
         const idaStockVisionTrade = window.idaStockVisionTrade
         const accountName = idaStockVisionTrade.codes[codeUpperCase]?.accountName
+        const defaultAccountName = this.accountStrategyName(this.accountStrategy.GENERAL, this.accountType.RSP)
         if (accountName !== undefined) {
             return idaStockVisionTrade.accounts[accountName].id
         }
 
-        return idaStockVisionTrade.accounts['rsp'].id
+        return idaStockVisionTrade.accounts[defaultAccountName].id
     }
 
     static get feature() {
