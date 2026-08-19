@@ -224,6 +224,7 @@ export interface IStockVision {
 /** STOCK_VISION_TRADE */
 export type ACCOUNT_NAMES = 'rsp' | 'cash' | 'tfsa' | 'margin' 
 export type STRATEGY_NAMES = 'gen' | 'wave' | 'anom' | 'baby' | 'tiny' | 'intra' | 'hold'
+export type ACCOUNT_CURRENCIES = {USD: string; CAD: string};
 export type ACCOUNT_STRATEGY_NAMES = string
 export interface ICboeQuoteResponse {
     symbol_name: string;
@@ -420,7 +421,7 @@ export interface IStockVisionTrade {
       strategyType: number;
       accountNumber?: number; 
       currencies?: {
-        [key: 'CAD|USD']: {
+        [Property in keyof ACCOUNT_CURRENCIES]?: {
           capital: number;
           balance: number;
           reservePercentage: number | 20;

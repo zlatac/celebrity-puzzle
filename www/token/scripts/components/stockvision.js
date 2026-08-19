@@ -2363,6 +2363,7 @@ class ProjectStockVision {
                             window.idaStockVision.priceStore.marketHighLowRange.postCurrentPositionLow = undefined
                             window.idaStockVision.priceStore.marketHighLowRange.postCurrentPositionHigh = undefined
                             if (Vision.PriceAnalysis.isIntraProfitPursuit(code)) {
+                                window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
                                 window.idaStockVision.settings[code].intraTimeoutInstance = undefined
                             }
                         }
@@ -2487,15 +2488,25 @@ class ProjectStockVision {
                         const tinyStartTime = new Date()
                         tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
                         if (Date.now() >= tinyStartTime.getTime()) {
+                            let actionToTake
                             const position = window.idaStockVision.priceStore.currentPosition[code].position
                             const time = window.idaStockVision.settings[code].intraLowEntry
                             if (position === Vision.PriceAnalysis.OUT) {
+                                actionToTake = Vision.PriceAnalysis.ACTION.IN
                                 window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
                                 window.idaStockVision.settings[code].intraTimeoutInstance = window.setTimeout(() => {
                                     const record = {
                                         target: {
                                             nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
                                         }
+                                    }
+                                    if (window.idaStockVision.lastNotificationSent[code] 
+                                        && 'action' in window.idaStockVision.lastNotificationSent[code]
+                                        && window.idaStockVision.lastNotificationSent[code].action === actionToTake
+                                    ) {
+                                        /* to handle the edge case where event is triggered after vision sent notification
+                                         but Trade has not executed/confirmed with [CS] */
+                                        return
                                     }
                                     this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true, true)
                                 }, time * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
@@ -2506,21 +2517,31 @@ class ProjectStockVision {
                         const tinyStartTime = new Date()
                         tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
                         if (Date.now() >= tinyStartTime.getTime()) {
+                            
                             const position = window.idaStockVision.priceStore.currentPosition[code].position
                             const time = position === Vision.PriceAnalysis.OUT
                                 ? window.idaStockVision.settings[code].intraHighEntry
                                 : window.idaStockVision.settings[code].intraHighExit
+                            const actionToTake = position === Vision.PriceAnalysis.OUT ? Vision.PriceAnalysis.ACTION.IN : Vision.PriceAnalysis.ACTION.OUT
                             if (position === Vision.PriceAnalysis.IN) {
-                                window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
                             }
                             if (position === Vision.PriceAnalysis.OUT && window.idaStockVision.settings[code].intraTimeoutInstance !== undefined) {
                                 return
                             }
+                            window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
                             window.idaStockVision.settings[code].intraTimeoutInstance = window.setTimeout(() => {
                                 const record = {
                                     target: {
                                         nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
                                     }
+                                }
+                                if (window.idaStockVision.lastNotificationSent[code] 
+                                    && 'action' in window.idaStockVision.lastNotificationSent[code]
+                                    && window.idaStockVision.lastNotificationSent[code].action === actionToTake
+                                ) {
+                                    /* to handle the edge case where event is triggered after vision sent notification
+                                        but Trade has not executed/confirmed with [CS] */
+                                    return
                                 }
                                 this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true, true)
                             }, time * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
@@ -5313,6 +5334,9 @@ class StockVisionTrade {
     static setAccountCurrency = (accountType, strategyType, currency, capital, capitalPerStock, balance) => {
         const name = this.accountStrategyName(strategyType, accountType)
         if (name in window.idaStockVisionTrade.accounts) {
+            if (!window.idaStockVisionTrade.accounts[name].currencies) {
+                window.idaStockVisionTrade.accounts[name].currencies = {}
+            }
             window.idaStockVisionTrade.accounts[name].currencies[this.reversedCurrencies[currency]] = 
                 window.idaStockVisionTrade.accounts[name].currencies[this.reversedCurrencies[currency]] || {}
             const obj = window.idaStockVisionTrade.accounts[name].currencies[this.reversedCurrencies[currency]]
@@ -5428,7 +5452,7 @@ class StockVisionTrade {
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 5000, strategyType = this.accountStrategy.GENERAL, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
+    static setCodeSettings = (code, capital = 0, strategyType = this.accountStrategy.GENERAL, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyOrIntraProfitPursuit(code)
         const acccountType = cashAccount ? this.accountType.CASH : this.accountType.RSP
