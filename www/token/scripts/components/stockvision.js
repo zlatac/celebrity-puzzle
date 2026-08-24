@@ -207,6 +207,7 @@ class ProjectStockVision {
                 SMALL: 'small',
                 LARGE: 'large',
                 INTRA: 'intra',
+                ANOM: 'anom',
             }
 
             /** @type {{[key: string]: number}} ENTRY_MULTIPLIER */
@@ -426,7 +427,8 @@ class ProjectStockVision {
                         return window.idaStockVision.cache.get('isRunAwayFromOpeningPrice').get(dateStamp)
 
                     }
-                    const startTime = '10:31'
+                    const [hour, minute] = PriceAnalysis.tinyStartTime(this._isCrypto)
+                    const startTime = `${hour}:${minute}`
                     const currentPrices = window.idaStockVision.priceStore.precisionTimeIntervalsToday[this._code].get(startTime)?.currentPrices
                     // sometimes the array will be genuinely empty at the startTime.
                     // the last price in the array is most likely the close price of that minute based on observation
@@ -583,7 +585,7 @@ class ProjectStockVision {
                 }
 
                 const exitDate = new Date().setHours(...PriceAnalysis.tinyExitTime(this._isCrypto),0)
-                const morningExitDate = new Date().setHours(10,30,0,0)
+                const morningExitDate = new Date().setHours(...PriceAnalysis.tinyStartTime(this._isCrypto),0)
                 return mutationEpochDate >= exitDate || mutationEpochDate <= morningExitDate
             }
 
@@ -1643,6 +1645,14 @@ class ProjectStockVision {
             
         }
 
+        static preVision = {
+            anomaly: {
+                profitThreshold: undefined,
+                triggerThreshold: undefined,
+                executionMinute: undefined,
+            }
+        }
+
         static constants = {
             server: {
                 production: {
@@ -2071,6 +2081,36 @@ class ProjectStockVision {
                         highMutationObserver.observe(priceHighRangeElement, observeOptions)
                     }
                 }
+
+                const backFillPrecisionIntervals = async (quotesPromise) => {
+                    // makes sure we only implement after market start time
+                    const marketStartTime = new Date()
+                    marketStartTime.setHours(...Vision.PriceAnalysis.marketStartTime(this.#isCrypto),0)
+                    if (!Vision.PriceAnalysis.isTinyOrIntraProfitPursuit(this.#code) || Date.now() <= marketStartTime.getTime()) {
+                        return
+                    }
+                    const priceStore = window.idaStockVision.priceStore
+                    const precisionIntervals = priceStore.precisionTimeIntervalsToday[this.#code]
+                    const low = priceStore.marketHighLowRange.low
+                    const high = priceStore.marketHighLowRange.high
+                    /** @type Map<string, Price>*/
+                    const quoteMap = await quotesPromise()
+                    // if needed move logic out of watch() into traderSetup()
+                    // Array.from(quoteMap.entries()).forEach(item => {
+                    //     if (precisionIntervals.has(item[0])) {
+                    //         precisionIntervals.get(item[0]).lastCurrentPrice = item[1].price
+                    //     }
+                    // })
+                    console.log(quoteMap)
+                    priceStore.marketHighLowRange.precisionLow = {...quoteMap.get('lowest')}
+                    priceStore.marketHighLowRange.precisionHigh = {...quoteMap.get('highest')}
+                    // update date for general low and high data for calculation accuracy
+                    priceStore.marketHighLowRange._low.date = priceStore.marketHighLowRange.precisionLow.date
+                    priceStore.marketHighLowRange._low.epochDate = priceStore.marketHighLowRange.precisionLow.epochDate
+                    priceStore.marketHighLowRange._high.date = priceStore.marketHighLowRange.precisionHigh.date
+                    priceStore.marketHighLowRange._high.epochDate = priceStore.marketHighLowRange.precisionHigh.epochDate
+                }
+
                 switch(true) {
                     case origin.includes('nasdaq'):
                     case origin.includes('google'):
@@ -2104,6 +2144,7 @@ class ProjectStockVision {
                         setUpGeneralHighLowRangeMutations()
                         storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
                         storeGeneral(window.idaStockVision.priceStore, 'openPrice', openPriceElement, true)
+                        backFillPrecisionIntervals(window.idaStockVision.cssSelectors.webull.quotes)
                         break
                     case origin.includes('livecoinwatch'):
                         priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
@@ -2192,7 +2233,7 @@ class ProjectStockVision {
                                 const now = new Date()
                                 // @ts-ignore
                                 this._high = {price: val, epochDate: now.getTime(), date: now.toISOString()}
-                                this.eventTarget.dispatchEvent(new Event('high'))
+                                // this.eventTarget.dispatchEvent(new Event('high'))
                                 Vision.calcDayToDayUpwardTrend()
                             },
                             get lowToHighDelta(){
@@ -2201,12 +2242,37 @@ class ProjectStockVision {
                                 }
                                 return undefined
                             },
+                            get precisionLowToPrecisionHighDelta(){
+                                if (Number.isFinite(this.precisionLow?.price) && Number.isFinite(this.precisionHigh?.price)) {
+                                    return Vision.percentageDelta(this.precisionLow.price,this.precisionHigh.price)
+                                }
+                                return undefined
+                            },
                             executedLows: new Map(),
+                            precisionLow: undefined,
+                            precisionHigh: undefined,
                             postStartTimePrecisionLow: undefined,
                             postStartTimePrecisionHigh: undefined,
                             postCurrentPositionLow: undefined,
                             postCurrentPositionHigh: undefined,
                             eventTarget: new EventTarget(),
+                            anomalySettings: {
+                                preAnchor: undefined,
+                                anchor: undefined,
+                                postAnchor: undefined,
+                                timeoutInstance: undefined,
+                                triggerThreshold: Vision.preVision.anomaly.triggerThreshold || 4,
+                                profitThreshold: Vision.preVision.anomaly.profitThreshold || 0.5,
+                                executionMinute: Vision.preVision.anomaly.executionMinute || 16,
+                                get netProfitPercentage() {
+                                    const currentPrice = window.idaStockVision.priceStore.lastPrice.price
+                                    const anomalyDifference = Vision.percentageDelta(this.preAnchor,this.postAnchor)
+                                    const percentageOfProfitToTake = this.profitThreshold * anomalyDifference
+                                    const priceAtMaximumProfit = Vision.PriceAnalysis.percentageFinalAmount(this.postAnchor, percentageOfProfitToTake)
+                                    const netProfitPercentage = Vision.percentageDelta(currentPrice, priceAtMaximumProfit, true)
+                                    return netProfitPercentage
+                                }
+                            }
                         },
                         isUpwardTrendDayToDay: false,
                         _yesterdayClosePrice: undefined,
@@ -2299,6 +2365,50 @@ class ProjectStockVision {
                             highRange: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                             openPrice: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[1]/div[1]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
                             previousClosePrice: () => document.evaluate('//*[@id="app"]/section/div[1]/div/div[2]/div[2]/div/div[1]/div[2]/div[2]',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            quotes: async () => {
+                                /** @ts-ignore @type {number} */
+                                const tickerId = Object.values(window.__initState__.tickerMap).at(0).tickerInfo.tickerId
+                                const response = await fetch(`https://quotes-gw.webullfintech.com/api/quote/charts/queryMinutes?period=d1&tickerIds=${tickerId}`, {
+                                    "headers": {
+                                        "accept": "*/*",
+                                        "accept-language": "en-US,en;q=0.9",
+                                        "app": "global",
+                                        "app-group": "broker",
+                                        "appid": "wb_web_us",
+                                        "device-type": "Web",
+                                        "hl": "en",
+                                        "os": "web",
+                                        "osv": "i9zh",
+                                        "ph": "MacOS Chrome",
+                                        "platform": "web",
+                                        "sec-ch-ua": "\"Chromium\";v=\"149\", \"Not)A;Brand\";v=\"24\"",
+                                        "sec-ch-ua-mobile": "?0",
+                                        "sec-ch-ua-platform": "\"macOS\"",
+                                        "sec-fetch-dest": "empty",
+                                        "sec-fetch-mode": "cors",
+                                        "sec-fetch-site": "cross-site",
+                                        "tz": "America/Toronto",
+                                    },
+                                    "referrer": "https://www.webull.com/quote/nyse-xom",
+                                    "body": null,
+                                    "method": "GET",
+                                    "mode": "cors",
+                                    "credentials": "omit"
+                                })
+                                const formatedResponse = await response.json()
+                                /** @type Map<string, Price>*/
+                                const output = new Map()
+                                formatedResponse[0].data.forEach(item => {
+                                    const [epochSeconds, openPrice, closePrice, highPrice, lowPrice, prevDayClosePrice, volume] = item.split(',')
+                                    const epochMiliseconds = epochSeconds * 1000
+                                    const hourMinute = Vision.PriceAnalysis.dateStringFormat(epochMiliseconds, 'h:m')
+                                    output.set(hourMinute, {price: Number(closePrice), epochDate: epochMiliseconds, date: new Date(epochMiliseconds).toISOString()})
+                                })
+                                const sorted = Array.from(output.values()).sort((a,b) => a.price - b.price)
+                                output.set('lowest', sorted.at(0))
+                                output.set('highest', sorted.at(-1))
+                                return Promise.resolve(output)
+                            },
                         },
                         tradingview: {
                             // https only
@@ -2868,6 +2978,8 @@ class ProjectStockVision {
             const timeFormatString = Vision.PriceAnalysis.dateStringFormat(peakValleyDetectedOrCurrentPrice.date)
             const tradingIntervalMatch = priceStore.priceTimeIntervalsToday[code].has(timeFormatString)
             const precisionIntervalMatch = priceStore.precisionTimeIntervalsToday[code].has(timeFormatString)
+            const codeSettings = window.idaStockVision.settings[code]
+            const currentPosition = priceStore.currentPosition[code]
             
             if (tradingIntervalMatch === true) {
                 const tradingIntervalSettings = priceStore.priceTimeIntervalsToday[code].get(timeFormatString)
@@ -2945,78 +3057,113 @@ class ProjectStockVision {
                 precisionIntervalSettings.currentPriceExecuted = true
                 precisionIntervalSettings.currentPrices.push(peakValleyDetectedOrCurrentPrice)
                 precisionIntervalSettings.lastCurrentPrice = peakValleyDetectedOrCurrentPrice.price
+                
                 // set tiny lowest point amont precision intervals
-                const tinyStartTime = new Date().setHours(...Vision.PriceAnalysis.tinyStartTime(),0)
-                const codePrecisionIntervals = priceStore.precisionTimeIntervalsToday[code]
-                const codePrecionIntervalValues = Array.from(codePrecisionIntervals.values())
-                const precisionToEvaluate = codePrecionIntervalValues[precisionIntervalSettings.index - 1]
-                const todayMidnight = new Date().setHours(0,0,0,0)
-                const postStartTimePrecisionLow = priceStore.marketHighLowRange.postStartTimePrecisionLow
-                const postStartTimePrecisionHigh = priceStore.marketHighLowRange.postStartTimePrecisionHigh
-                const postCurrentPositionLow = priceStore.marketHighLowRange.postCurrentPositionLow
-                const postCurrentPositionHigh = priceStore.marketHighLowRange.postCurrentPositionHigh
-                if (postStartTimePrecisionLow !== undefined && postStartTimePrecisionLow.epochDate < todayMidnight) {
-                    priceStore.marketHighLowRange.postStartTimePrecisionLow = undefined
-                    priceStore.marketHighLowRange.postStartTimePrecisionHigh = undefined
-                    priceStore.marketHighLowRange.postCurrentPositionLow = undefined
-                    priceStore.marketHighLowRange.postCurrentPositionHigh = undefined
-                }
-                if (precisionToEvaluate !== undefined && precisionToEvaluate.epochDate > tinyStartTime) {
-                    const currentPosition = priceStore.currentPosition[code]
-                    if (postStartTimePrecisionLow === undefined 
-                        || precisionToEvaluate.lastCurrentPrice < postStartTimePrecisionLow.price
-                    ) {
-                        priceStore.marketHighLowRange.postStartTimePrecisionLow = {
-                            price: precisionToEvaluate.lastCurrentPrice,
-                            epochDate: precisionToEvaluate.epochDate,
-                            date: new Date(precisionToEvaluate.epochDate).toISOString()
-                        }
+                if (Vision.PriceAnalysis.isTinyOrIntraProfitPursuit(code)) {
+                    const tinyStartTime = new Date().setHours(...Vision.PriceAnalysis.tinyStartTime(),0)
+                    const codePrecisionIntervals = priceStore.precisionTimeIntervalsToday[code]
+                    const codePrecionIntervalValues = Array.from(codePrecisionIntervals.values())
+                    const precisionToEvaluate = codePrecionIntervalValues[precisionIntervalSettings.index - 1]
+                    const todayMidnight = new Date().setHours(0,0,0,0)
+                    const precisionLow = priceStore.marketHighLowRange.precisionLow
+                    const precisionHigh = priceStore.marketHighLowRange.precisionHigh
+                    const postStartTimePrecisionLow = priceStore.marketHighLowRange.postStartTimePrecisionLow
+                    const postStartTimePrecisionHigh = priceStore.marketHighLowRange.postStartTimePrecisionHigh
+                    const postCurrentPositionLow = priceStore.marketHighLowRange.postCurrentPositionLow
+                    const postCurrentPositionHigh = priceStore.marketHighLowRange.postCurrentPositionHigh
+                    if (postStartTimePrecisionLow !== undefined && postStartTimePrecisionLow.epochDate < todayMidnight) {
+                        priceStore.marketHighLowRange.precisionLow = undefined
+                        priceStore.marketHighLowRange.precisionHigh = undefined
+                        priceStore.marketHighLowRange.postStartTimePrecisionLow = undefined
+                        priceStore.marketHighLowRange.postStartTimePrecisionHigh = undefined
+                        priceStore.marketHighLowRange.postCurrentPositionLow = undefined
+                        priceStore.marketHighLowRange.postCurrentPositionHigh = undefined
                     }
-
-                    if (postStartTimePrecisionHigh === undefined 
-                        || precisionToEvaluate.lastCurrentPrice > postStartTimePrecisionHigh.price
-                    ) {
-                        priceStore.marketHighLowRange.postStartTimePrecisionHigh = {
-                            price: precisionToEvaluate.lastCurrentPrice,
-                            epochDate: precisionToEvaluate.epochDate,
-                            date: new Date(precisionToEvaluate.epochDate).toISOString()
+                    if (precisionToEvaluate !== undefined) {
+                        
+                        if (precisionToEvaluate.epochDate > tinyStartTime) {
+                            if (postStartTimePrecisionLow === undefined 
+                                || precisionToEvaluate.lastCurrentPrice < postStartTimePrecisionLow.price
+                            ) {
+                                priceStore.marketHighLowRange.postStartTimePrecisionLow = {
+                                    price: precisionToEvaluate.lastCurrentPrice,
+                                    epochDate: precisionToEvaluate.epochDate,
+                                    date: new Date(precisionToEvaluate.epochDate).toISOString()
+                                }
+                            }
+        
+                            if (postStartTimePrecisionHigh === undefined 
+                                || precisionToEvaluate.lastCurrentPrice > postStartTimePrecisionHigh.price
+                            ) {
+                                priceStore.marketHighLowRange.postStartTimePrecisionHigh = {
+                                    price: precisionToEvaluate.lastCurrentPrice,
+                                    epochDate: precisionToEvaluate.epochDate,
+                                    date: new Date(precisionToEvaluate.epochDate).toISOString()
+                                }
+                            }
+        
+                            if (precisionToEvaluate.epochDate > currentPosition.epochDate) {
+                                if (postCurrentPositionLow === undefined 
+                                    || precisionToEvaluate.lastCurrentPrice < postCurrentPositionLow.price
+                                ) {
+                                    priceStore.marketHighLowRange.postCurrentPositionLow = {
+                                        price: precisionToEvaluate.lastCurrentPrice,
+                                        epochDate: precisionToEvaluate.epochDate,
+                                        date: new Date(precisionToEvaluate.epochDate).toISOString()
+                                    }
+                                }
+            
+                                if (postCurrentPositionHigh === undefined 
+                                    || precisionToEvaluate.lastCurrentPrice > postCurrentPositionHigh.price
+                                ) {
+                                    priceStore.marketHighLowRange.postCurrentPositionHigh = {
+                                        price: precisionToEvaluate.lastCurrentPrice,
+                                        epochDate: precisionToEvaluate.epochDate,
+                                        date: new Date(precisionToEvaluate.epochDate).toISOString()
+                                    }
+        
+                                    const downTrendProbability = Vision.trendProbability(code, false) > 0.5
+                                    const profitFromPosition = Vision.percentageDelta(currentPosition.price, priceStore.marketHighLowRange.postCurrentPositionHigh.price, true)
+            
+                                    if (currentPosition.position === Vision.PriceAnalysis.IN && downTrendProbability && profitFromPosition >= 0.4) {
+                                        priceStore.marketHighLowRange.eventTarget.dispatchEvent(new Event('high'))
+                                        console.log('high')
+                                    }
+                                }
+        
+                            }
                         }
-                    }
-
-                    if (precisionToEvaluate.epochDate > currentPosition.epochDate) {
-                        if (postCurrentPositionLow === undefined 
-                            || precisionToEvaluate.lastCurrentPrice < postCurrentPositionLow.price
+    
+                        if (precisionLow === undefined 
+                            || precisionToEvaluate.lastCurrentPrice < precisionLow.price
                         ) {
-                            priceStore.marketHighLowRange.postCurrentPositionLow = {
+                            priceStore.marketHighLowRange.precisionLow = {
                                 price: precisionToEvaluate.lastCurrentPrice,
                                 epochDate: precisionToEvaluate.epochDate,
                                 date: new Date(precisionToEvaluate.epochDate).toISOString()
                             }
                         }
-    
-                        if (postCurrentPositionHigh === undefined 
-                            || precisionToEvaluate.lastCurrentPrice > postCurrentPositionHigh.price
+        
+                        if (precisionHigh === undefined 
+                            || precisionToEvaluate.lastCurrentPrice > precisionHigh.price
                         ) {
-                            priceStore.marketHighLowRange.postCurrentPositionHigh = {
+                            priceStore.marketHighLowRange.precisionHigh = {
                                 price: precisionToEvaluate.lastCurrentPrice,
                                 epochDate: precisionToEvaluate.epochDate,
                                 date: new Date(precisionToEvaluate.epochDate).toISOString()
                             }
-
-                            const downTrendProbability = Vision.trendProbability(code, false) > 0.5
-                            const profitFromPosition = Vision.percentageDelta(currentPosition.price, priceStore.marketHighLowRange.postCurrentPositionHigh.price, true)
-    
-                            if (currentPosition.position === Vision.PriceAnalysis.IN && downTrendProbability && profitFromPosition >= 0.4) {
+                            if (currentPosition.position === Vision.PriceAnalysis.OUT 
+                                && priceStore.marketHighLowRange.precisionLowToPrecisionHighDelta >= codeSettings.tinyObservedDailyProfitWindow
+                            ) {
+                                // do nothing
+                            } else {
                                 priceStore.marketHighLowRange.eventTarget.dispatchEvent(new Event('high'))
                                 console.log('high')
                             }
                         }
-
+    
                     }
-
                 }
-                
-
 
                 // precisionIntervalSettings.peakCurrentPrice = precisionIntervalSettings.peakCurrentPrice !== undefined
                 //     ? peakValleyDetectedOrCurrentPrice.price > precisionIntervalSettings.peakCurrentPrice.price
@@ -3268,6 +3415,7 @@ class ProjectStockVision {
             try {
                 const anomalyThreshold = -4
                 const priceStore = window.idaStockVision.priceStore
+                const anomalySettings = priceStore.marketHighLowRange.anomalySettings
                 const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
                 const startTime = new Date().setHours(...Vision.PriceAnalysis.marketStartTime(),0)
                 const previousClosePriceIsAfterStartTime = priceStore.yesterdayClosePrice?.epochDate >= startTime
@@ -3301,13 +3449,70 @@ class ProjectStockVision {
                         notificationSubject
                     )
                     new Notification(notificationSubject, {body: message})
-                    window.idaStockVision.cache.get('anomaly').set(dateStamp, true)
+                    anomalySettings.anchor = lowestAnchor
+                    anomalySettings.preAnchor = highestAnchor
+                    window.idaStockVision.cache.get('anomaly').set(dateStamp, false)
+                    Vision.executeAnomaly()
+                    priceStore.marketHighLowRange.eventTarget.addEventListener('low', Vision.executeAnomaly)
                 }
 
                 return anomalyExists
             } catch (error) {
                 console.log('Ida Trader Bot - DETECT ANOMALY', error)
             }
+        }
+
+        static executeAnomaly() {
+            debugger
+            const ymdStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
+            const priceStore = window.idaStockVision.priceStore
+            const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
+            const code = Vision.PriceAnalysis.codeFormat(`${primaryCode}_anom`)
+            const anomalySettings = priceStore.marketHighLowRange.anomalySettings
+            const anomalyCache = window.idaStockVision.cache.get('anomaly')
+            if (anomalyCache.has(ymdStamp) && !anomalyCache.get(ymdStamp)) {
+                window.clearTimeout(anomalySettings.timeoutInstance)
+                anomalySettings.timeoutInstance = window.setTimeout(async () => {
+                    try {
+                        // check the profit window is not gone and test in isolation
+                        anomalySettings.postAnchor = priceStore.marketHighLowRange.low.price
+                        const currentPrice = priceStore.lastPrice.price
+                        // const anomalyDifference = Vision.percentageDelta(anomalySettings.preAnchor,anomalySettings.postAnchor)
+                        // const percentageOfProfitToTake = anomalySettings.profitThreshold * anomalyDifference
+                        // const priceAtMaximumProfit = Vision.PriceAnalysis.percentageFinalAmount(anomalySettings.postAnchor, percentageOfProfitToTake)
+                        // const netProfitPercentage = Vision.percentageDelta(currentPrice, priceAtMaximumProfit)
+                        if (anomalySettings.netProfitPercentage <= 0.3) {
+                            throw new Error('Anomaly opportunity missed')
+                        }
+                        // anomalySettings.netProfitPercentage = netProfitPercentage
+
+                        const httpPostBody = {}
+                        httpPostBody.code = code
+                        httpPostBody.primaryCode = primaryCode
+                        httpPostBody.action = Vision.PriceAnalysis.ACTION.IN
+                        httpPostBody.anomaly = anomalySettings
+                        httpPostBody.currentPrice = currentPrice
+                        // httpPostBody.confirmationLink = confirmationLink
+                        
+                        /** @type RequestInit */
+                        const httpOptions = {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {"Content-Type": "application/json"},
+                            body: JSON.stringify(httpPostBody),
+                        }
+
+                        await fetch(`${window.idaStockVision.localServerUrl}/trader/notify`, httpOptions)
+                        anomalyCache.set(ymdStamp, true)
+                        priceStore.marketHighLowRange.eventTarget.removeEventListener('low', Vision.executeAnomaly)
+                    } catch (error) {
+                        const errorMessage = ['Vision - EXECUTE ANOMALY', error.toString()]
+                        console.log(...errorMessage)
+                        Vision.notify(errorMessage.join('-'), undefined, code)
+                    }
+                }, anomalySettings.executionMinute * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
+            }
+
         }
 
         /**
@@ -3945,7 +4150,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionIntra(code, lowEntryTime = 15, lowExitTime = 5, highEntryTime = 5, highExitTime = 15, experiment = false, profit = 6, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = false, profit = 6, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_intra`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
@@ -3960,6 +4165,20 @@ class ProjectStockVision {
         idaStockVision.settings[codeFormatted].intraTimeoutInstance = undefined
         
         return output
+    }
+
+    static visionAnomaly(profitThreshold = 0.5, executionMinute = 16, triggerThreshold = 4) {
+        if (window.idaStockVision) {
+            const settings = window.idaStockVision.priceStore.marketHighLowRange.anomalySettings
+            settings.profitThreshold = profitThreshold
+            settings.triggerThreshold = triggerThreshold
+            settings.executionMinute = executionMinute
+        } else {
+            // for situations where we run anomaly before other profit pursuit types
+            ProjectStockVision.vision.preVision.anomaly.profitThreshold = profitThreshold
+            ProjectStockVision.vision.preVision.anomaly.triggerThreshold = triggerThreshold
+            ProjectStockVision.vision.preVision.anomaly.executionMinute = executionMinute
+        }
     }
 
     /**
@@ -5207,9 +5426,9 @@ class StockVisionTrade {
         modifyThreshold: (60/5) * 0.25, // keep within 1 minute for now
         questrade: {
             // Make sure the element(s) are not triggering network events to not crash the browser eg menu buttons, page scroll, etc
-            firstElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
-            secondElement: () => document.querySelector('shell-root').querySelector('shell-header button'),
-            sideMenuBackdrop: () => document.querySelector('shell-root').querySelector('shell-sidebar .sidebar-backdrop'),
+            firstElement: () => document.querySelector('shell-root shell-header button'),
+            secondElement: () => document.querySelector('shell-root shell-header button'),
+            sideMenuBackdrop: () => document.querySelector('shell-root shell-sidebar .sidebar-backdrop'),
             trade: {
                 buy: 'Buy',
                 sell: 'Sell',
@@ -5413,6 +5632,7 @@ class StockVisionTrade {
         // securities, orders and orderHistory for now
         const idaStockVisionTrade = window.idaStockVisionTrade
         const storage = this.getBrokerageVariables()
+        storage.accounts = idaStockVisionTrade.accounts
         storage.orders = idaStockVisionTrade.orders
         storage.orderHistory = idaStockVisionTrade.orderHistory
         storage.codes = idaStockVisionTrade.codes
@@ -5452,7 +5672,7 @@ class StockVisionTrade {
      * @param {number} highRiskThreshold 
      * @param {number} chunkSellThreshold default value is based of optimization simulation
      */
-    static setCodeSettings = (code, capital = 0, strategyType = this.accountStrategy.GENERAL, isUSD = false, cashAccount = false, highRiskThreshold = 0.5, chunkSellThreshold = 0.8) => {
+    static setCodeSettings = (code, capital = 0, strategyType = this.accountStrategy.GENERAL, isUSD = false, cashAccount = false, highRiskThreshold = 1, chunkSellThreshold = 0.8) => {
         const idaStockVisionTrade = window.idaStockVisionTrade
         const isTinyCode = ProjectStockVision.vision.PriceAnalysis.isTinyOrIntraProfitPursuit(code)
         const acccountType = cashAccount ? this.accountType.CASH : this.accountType.RSP

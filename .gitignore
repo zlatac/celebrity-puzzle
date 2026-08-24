@@ -11,3 +11,4 @@ trader.json
 trader_reserve.json
 reports_*.json
 runQuick.js
+backup/

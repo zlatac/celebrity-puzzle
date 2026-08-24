@@ -694,7 +694,8 @@ const trader = {
                     downwardVolatility: req.body.downwardVolatility,
                     immediateExecution: req.body.immediateExecution,
                     profitChunk: req.body.profitChunk,
-                    // observationPrice: req.query.currentPrice,
+                    anomaly: req.body.anomaly,
+                    observationPrice: req.body.currentPrice,
                     seenByBrokerage: [],
                 }
                 const newOrder = prepareOrder

@@ -57,15 +57,15 @@ const setupBrokerage = async () => {
   const today = new Date()
   const now = today.getTime()
   const todayNineInTheMorning = today.setHours(9,0,0,0)
-  const todayIsFriday = today.getDay() === 4
-  const todayIsSaturday = today.getDay() === 5
+  const todayIsFriday = today.getDay() === 5
+  const todayIsSaturday = today.getDay() === 6
   const weekendMultiplier = todayIsFriday 
     ? 3 
     : todayIsSaturday 
       ? 2 
       : 1
   const PriceAnalysis = ProjectStockVision.vision.PriceAnalysis
-  const futureTime = todayNineInTheMorning + PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS * weekendMultiplier
+  const futureTime = todayNineInTheMorning + (PriceAnalysis.TWENTYFOUR_HOURS_IN_MILLISECONDS * weekendMultiplier)
   const RestartInMiliseconds = futureTime - now
 
   const tradeReportsResponse = await axios.get('http://localhost:9000/trader/reports/trade/questrade')
@@ -86,23 +86,33 @@ const setupBrokerage = async () => {
  
   page = await browser.newPage({type: 'window',  windowBounds: {height: 500, width: 800}});
   await page.setBypassCSP(true);
-  await page.setDefaultTimeout(3 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS); // QT website can be quite slow to render
+  await page.setDefaultTimeout(5 * PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS); // QT website can be quite slow to render
   await page.goto('https://login.questrade.com/account/login');
 
+  const acceptCookiesButton = await page.$('button#onetrust-accept-btn-handler')
+  if (acceptCookiesButton !== null) {
+    await acceptCookiesButton.click()
+  }
+
+  const boy = atob(process.env.QT_BOY)
+  const girl = atob(process.env.QT_GIRL)
+  const baby = atob(process.env.QT_BABY)
   const nameInputElement = await page.waitForSelector('[data-qt="txtUserId"]')
   await nameInputElement.hover(nameInputElement)
   await nameInputElement.focus(nameInputElement)
-  await nameInputElement.type(atob(process.env.QT_BOY))
+  await nameInputElement.type(boy)
   
   const passInputElement = '[data-qt="txtPassword"]'
   await page.hover(passInputElement)
   await page.focus(passInputElement)
-  await page.type(passInputElement, atob(process.env.QT_GIRL))
+  await page.type(passInputElement, girl)
   
   const submitNamePassButtonElement = '[data-qt="btnLogin"]'
   await page.hover(submitNamePassButtonElement)
-  await page.click(submitNamePassButtonElement)
-  await page.waitForNavigation()
+  await Promise.all([
+    page.waitForNavigation(), // must be called before the click as the documentation shows
+    page.click(submitNamePassButtonElement),
+  ])
 
   // next form
   const clearanceRadioElement = await page.waitForSelector('[data-qt="providerRadio"][value="Authenticator"]')
@@ -111,24 +121,29 @@ const setupBrokerage = async () => {
   // await page.click(clearanceRadioElement)
   const submitClearanceButtonElement = '[data-qt="sendCodeBtn"]'
   await page.hover(submitClearanceButtonElement)
-  await page.click(submitClearanceButtonElement)
-  await page.waitForNavigation()
+  await Promise.all([
+    page.waitForNavigation(),
+    page.click(submitClearanceButtonElement)
+  ])
 
   // next form
   const mfaInputElement = await page.waitForSelector('[data-qt="mfaCode"]')
   await mfaInputElement.hover(mfaInputElement)
   await mfaInputElement.focus(mfaInputElement)
-  const codeToInput = await generateTOTP(atob(process.env.QT_BABY))
+  const codeToInput = await generateTOTP(baby)
   await mfaInputElement.type(codeToInput)
   const submitMfaButtonElement = '[data-qt="verifyBtn"]'
   await page.hover(submitMfaButtonElement)
-  await page.click(submitMfaButtonElement)
-  await page.waitForNavigation({waitUntil: 'networkidle0'})
+  await Promise.all([
+    page.waitForNavigation(),
+    page.click(submitMfaButtonElement)
+  ])
 
 
   // setup trade
   // Do not use evaluateOnNewDocument cause every new page will have the javascript logic executed
   // await page.evaluateOnNewDocument(`${ProjectStockVision.toString()}${StockVisionTrade.toString()}`)
+  await page.waitForSelector('shell-root shell-header button')
   await page.evaluate(`
     ${ProjectStockVision.toString()};
     ${StockVisionTrade.toString()};
@@ -157,6 +172,8 @@ const setupBrokerage = async () => {
 }
 
 await setupBrokerage()
+// const n = await generateTOTP(atob(process.env.QT_BABY))
+// console.log(n)
 
 rl.question(`What do you want to do - `, async (name) => {
   console.log(`closing process now - ${name}`);

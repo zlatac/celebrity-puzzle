@@ -4,7 +4,7 @@ export type INTERVAL_DAY_FLAGS = '1day' | '2day' | '3day' | '4day' | '5day'
 export type INTERVAL_FLAGS = '1min' | '2min' | '3min' | '5min' | '7min' | '10min' 
   | '15min' | '20min' | '27min' | '30min' | '45min' | '1hour' | '4hour' | INTERVAL_DAY_FLAGS | 'none'
 export type TRADING_FLAGS = 'regular' | 'precision'
-export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large' | 'intra'
+export type PROFIT_PURSUIT = 'tiny' | 'small' | 'large' | 'intra' | 'anom'
 export type ACTION = 'in' | 'out' | 'profit out'
 
 export interface IPrice {
@@ -94,12 +94,26 @@ export interface IPriceStore {
     get low(): IPrice | undefined
     set low(x: number): void;
     get lowToHighDelta(): number | undefined
+    get precisionLowToPrecisionHighDelta(): number | undefined
     executedLows: Map<string, Set<number>>;
+    precisionLow: IPrice | undefined
+    precisionHigh: IPrice | undefined
     postStartTimePrecisionLow: IPrice | undefined
     postStartTimePrecisionHigh: IPrice | undefined
     postCurrentPositionLow: IPrice | undefined
     postCurrentPositionHigh: IPrice | undefined
     eventTarget: EventTarget
+    anomalySettings: {
+      preAnchor: undefined | number;
+      anchor: undefined | number;
+      postAnchor: undefined | number;
+      timeoutInstance: undefined | number;
+      triggerThreshold: undefined | number;
+      profitThreshold: undefined | number;
+      executionMinute: undefined | number;
+      // netProfitPercentage: undefined | number;
+      get netProfitPercentage(): number | undefined;
+    }
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
@@ -362,6 +376,7 @@ export interface ITradeCheckResponse extends IQuestradeQuoteResponse {
   position: boolean;
   downwardVolatility: boolean;
   immediateExecution: boolean;
+  observationPrice: number;
   profitChunk: {
     isValid: boolean;
     minDelta: number;
@@ -370,7 +385,8 @@ export interface ITradeCheckResponse extends IQuestradeQuoteResponse {
       chunkConfirm: string;
     }
     quantityRemaining?: number | undefined
-  }
+  };
+  anomaly: IPriceStore['marketHighLowRange']['anomalySettings'];
 }
 export interface ITradeOrder extends ITradeCheckResponse {
   executed?: boolean;
