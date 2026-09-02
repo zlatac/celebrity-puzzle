@@ -4150,7 +4150,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = false, profit = 6, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = false, profit = 6, loss = 3, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_intra`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
@@ -4671,7 +4671,8 @@ class StockVisionTrade {
         }
 
         const orders = {
-            fetch: (accessToken, fromDateISO) => fetch(`https://api.questrade.com/v1/orders?from-date=${fromDateISO}&status-group=All&limit=100&sort-by=-createdDateTime`, {
+            // response data is sensitive to fromDateISO value. use far date value for wide capture of orders for generic purposes
+            fetch: (accessToken, fromDateISO, statusGroup = 'All', fromAccountId, specificOrderId = '') => fetch(`https://api.questrade.com/v1/orders${(specificOrderId !== '' ? `/${specificOrderId}` : `?from-date=${fromDateISO}&status-group=${statusGroup}&limit=100&sort-by=-createdDateTime${fromAccountId ? `&account-uuid=${fromAccountId}` : ''}`)}`, {
                 "headers": {
                     "accept": "application/json, text/plain, */*",
                     "accept-language": "en-US,en;q=0.9",
@@ -4968,6 +4969,11 @@ class StockVisionTrade {
                 }
             }
         }
+        
+        const specificOrder = {
+            fetch: (accessToken, orderId) => orders.fetch(accessToken, undefined, undefined, orderId),
+            response: orders.response.data[0]
+        }
 
         const position = {
             requestType: 'get',
@@ -5133,7 +5139,7 @@ class StockVisionTrade {
 
         const scopeToFindAccessToken = "openid brokerage.accounts.all brokerage.account-onboarding.read brokerage.orders.all brokerage.balances.all brokerage.trading.all brokerage.research.all brokerage.market-research.all brokerage.watchlists.all brokerage.charts.read brokerage.securities.read brokerage.positions.read brokerage.portfolios.read brokerage.quotes.read brokerage.settings.all brokerage.investing-insights.all all.notifications.all all.usersettings.all enterprise.staggered-rollout.read brokerage.account-transactions.read enterprise.document-centre-tax-slip.read brokerage.brokerage-customer-tier.read brokerage.portfolios-questionnaire.read"
 
-        return {submit,modify,balance,orders,cancelOrder,getMarketData,searchStockCode,scopeToFindAccessToken}
+        return {submit,modify,balance,orders,cancelOrder,getMarketData,searchStockCode,scopeToFindAccessToken,specificOrder}
 
     }
 
@@ -5443,6 +5449,11 @@ class StockVisionTrade {
                     rejected: 'Rejected',
                     replaced: 'Replaced',
                     expired: 'Expired',
+                },
+                statusGroup: {
+                    open: 'Open',
+                    closed: 'Closed',
+                    all: 'All'
                 }
             },
             tradeProcess: this.questradeTradeProcess(),
