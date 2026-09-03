@@ -113,7 +113,9 @@ export interface IPriceStore {
       executionMinute: undefined | number;
       // netProfitPercentage: undefined | number;
       get netProfitPercentage(): number | undefined;
-    }
+    },
+    priceCssSelector: () => HTMLElement | Node,
+    get currentPrice(): number,
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
@@ -211,7 +213,12 @@ export interface IStockVision {
     production: {cloud: string; local: string;};
     development: {cloud: string; local: string;};
   };
-  cssSelectors: {[key:string]: {[key]: Function}};
+  cssSelectors: {
+    [key:string]: {
+      [key]: Function;
+      price: () => HTMLElement | Node;
+    }
+  };
   constants: {};
   reports: {
     dateIn: string;

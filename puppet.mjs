@@ -24,7 +24,7 @@ const stocks = [
     primaryCode: 'ibkr',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
-      ProjectStockVision.visionTiny('ibkr',2.5)
+      ProjectStockVision.visionAnomaly('ibkr')
     }
   },
   {
@@ -33,7 +33,7 @@ const stocks = [
     primaryCode: 'ndaq',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
-      ProjectStockVision.visionTiny('ndaq')
+      ProjectStockVision.visionAnomaly('ndaq')
     }
   },
   {
@@ -42,7 +42,7 @@ const stocks = [
     primaryCode: 'aapl',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
-      ProjectStockVision.visionTiny('aapl')
+      ProjectStockVision.visionAnomaly('aapl')
     }
   },
   {
@@ -51,7 +51,7 @@ const stocks = [
     primaryCode: 'amzn',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
-      ProjectStockVision.visionTiny('amzn', 2.3)
+      ProjectStockVision.visionAnomaly('amzn')
     }
   },
   {
@@ -60,7 +60,7 @@ const stocks = [
     primaryCode: 'vz',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionTiny('vz',1.9)
+      ProjectStockVision.visionAnomaly('vz')
     }
   },
   {
@@ -69,8 +69,8 @@ const stocks = [
     primaryCode: 'gev',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionLarge('gev',2,2,1.25,true,3,undefined,'1day','5min')
-      ProjectStockVision.visionTiny('gev',2.9)
+      ProjectStockVision.visionLarge('gev',2,2,1.25,false,3,undefined,'1day','5min')
+      ProjectStockVision.visionAnomaly('gev')
     }
   },
   {
@@ -79,8 +79,8 @@ const stocks = [
     primaryCode: 'pfe',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionLarge('pfe_small',0.8,0.5,1.88,true,0.81,undefined,'4hour','5min')
-      ProjectStockVision.visionTiny('pfe', 1.7)
+      ProjectStockVision.visionLarge('pfe_small',0.8,0.5,1.88,false,0.81,undefined,'4hour','5min')
+      ProjectStockVision.visionAnomaly('pfe')
     }
   },
   {
@@ -89,7 +89,7 @@ const stocks = [
     primaryCode: 'xom',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionTiny('xom', 2.16)
+      ProjectStockVision.visionAnomaly('xom')
     }
   },
   {
@@ -98,7 +98,7 @@ const stocks = [
     primaryCode: 'chev',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionTiny('chev', 1.9)
+      ProjectStockVision.visionAnomaly('chev')
     }
   },
   {
@@ -107,7 +107,7 @@ const stocks = [
     primaryCode: 'wmt',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
-      ProjectStockVision.visionTiny('wmt')
+      ProjectStockVision.visionAnomaly('wmt')
     }
   },
   {
@@ -116,7 +116,7 @@ const stocks = [
     primaryCode: 'cost',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
-      ProjectStockVision.visionTiny('cost',1.9)
+      ProjectStockVision.visionAnomaly('cost')
     }
   },
   {
@@ -125,7 +125,7 @@ const stocks = [
     primaryCode: 'jnj',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionTiny('jnj',1.7)
+      ProjectStockVision.visionAnomaly('jnj')
     }
   },
   {
@@ -134,7 +134,7 @@ const stocks = [
     primaryCode: 'unp',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionTiny('unp',1.9)
+      ProjectStockVision.visionAnomaly('unp')
     }
   },
 ]

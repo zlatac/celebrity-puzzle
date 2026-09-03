@@ -2032,7 +2032,7 @@ class ProjectStockVision {
             try {
                 const origin = location.origin
                 const observeOptions = {subtree: true,characterData: true, characterDataOldValue: true}
-                let priceElement, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver,
+                let priceElement, priceSelector, priceHighAndLowRangeElement, priceLowRangeElement, priceHighRangeElement, highAndLowMutationObserver,
                     lowMutationObserver, highMutationObserver, openPriceElement, prevClosePriceElement
                 window.idaStockVision.mutationObservers[this.#code] = new MutationObserver(this.mutationObserverCallback)
                 const storeHighLowRangeGeneral = (lowElementText, highElementText) => {
@@ -2115,6 +2115,7 @@ class ProjectStockVision {
                     case origin.includes('nasdaq'):
                     case origin.includes('google'):
                         const websiteName = origin.includes('google') ? 'google' : 'nasdaq'
+                        priceSelector = window.idaStockVision.cssSelectors[websiteName].price // needed for manual retrieval of price
                         priceElement = window.idaStockVision.cssSelectors[websiteName].price()
                         priceHighAndLowRangeElement = window.idaStockVision.cssSelectors[websiteName].highLowRange()
                         prevClosePriceElement = window.idaStockVision.cssSelectors[websiteName].previousClosePrice()
@@ -2130,12 +2131,14 @@ class ProjectStockVision {
                         storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
                         break
                     case origin.includes('cboe'):
+                        priceSelector = window.idaStockVision.cssSelectors.cboe.price
                         priceElement = window.idaStockVision.cssSelectors.cboe.price()
                         priceLowRangeElement = window.idaStockVision.cssSelectors.cboe.lowRange()
                         priceHighRangeElement = window.idaStockVision.cssSelectors.cboe.highRange()
                         setUpGeneralHighLowRangeMutations()
                         break
                     case origin.includes('webull'):
+                        priceSelector = window.idaStockVision.cssSelectors.webull.price
                         priceElement = window.idaStockVision.cssSelectors.webull.price()
                         priceLowRangeElement = window.idaStockVision.cssSelectors.webull.lowRange()
                         priceHighRangeElement = window.idaStockVision.cssSelectors.webull.highRange()
@@ -2147,6 +2150,7 @@ class ProjectStockVision {
                         backFillPrecisionIntervals(window.idaStockVision.cssSelectors.webull.quotes)
                         break
                     case origin.includes('livecoinwatch'):
+                        priceSelector = window.idaStockVision.cssSelectors.livecoinwatch.price
                         priceElement = window.idaStockVision.cssSelectors.livecoinwatch.price()
                         priceLowRangeElement = window.idaStockVision.cssSelectors.livecoinwatch.lowRange()
                         priceHighRangeElement = window.idaStockVision.cssSelectors.livecoinwatch.highRange()
@@ -2161,6 +2165,7 @@ class ProjectStockVision {
                     throw new Error('can\'t find price')
                 }
                 window.idaStockVision.mutationObservers[this.#code].observe(priceElement, observeOptions)
+                window.idaStockVision.priceStore.marketHighLowRange.priceCssSelector = priceSelector
             } catch (error) {
                 console.log('Ida Trader Bot - WATCH STOCK', error)
             }
@@ -2265,13 +2270,22 @@ class ProjectStockVision {
                                 profitThreshold: Vision.preVision.anomaly.profitThreshold || 0.5,
                                 executionMinute: Vision.preVision.anomaly.executionMinute || 16,
                                 get netProfitPercentage() {
-                                    const currentPrice = window.idaStockVision.priceStore.lastPrice.price
+                                    const currentPrice = window.idaStockVision.priceStore.marketHighLowRange.currentPrice
                                     const anomalyDifference = Vision.percentageDelta(this.preAnchor,this.postAnchor)
                                     const percentageOfProfitToTake = this.profitThreshold * anomalyDifference
                                     const priceAtMaximumProfit = Vision.PriceAnalysis.percentageFinalAmount(this.postAnchor, percentageOfProfitToTake)
                                     const netProfitPercentage = Vision.percentageDelta(currentPrice, priceAtMaximumProfit, true)
                                     return netProfitPercentage
                                 }
+                            },
+                            priceCssSelector: undefined,
+                            get currentPrice() {
+                                if (typeof this.priceCssSelector !== 'function') {
+                                    return
+                                }
+                                const priceElement = this.priceCssSelector()
+                                const elementValue = priceElement instanceof HTMLElement ? priceElement.innerText : priceElement.nodeValue
+                                return Number(Vision.decimalPrecision(elementValue))
                             }
                         },
                         isUpwardTrendDayToDay: false,
@@ -3413,9 +3427,9 @@ class ProjectStockVision {
 
         static detectAnomaly() {
             try {
-                const anomalyThreshold = -4
                 const priceStore = window.idaStockVision.priceStore
                 const anomalySettings = priceStore.marketHighLowRange.anomalySettings
+                const anomalyThreshold = anomalySettings.triggerThreshold
                 const dateStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
                 const startTime = new Date().setHours(...Vision.PriceAnalysis.marketStartTime(),0)
                 const previousClosePriceIsAfterStartTime = priceStore.yesterdayClosePrice?.epochDate >= startTime
@@ -3435,7 +3449,7 @@ class ProjectStockVision {
                 const lowestAnchor = Math.min(priceStore.openPrice?.price, priceStore.marketHighLowRange.low?.price)
                 const highestAnchor = Math.max(priceStore.yesterdayClosePrice?.price, priceStore.openPrice?.price, priceStore.marketHighLowRange.high?.price)
                 const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
-                const anomalyExists = lowestDelta <= anomalyThreshold
+                const anomalyExists = lowestDelta <= -1 * anomalyThreshold
     
                 if (anomalyExists && allPricesNeededAreAfterStartTime && !window.idaStockVision.cache.get('anomaly').has(dateStamp)) {
                     const notificationSubject = `${primaryCode} - Anomaly[${highestAnchor}->${lowestAnchor}](${Vision.decimalPrecision(lowestDelta, 2)}%)`
@@ -3463,7 +3477,6 @@ class ProjectStockVision {
         }
 
         static executeAnomaly() {
-            debugger
             const ymdStamp = Vision.PriceAnalysis.dateStringFormat(Date.now(), 'YMD')
             const priceStore = window.idaStockVision.priceStore
             const primaryCode = Vision.PriceAnalysis.primaryCode(window.idaStockVision.code)
@@ -3474,17 +3487,12 @@ class ProjectStockVision {
                 window.clearTimeout(anomalySettings.timeoutInstance)
                 anomalySettings.timeoutInstance = window.setTimeout(async () => {
                     try {
-                        // check the profit window is not gone and test in isolation
+                        // check the profit window is not gone and unit test in isolation
                         anomalySettings.postAnchor = priceStore.marketHighLowRange.low.price
-                        const currentPrice = priceStore.lastPrice.price
-                        // const anomalyDifference = Vision.percentageDelta(anomalySettings.preAnchor,anomalySettings.postAnchor)
-                        // const percentageOfProfitToTake = anomalySettings.profitThreshold * anomalyDifference
-                        // const priceAtMaximumProfit = Vision.PriceAnalysis.percentageFinalAmount(anomalySettings.postAnchor, percentageOfProfitToTake)
-                        // const netProfitPercentage = Vision.percentageDelta(currentPrice, priceAtMaximumProfit)
+                        const currentPrice = priceStore.marketHighLowRange.currentPrice
                         if (anomalySettings.netProfitPercentage <= 0.3) {
                             throw new Error('Anomaly opportunity missed')
                         }
-                        // anomalySettings.netProfitPercentage = netProfitPercentage
 
                         const httpPostBody = {}
                         httpPostBody.code = code
@@ -4167,7 +4175,10 @@ class ProjectStockVision {
         return output
     }
 
-    static visionAnomaly(profitThreshold = 0.5, executionMinute = 16, triggerThreshold = 4) {
+    static visionAnomaly(code, profitThreshold = 0.5, executionMinute = 16, triggerThreshold = 4) {
+        const codeFormatted = String(`${code}_anom`).toUpperCase()
+        const experiment = true
+        const isCrypto = false
         if (window.idaStockVision) {
             const settings = window.idaStockVision.priceStore.marketHighLowRange.anomalySettings
             settings.profitThreshold = profitThreshold
@@ -4178,6 +4189,8 @@ class ProjectStockVision {
             ProjectStockVision.vision.preVision.anomaly.profitThreshold = profitThreshold
             ProjectStockVision.vision.preVision.anomaly.triggerThreshold = triggerThreshold
             ProjectStockVision.vision.preVision.anomaly.executionMinute = executionMinute
+            const output = ProjectStockVision.visionManual(codeFormatted, -Infinity, Infinity, isCrypto, experiment)
+            return output
         }
     }
 
@@ -4192,7 +4205,7 @@ class ProjectStockVision {
      */
     static visionManual(code, entryManualPrice, exitManualPrice, isCrypto, experiment = false) {
         const codeFormatted = code.toUpperCase()
-        const visionInstance = new ProjectStockVision.vision(codeFormatted, entryManualPrice, exitManualPrice, isCrypto, undefined, undefined)
+        const visionInstance = new ProjectStockVision.vision(codeFormatted, entryManualPrice, exitManualPrice, isCrypto, undefined, undefined, 'none', 'none')
         if (typeof visionInstance !== 'object') {
             throw new Error('object is not returned')
         }
