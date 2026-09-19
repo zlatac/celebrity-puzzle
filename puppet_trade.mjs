@@ -51,6 +51,19 @@ async function generateTOTP(secret) {
     }
 }
 
+const notify =  async (subject = '', message, brokerageName = '') => {
+    try {
+        let subjectPrefix = '[AUTOMATION] NOTIFICATION'
+        subjectPrefix = brokerageName !== '' ? `${subjectPrefix} (${brokerageName})` : subjectPrefix
+        const response = await axios.post(`https://styleminions.co/api/trader/notify`, {
+            subject: `${subjectPrefix} ${subject}`,
+            message: `${message}`,
+        }) 
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 const setupBrokerage = async () => {
   let browser
   let isUsingVisionBrowserInstance = false
@@ -178,32 +191,38 @@ const setupBrokerage = async () => {
   return Promise.resolve(true)
 }
 
-await setupBrokerage()
+try {
+  await setupBrokerage()
+  rl.question(`What do you want to do - `, async (name) => {
+    console.log(`closing process now - ${name}`);
+    switch(true) {
+      case name.includes('.close'):
+        try {
+          await page.evaluate(`
+            StockVisionTrade.stop()
+          `)
+          const profileElement = await page.waitForSelector('shell-header-profile')
+          await profileElement.click()
+          const logOutButtonElement = await page.waitForSelector('button[dataqt="log_out_btn"]')
+          await logOutButtonElement.click()
+          await page.waitForNavigation({waitUntil: 'networkidle0'})
+        } catch (error) {
+  
+        } finally {
+          await page.close()
+          process.exit()
+          rl.close();
+        }
+        break
+      default:
+        process.exit()
+    }
+  });
+
+} catch (error) {
+  notify(undefined, error.toString())
+  console.log(error.toString())
+}
 // const n = await generateTOTP(atob(process.env.QT_BABY))
 // console.log(n)
 
-rl.question(`What do you want to do - `, async (name) => {
-  console.log(`closing process now - ${name}`);
-  switch(true) {
-    case name.includes('.close'):
-      try {
-        await page.evaluate(`
-          StockVisionTrade.stop()
-        `)
-        const profileElement = await page.waitForSelector('shell-header-profile')
-        await profileElement.click()
-        const logOutButtonElement = await page.waitForSelector('button[dataqt="log_out_btn"]')
-        await logOutButtonElement.click()
-        await page.waitForNavigation({waitUntil: 'networkidle0'})
-      } catch (error) {
-
-      } finally {
-        await page.close()
-        process.exit()
-        rl.close();
-      }
-      break
-    default:
-      process.exit()
-  }
-});
