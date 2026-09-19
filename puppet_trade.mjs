@@ -53,7 +53,7 @@ async function generateTOTP(secret) {
 
 const setupBrokerage = async () => {
   let browser
-  let isUsingVisionBrowser = false
+  let isUsingVisionBrowserInstance = false
   const today = new Date()
   const now = today.getTime()
   const todayNineInTheMorning = today.setHours(9,0,0,0)
@@ -75,9 +75,9 @@ const setupBrokerage = async () => {
   // Launch new browser or connect to existing vision browser to save resources.
   try {
     browser = await puppeteer.connect({browserURL: `http://localhost:${process.env.BROWSER_DEBUGGING_PORT_VISION}`})
-    isUsingVisionBrowser = true
+    isUsingVisionBrowserInstance = true
   } catch (error) {
-    isUsingVisionBrowser = false
+    isUsingVisionBrowserInstance = false
     browser = await puppeteer.launch({headless: false, args: ['--disable-features=LocalNetworkAccessChecks'], debuggingPort: process.env.BROWSER_DEBUGGING_PORT_TRADE})
     // only permissions exposed by puppeteer will work. For unsupported permissions use Page.createCDPSession
     await browser.setPermission('*', ...[{permission: {name: 'notifications'}, state: 'granted'}])
@@ -97,9 +97,16 @@ const setupBrokerage = async () => {
   const boy = atob(process.env.QT_BOY)
   const girl = atob(process.env.QT_GIRL)
   const baby = atob(process.env.QT_BABY)
+
+  // await page.waitForResponse(
+  //   response =>
+  //     new RegExp(/{orinUrl}.*{specificEndpointName}/).test(response.url()) && response.status() === 200,
+  // );
+
+  const nameInputLabelElement = await page.waitForSelector('[data-qt="txtUserId"] + label[style*="opacity: 1"]')
   const nameInputElement = await page.waitForSelector('[data-qt="txtUserId"]')
-  await nameInputElement.hover(nameInputElement)
-  await nameInputElement.focus(nameInputElement)
+  await nameInputElement.hover()
+  await nameInputElement.focus()
   await nameInputElement.type(boy)
   
   const passInputElement = '[data-qt="txtPassword"]'
@@ -128,8 +135,8 @@ const setupBrokerage = async () => {
 
   // next form
   const mfaInputElement = await page.waitForSelector('[data-qt="mfaCode"]')
-  await mfaInputElement.hover(mfaInputElement)
-  await mfaInputElement.focus(mfaInputElement)
+  await mfaInputElement.hover()
+  await mfaInputElement.focus()
   const codeToInput = await generateTOTP(baby)
   await mfaInputElement.type(codeToInput)
   const submitMfaButtonElement = '[data-qt="verifyBtn"]'
@@ -155,7 +162,7 @@ const setupBrokerage = async () => {
   console.log(`will restart by ${new Date(futureTime).toString()}`)
 
   setTimeout(async () => {
-    if (isUsingVisionBrowser) {
+    if (isUsingVisionBrowserInstance) {
       try {
         await page.close()
       } catch (error) {

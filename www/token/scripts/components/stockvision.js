@@ -2414,7 +2414,7 @@ class ProjectStockVision {
                                 const output = new Map()
                                 formatedResponse[0].data.forEach(item => {
                                     const [epochSeconds, openPrice, closePrice, highPrice, lowPrice, prevDayClosePrice, volume] = item.split(',')
-                                    const epochMiliseconds = epochSeconds * 1000
+                                    const epochMiliseconds = Number(epochSeconds) * 1000
                                     const hourMinute = Vision.PriceAnalysis.dateStringFormat(epochMiliseconds, 'h:m')
                                     output.set(hourMinute, {price: Number(closePrice), epochDate: epochMiliseconds, date: new Date(epochMiliseconds).toISOString()})
                                 })
@@ -3827,6 +3827,153 @@ class ProjectStockVision {
 
         /**
          * 
+         * @param {string[]} dataArray 
+         * @param {string} fromDateString 
+         * @param {string} toDateString 
+         * @param {number} option 
+         * @param {number} highPercentage only values between 0 & 1
+         * @param {number} anomalyProfit
+         * @param {number} maxProfit 
+         */
+        static webullSimulation = (dataArray, fromDateString, toDateString, option = 0, highPercentage = 1, anomalyProfit = 0.5, maxProfit) => {
+            // simulate outcome of end of previous day to next day open and high price
+            const options = {
+                PREVIOUS_DAY_CLOSE_TO_OPEN: 0,
+                PREVIOUS_DAY_CLOSE_TO_HIGH: 1,
+                PREVIOUS_DAY_CLOSE_TO_HALF_HIGH: 2,
+                PREVIOUS_DAY_CLOSE_TO_CLOSE: 3,
+                PREVIOUS_DAY_OPEN_TO_OPEN: 4,
+            }
+            const anomalyThreshold = -4
+            const anomalyProfitWindowPercentage = anomalyProfit
+            let sum = 0
+            let positive = 0
+            let negative = 0
+            let min = 0
+            let max = 0
+            let profitableAnomalys = 0
+            /** @type {number[]} */
+            const profitWindows = []
+            const anomalys = []
+            // just the date with no time also defaults to midnight that day
+            let fromDate = fromDateString !== undefined ? new Date(`${fromDateString},00:00`).getTime() : -Infinity
+            let toDate = toDateString !== undefined ? new Date(`${toDateString},00:00`).getTime() : Infinity
+            let fromDateClose, toDateClose
+            const result = dataArray.map((item, index) => {
+                // debugger
+                let diff = 0
+                const [epochSeconds, openPrice, closePrice, highPrice, lowPrice, prevDayClosePrice, volume] = item.split(',').map(i => Number(i))
+                const epochMiliseconds = epochSeconds * 1000
+                if (epochMiliseconds === fromDate || (!(Number.isFinite(fromDate)) && index === dataArray.length - 1)) {
+                    fromDateClose = closePrice
+                }
+                if (epochMiliseconds === toDate || (!(Number.isFinite(toDate)) && index === 0)) {
+                    toDateClose = closePrice
+                }
+                if (epochMiliseconds < fromDate 
+                    || epochMiliseconds > toDate 
+                    || option === options.PREVIOUS_DAY_OPEN_TO_OPEN && index === (dataArray.length - 1)
+                ) {
+                    return 0
+                }
+
+                const lowHighDiff = (highPrice - lowPrice) * highPercentage
+                const lowestDropFromPreviousClose = Math.min(
+                    Vision.percentageDelta(prevDayClosePrice, openPrice, true),
+                    Vision.percentageDelta(prevDayClosePrice, lowPrice, true),
+                )
+
+                switch(option) {
+                    case options.PREVIOUS_DAY_CLOSE_TO_OPEN:
+                        // previous day close price -> open price
+                        diff = Vision.percentageDelta(prevDayClosePrice, openPrice, true)
+                        break
+                    case options.PREVIOUS_DAY_CLOSE_TO_HIGH:
+                        // previous day close price -> high price
+                        diff = Vision.percentageDelta(prevDayClosePrice, highPrice, true)
+                        diff = (maxProfit !== undefined && diff >= maxProfit) ? maxProfit : diff
+                        break
+                    case options.PREVIOUS_DAY_CLOSE_TO_HALF_HIGH:
+                        // previous day close price -> half high price
+                        diff = Vision.percentageDelta(prevDayClosePrice, lowPrice + lowHighDiff, true)
+                        diff = (maxProfit !== undefined && diff >= maxProfit) ? maxProfit : diff
+                        break
+                    case options.PREVIOUS_DAY_CLOSE_TO_CLOSE:
+                        // previous day close price -> close price
+                        const prevCloseToHigh = Vision.percentageDelta(prevDayClosePrice, highPrice, true)
+                        diff = (maxProfit !== undefined && prevCloseToHigh >= maxProfit) 
+                            ? maxProfit 
+                            : Vision.percentageDelta(prevDayClosePrice, closePrice, true)
+                        break
+                    case options.PREVIOUS_DAY_OPEN_TO_OPEN:
+                        // previous day open price -> open price
+                        const [yesterdayEpochSeconds, yesterdayOpenPrice, yesterdayClosePrice, yesterdayHighPrice, yesterdayLowPrice, yesterdayPrevDayClosePrice, yesterdayVolume] = dataArray[index + 1].split(',').map(i => Number(i))
+                        diff = Vision.percentageDelta(yesterdayOpenPrice, openPrice, true)
+                        break
+                    default:
+
+                }
+                sum += diff
+                diff >= 0 ? positive++ : negative++
+                max = Math.max(diff, max)
+                min = Math.min(diff, min)
+                profitWindows.push(Vision.percentageDelta(lowPrice, highPrice))
+                if (lowestDropFromPreviousClose <= anomalyThreshold) {
+                    anomalys.push(lowestDropFromPreviousClose)
+                    const sliceStart = index >= 6 ? index - 6 : 0
+                    const sliceEnd = index
+                    const sixDaysAfterToday = dataArray.slice(sliceStart, sliceEnd)
+                    const openHighLowClose = sixDaysAfterToday.map(day => day.split(',').slice(1, 5))
+                    const maxOfAllDays = Math.max(...openHighLowClose.flat().map(numString => Number(numString)))
+                    const targetExitPrice = Vision.PriceAnalysis.percentageFinalAmount(lowPrice, anomalyProfitWindowPercentage * Math.abs(lowestDropFromPreviousClose))
+                    
+                    if (maxOfAllDays >= targetExitPrice) {
+                        profitableAnomalys++
+                    }
+                }
+
+                return diff 
+                
+            })
+
+            const holdReturn =  Vision.percentageDelta(Number(fromDateClose), Number(toDateClose), true)
+            const profitWindow = {
+                mean: Vision.decimalPrecision(Vision.PriceAnalysis.mean(profitWindows)),
+                min: Math.min(...profitWindows)
+            }
+            const anomaly = {anomalys, success: `${profitableAnomalys}/${anomalys.length}`}
+            /* Notes
+                - low, high, open & current price cannot be relied on to absolutely know the shape of the price behaviour
+                - low & high event trigger alone will not be sufficient to get out since by the time we get in it might never trigger again
+                - current low hanging fruit for getting out is monitor current price distance between high & low and when minimum
+                  threshold is met of 60%+ from low then get out. if not met then stay till close of the day 15:40
+                - explore rounding up currentPriceDistanceFromLowInPercentage when we can clearly see a downward trend for the day (eg 0.55,0.57)
+                - [proved]explore getting out when the currentPriceDistanceFromLowInPercentage is (0 || < 0.1) and the position is still profitable
+                  to minimize losses. although this could limit our profit, it makes sure we do not end up in a loss for the position 
+            */
+
+            return {sum, result, positive, negative, min, max, holdReturn, profitWindow, anomaly}
+        }
+
+        /**
+         * 
+         * @param {number} low 
+         * @param {number} high 
+         * @param {number} currentPrice 
+         */
+        static intraCurrentPriceDistanceFromHigh = (low, high, currentPrice) => {
+            if (currentPrice > high || currentPrice < low) {
+                return
+            }
+            const lowHighDiff = Math.abs(high - low)
+            const lowCurrentPriceDiff = Math.abs(currentPrice - low)
+            const currentPriceDistanceFromLowInPercentage = lowCurrentPriceDiff/lowHighDiff
+            return currentPriceDistanceFromLowInPercentage
+
+        }
+
+        /**
+         * 
          * @param {MutationRecord[]} mutationArray 
          * @param {MutationObserver} observerInstance 
          * @param {boolean} inspectorTrigger
@@ -4032,7 +4179,7 @@ class ProjectStockVision {
                         color = 'blue'
                     }
                 }
-                console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
+                // console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
             } catch (error) {
                 console.log('Ida Trader Bot - MUTATION OBSERVER CALLBACK ERROR', error)
             }
