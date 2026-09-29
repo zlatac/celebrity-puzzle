@@ -583,10 +583,73 @@ class ProjectStockVision {
                 ) {
                     return false
                 }
+                
+                const [exitRangeStart, exitRangeEnd] = PriceAnalysis.tinyExitTime(this._isCrypto)
 
-                const exitDate = new Date().setHours(...PriceAnalysis.tinyExitTime(this._isCrypto),0)
-                const morningExitDate = new Date().setHours(...PriceAnalysis.tinyStartTime(this._isCrypto),0)
-                return mutationEpochDate >= exitDate || mutationEpochDate <= morningExitDate
+                if (PriceAnalysis.isTinyProfitPursuit(this._code)) {
+                    const exitDate = new Date().setHours(...exitRangeStart,0)
+                    const morningExitDate = new Date().setHours(...PriceAnalysis.tinyStartTime(this._isCrypto),0)
+                    return mutationEpochDate >= exitDate || mutationEpochDate <= morningExitDate
+                }
+
+                if (PriceAnalysis.isIntraProfitPursuit(this._code)) {
+                    const firstExitDate = new Date().setHours(...exitRangeStart,0)
+                    const lastExitDate = new Date().setHours(...exitRangeEnd,0)
+                    return mutationEpochDate >= firstExitDate && mutationEpochDate <= lastExitDate
+                }
+            }
+            /**
+             *  
+             * @param {number} mutationEpochDate 
+             * @param {boolean} ignorePosition 
+             * @returns {boolean}
+             */
+            enterAfterTradingEndTime(mutationEpochDate, ignorePosition = false) {
+                if (!PriceAnalysis.isIntraProfitPursuit(this._code)
+                    || mutationEpochDate === undefined 
+                    || this._currentPosition === undefined 
+                    || !ignorePosition && this._currentPosition.position !== PriceAnalysis.OUT
+                ) {
+                    return false
+                }
+                
+                const [exitRangeStart, exitRangeEnd] = PriceAnalysis.tinyExitTime(this._isCrypto)
+
+                
+                const lastExitDate = new Date().setHours(...exitRangeEnd,0)
+                return mutationEpochDate > lastExitDate
+            }
+
+            /**
+             *  
+             * @param {number} mutationEpochDate 
+             * @returns {boolean}
+             */
+            intraTargetedThresholdMet(mutationEpochDate) {
+                const [exitRangeStart, exitRangeEnd] = PriceAnalysis.tinyExitTime(this._isCrypto)
+                const firstExitDate = new Date().setHours(...exitRangeStart,0)
+                const marketHighLowRange = window.idaStockVision.priceStore.marketHighLowRange
+
+                if (!PriceAnalysis.isIntraProfitPursuit(this._code)
+                    || mutationEpochDate === undefined 
+                    || this._currentPosition === undefined 
+                    || this._currentPosition.position !== PriceAnalysis.IN
+                    || mutationEpochDate > firstExitDate
+                ) {
+                    return false
+                }
+
+                const distance = Vision.intraCurrentPriceDistanceFromLow(
+                    marketHighLowRange.low.price,
+                    marketHighLowRange.high.price,
+                    this._currentPrice.price
+                )
+
+                const positionToCurrentPriceIsPositive = Vision.percentageDelta(this._currentPosition.price, this._currentPrice.price, true) > 0
+
+                debugger
+                return distance >= 0.6 || (distance < 0.1 && positionToCurrentPriceIsPositive)
+                
             }
 
             /** 
@@ -1453,10 +1516,13 @@ class ProjectStockVision {
             /**
              * 
              * @param {boolean} isCrypto 
-             * @returns {[number, number, number]}
+             * @returns {[number,number,number][]}
              */
             static tinyExitTime(isCrypto = false) {
-                return PriceAnalysis.tradingEndTime(isCrypto, -9)
+                const first = PriceAnalysis.tradingEndTime(isCrypto, -19)
+                const last = PriceAnalysis.tradingEndTime(isCrypto, -9)
+                
+                return [first, last]
             }
 
             /**
@@ -1465,7 +1531,7 @@ class ProjectStockVision {
              * @returns {[number, number, number]}
              */
             static tinyStartTime(isCrypto = false) {
-                return PriceAnalysis.tradingStartTime(isCrypto, 10, 0)
+                return PriceAnalysis.tradingStartTime(isCrypto, 15, 3)
             }
 
             /**
@@ -2285,7 +2351,8 @@ class ProjectStockVision {
                                 }
                                 const priceElement = this.priceCssSelector()
                                 const elementValue = priceElement instanceof HTMLElement ? priceElement.innerText : priceElement.nodeValue
-                                return Number(Vision.decimalPrecision(elementValue))
+                                
+                                return Vision.decimalConvert(Vision.sanitizePrice(elementValue))
                             }
                         },
                         isUpwardTrendDayToDay: false,
@@ -2344,10 +2411,10 @@ class ProjectStockVision {
                     cssSelectors: {
                         nasdaq: {
                             // use summary page of quote to get all elements & must scroll down to load components that have summary data
-                            price: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.nsdq-quote-header__pricing-information-saleprice'),
-                            highLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-day-range-info'),
-                            fiftyTwoWeekHighLowRange: () => document.querySelector('nsdq-quote-header').shadowRoot.querySelector('div.header-info-range-wrapper span'),
-                            previousClosePrice: () => document.querySelector('nsdq-table').shadowRoot.querySelector('.table:last-child .table-body .table-row:nth-child(2) .table-cell:last-child body')
+                            price: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__pricing-information nef-typography span'),
+                            highLowRange: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__asset-information-wrapper .header-info-day-range-wrapper .header-info-day-range-info'),
+                            fiftyTwoWeekHighLowRange: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__asset-information-wrapper .header-info-range-wrapper .header-info-range-info span'),
+                            previousClosePrice: () => document.querySelector('nsdq-mercury-key-data nsdq-mercury-table').shadowRoot.querySelector('.table:first-child .table-body .table-row:last-child .table-cell:last-child body')
                         },
                         yahoo: {
                             // csp locked
@@ -2607,71 +2674,71 @@ class ProjectStockVision {
                     })
                     window.idaStockVision.priceStore.peakValleyHistory.push(...addedFlagsMap)
                 }
-                if (Vision.PriceAnalysis.isIntraProfitPursuit(code)) {
-                    window.idaStockVision.priceStore.marketHighLowRange.eventTarget.addEventListener('low', () => {
-                        const tinyStartTime = new Date()
-                        tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
-                        if (Date.now() >= tinyStartTime.getTime()) {
-                            let actionToTake
-                            const position = window.idaStockVision.priceStore.currentPosition[code].position
-                            const time = window.idaStockVision.settings[code].intraLowEntry
-                            if (position === Vision.PriceAnalysis.OUT) {
-                                actionToTake = Vision.PriceAnalysis.ACTION.IN
-                                window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
-                                window.idaStockVision.settings[code].intraTimeoutInstance = window.setTimeout(() => {
-                                    const record = {
-                                        target: {
-                                            nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
-                                        }
-                                    }
-                                    if (window.idaStockVision.lastNotificationSent[code] 
-                                        && 'action' in window.idaStockVision.lastNotificationSent[code]
-                                        && window.idaStockVision.lastNotificationSent[code].action === actionToTake
-                                    ) {
-                                        /* to handle the edge case where event is triggered after vision sent notification
-                                         but Trade has not executed/confirmed with [CS] */
-                                        return
-                                    }
-                                    this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true, true)
-                                }, time * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
-                            }
-                        }
-                    })
-                    window.idaStockVision.priceStore.marketHighLowRange.eventTarget.addEventListener('high', () => {
-                        const tinyStartTime = new Date()
-                        tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
-                        if (Date.now() >= tinyStartTime.getTime()) {
+                // if (Vision.PriceAnalysis.isIntraProfitPursuit(code)) {
+                //     window.idaStockVision.priceStore.marketHighLowRange.eventTarget.addEventListener('low', () => {
+                //         const tinyStartTime = new Date()
+                //         tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
+                //         if (Date.now() >= tinyStartTime.getTime()) {
+                //             let actionToTake
+                //             const position = window.idaStockVision.priceStore.currentPosition[code].position
+                //             const time = window.idaStockVision.settings[code].intraLowEntry
+                //             if (position === Vision.PriceAnalysis.OUT) {
+                //                 actionToTake = Vision.PriceAnalysis.ACTION.IN
+                //                 window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
+                //                 window.idaStockVision.settings[code].intraTimeoutInstance = window.setTimeout(() => {
+                //                     const record = {
+                //                         target: {
+                //                             nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
+                //                         }
+                //                     }
+                //                     if (window.idaStockVision.lastNotificationSent[code] 
+                //                         && 'action' in window.idaStockVision.lastNotificationSent[code]
+                //                         && window.idaStockVision.lastNotificationSent[code].action === actionToTake
+                //                     ) {
+                //                         /* to handle the edge case where event is triggered after vision sent notification
+                //                          but Trade has not executed/confirmed with [CS] */
+                //                         return
+                //                     }
+                //                     this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true, true)
+                //                 }, time * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
+                //             }
+                //         }
+                //     })
+                //     window.idaStockVision.priceStore.marketHighLowRange.eventTarget.addEventListener('high', () => {
+                //         const tinyStartTime = new Date()
+                //         tinyStartTime.setHours(...Vision.PriceAnalysis.tinyStartTime(false), 0)
+                //         if (Date.now() >= tinyStartTime.getTime()) {
                             
-                            const position = window.idaStockVision.priceStore.currentPosition[code].position
-                            const time = position === Vision.PriceAnalysis.OUT
-                                ? window.idaStockVision.settings[code].intraHighEntry
-                                : window.idaStockVision.settings[code].intraHighExit
-                            const actionToTake = position === Vision.PriceAnalysis.OUT ? Vision.PriceAnalysis.ACTION.IN : Vision.PriceAnalysis.ACTION.OUT
-                            if (position === Vision.PriceAnalysis.IN) {
-                            }
-                            if (position === Vision.PriceAnalysis.OUT && window.idaStockVision.settings[code].intraTimeoutInstance !== undefined) {
-                                return
-                            }
-                            window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
-                            window.idaStockVision.settings[code].intraTimeoutInstance = window.setTimeout(() => {
-                                const record = {
-                                    target: {
-                                        nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
-                                    }
-                                }
-                                if (window.idaStockVision.lastNotificationSent[code] 
-                                    && 'action' in window.idaStockVision.lastNotificationSent[code]
-                                    && window.idaStockVision.lastNotificationSent[code].action === actionToTake
-                                ) {
-                                    /* to handle the edge case where event is triggered after vision sent notification
-                                        but Trade has not executed/confirmed with [CS] */
-                                    return
-                                }
-                                this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true, true)
-                            }, time * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
-                        }
-                    })
-                }
+                //             const position = window.idaStockVision.priceStore.currentPosition[code].position
+                //             const time = position === Vision.PriceAnalysis.OUT
+                //                 ? window.idaStockVision.settings[code].intraHighEntry
+                //                 : window.idaStockVision.settings[code].intraHighExit
+                //             const actionToTake = position === Vision.PriceAnalysis.OUT ? Vision.PriceAnalysis.ACTION.IN : Vision.PriceAnalysis.ACTION.OUT
+                //             if (position === Vision.PriceAnalysis.IN) {
+                //             }
+                //             if (position === Vision.PriceAnalysis.OUT && window.idaStockVision.settings[code].intraTimeoutInstance !== undefined) {
+                //                 return
+                //             }
+                //             window.clearTimeout(window.idaStockVision.settings[code].intraTimeoutInstance)
+                //             window.idaStockVision.settings[code].intraTimeoutInstance = window.setTimeout(() => {
+                //                 const record = {
+                //                     target: {
+                //                         nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
+                //                     }
+                //                 }
+                //                 if (window.idaStockVision.lastNotificationSent[code] 
+                //                     && 'action' in window.idaStockVision.lastNotificationSent[code]
+                //                     && window.idaStockVision.lastNotificationSent[code].action === actionToTake
+                //                 ) {
+                //                     /* to handle the edge case where event is triggered after vision sent notification
+                //                         but Trade has not executed/confirmed with [CS] */
+                //                     return
+                //                 }
+                //                 this.mutationObserverCallback(/** @type{MutationRecord[]}*/ ([record]), undefined, true, true)
+                //             }, time * Vision.PriceAnalysis.ONE_MINUTE_IN_MILLISECONDS)
+                //         }
+                //     })
+                // }
                 window.idaStockVision.notificationInProgress[code] = false
             } catch (error) {
                 console.log('Ida Trader Bot - TRADER SETUP ERROR', error)
@@ -3365,7 +3432,7 @@ class ProjectStockVision {
             }
             
             const exitDate = new Date()
-            exitDate.setHours(...Vision.PriceAnalysis.tinyExitTime(this.#isCrypto), 0)
+            exitDate.setHours(...Vision.PriceAnalysis.tinyExitTime(this.#isCrypto)[0], 0)
             const tradingEndTime = Vision.PriceAnalysis.tradingEndTime(this.#isCrypto)
             const runTime = exitDate.getTime() - now.getTime()
             clearTimeout(idaStockVision.tinyExitTimeoutInstance)
@@ -3960,8 +4027,9 @@ class ProjectStockVision {
          * @param {number} low 
          * @param {number} high 
          * @param {number} currentPrice 
+         * @returns {number}
          */
-        static intraCurrentPriceDistanceFromHigh = (low, high, currentPrice) => {
+        static intraCurrentPriceDistanceFromLow = (low, high, currentPrice) => {
             if (currentPrice > high || currentPrice < low) {
                 return
             }
@@ -4051,28 +4119,32 @@ class ProjectStockVision {
                     downwardVolatilityTrail = analysis.downwardVolatility()
                     if (analysis.currentPositionOut) {
                         shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
+                        const enterAfterTradingEndTime = analysis.enterAfterTradingEndTime(nowEpochDate)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
                         const maxTinyEntryPercentage = windowStockVision.settings[this.#code].maxTinyEntryPercentageThreshold
                         const tinyHasPrecedingPeakFromAnchorValley = analysis.tinyHasPrecedingPeakFromAnchorValley(anchor)
                         entryPrecisionThreshold = analysis.isRunAwayFromOpeningPrice ? maxTinyEntryPercentage - entryPercentageThreshold : entryPrecisionThreshold
-                        if (Vision.PriceAnalysis.isIntraProfitPursuit(this.#code) && !shouldBeExitingByTradingEndTime && intraTrigger) {
+                        if (Vision.PriceAnalysis.isIntraProfitPursuit(this.#code) && !shouldBeExitingByTradingEndTime && (intraTrigger || enterAfterTradingEndTime)) {
                             entryPrice = currentPrice.price
                         } else {
                             entryPrice = !shouldBeExitingByTradingEndTime && !tinyHasPrecedingPeakFromAnchorValley
                                 ? Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold, entryMultiplier)
                                 : undefined
                         }
+                        // debugger
                     }
                     if (analysis.currentPositionIn) {
                         exitByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate)
                         const targetedProfitAcquired = analysis.targetedProfitAcquired(this.#code)
                         const targetedChunkProfitAcquired = analysis.targetedChunkProfitAcquired(this.#code, now.getHours())
                         const targetedLossAcquired = analysis.targetedLossAcquired(this.#code)
-                        const isIntraProfitPursuit = Vision.PriceAnalysis.isIntraProfitPursuit(this.#code) && intraTrigger
+                        const isIntraProfitPursuitAndEventTriggered = Vision.PriceAnalysis.isIntraProfitPursuit(this.#code) && intraTrigger
+                        const intraProfitThresholdMet = analysis.intraTargetedThresholdMet(nowEpochDate)
                         isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
-                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime || isIntraProfitPursuit
+                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime || isIntraProfitPursuitAndEventTriggered || intraProfitThresholdMet
                             ? currentPrice.price 
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
+                        // debugger
                     }
                     // priceStore.highestPeakAndLowestValleyToday[this.#code] = [...analysis.highestPeakAndLowestValleyToday]
                     priceStore.todaysPeakValleySnapshot[this.#code] = [...analysis.peakValleyToday]
@@ -4179,7 +4251,7 @@ class ProjectStockVision {
                         color = 'blue'
                     }
                 }
-                // console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
+                console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
             } catch (error) {
                 console.log('Ida Trader Bot - MUTATION OBSERVER CALLBACK ERROR', error)
             }
@@ -4305,7 +4377,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = false, profit = 6, loss = 3, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = false, profit = Infinity, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_intra`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
