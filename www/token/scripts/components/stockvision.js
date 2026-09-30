@@ -1870,8 +1870,8 @@ class ProjectStockVision {
             const allPrecisionIntervalsBeforeNow = Array.from(idaStockVision.priceStore.precisionTimeIntervalsToday[codeFormatted].values())
                 .filter(i => i.epochDate <= now)
             const trendCriteriaMet = up 
-                ? allPrecisionIntervalsBeforeNow.filter(i => i.lastCurrentPrice >= idaStockVision.priceStore.openPrice.price).length
-                : allPrecisionIntervalsBeforeNow.filter(i => i.lastCurrentPrice <= idaStockVision.priceStore.openPrice.price).length
+                ? allPrecisionIntervalsBeforeNow.filter(i => i.lastCurrentPrice >= idaStockVision.priceStore.openPrice?.price).length
+                : allPrecisionIntervalsBeforeNow.filter(i => i.lastCurrentPrice <= idaStockVision.priceStore.openPrice?.price).length
             
             return trendCriteriaMet/allPrecisionIntervalsBeforeNow.length
         }
@@ -2411,7 +2411,8 @@ class ProjectStockVision {
                     cssSelectors: {
                         nasdaq: {
                             // use summary page of quote to get all elements & must scroll down to load components that have summary data
-                            price: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__pricing-information nef-typography span'),
+                            // make sure you always explicitly penetrate any custom element mutation you want to observe or else there will be no mutation observed
+                            price: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__pricing-information nef-typography').shadowRoot.querySelector('span'),
                             highLowRange: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__asset-information-wrapper .header-info-day-range-wrapper .header-info-day-range-info'),
                             fiftyTwoWeekHighLowRange: () => document.querySelector('quote-header').shadowRoot.querySelector('.quote-header__container .quote-header__asset-information-wrapper .header-info-range-wrapper .header-info-range-info span'),
                             previousClosePrice: () => document.querySelector('nsdq-mercury-key-data nsdq-mercury-table').shadowRoot.querySelector('.table:first-child .table-body .table-row:last-child .table-cell:last-child body')
@@ -3203,13 +3204,13 @@ class ProjectStockVision {
                                         date: new Date(precisionToEvaluate.epochDate).toISOString()
                                     }
         
-                                    const downTrendProbability = Vision.trendProbability(code, false) > 0.5
-                                    const profitFromPosition = Vision.percentageDelta(currentPosition.price, priceStore.marketHighLowRange.postCurrentPositionHigh.price, true)
+                                    // const downTrendProbability = Vision.trendProbability(code, false) > 0.5
+                                    // const profitFromPosition = Vision.percentageDelta(currentPosition.price, priceStore.marketHighLowRange.postCurrentPositionHigh.price, true)
             
-                                    if (currentPosition.position === Vision.PriceAnalysis.IN && downTrendProbability && profitFromPosition >= 0.4) {
-                                        priceStore.marketHighLowRange.eventTarget.dispatchEvent(new Event('high'))
-                                        console.log('high')
-                                    }
+                                    // if (currentPosition.position === Vision.PriceAnalysis.IN && downTrendProbability && profitFromPosition >= 0.4) {
+                                    //     priceStore.marketHighLowRange.eventTarget.dispatchEvent(new Event('high'))
+                                    //     console.log('high')
+                                    // }
                                 }
         
                             }
@@ -3233,14 +3234,15 @@ class ProjectStockVision {
                                 epochDate: precisionToEvaluate.epochDate,
                                 date: new Date(precisionToEvaluate.epochDate).toISOString()
                             }
-                            if (currentPosition.position === Vision.PriceAnalysis.OUT 
-                                && priceStore.marketHighLowRange.precisionLowToPrecisionHighDelta >= codeSettings.tinyObservedDailyProfitWindow
-                            ) {
-                                // do nothing
-                            } else {
-                                priceStore.marketHighLowRange.eventTarget.dispatchEvent(new Event('high'))
-                                console.log('high')
-                            }
+                            
+                            // if (currentPosition.position === Vision.PriceAnalysis.OUT 
+                            //     && priceStore.marketHighLowRange.precisionLowToPrecisionHighDelta >= codeSettings.tinyObservedDailyProfitWindow
+                            // ) {
+                            //     // do nothing
+                            // } else {
+                            //     priceStore.marketHighLowRange.eventTarget.dispatchEvent(new Event('high'))
+                            //     console.log('high')
+                            // }
                         }
     
                     }
@@ -3854,8 +3856,9 @@ class ProjectStockVision {
             const formattedCode = Vision.PriceAnalysis.codeFormat(code)
             const priceStore = window.idaStockVision.priceStore
             const codeSettings = window.idaStockVision.settings[formattedCode]
-            /** @type {CurrentPrice} */  // @ts-ignore
-            const currentPrice = priceStore.lastPrice !== undefined ? {...priceStore.lastPrice} : {...priceStore.peakValleyHistory.at(-1)}
+            const now = new Date()
+            /** @type {CurrentPrice} */
+            const currentPrice = {price: priceStore.marketHighLowRange.currentPrice, epochDate: now.getTime(), date: now.toISOString(), flags: undefined }
             
             return new ProjectStockVision.vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, priceStore.currentPosition[formattedCode], codeSettings.isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,formattedCode)
         }
@@ -4377,7 +4380,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = false, profit = Infinity, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = true, profit = Infinity, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
         const codeFormatted = String(`${code}_intra`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
