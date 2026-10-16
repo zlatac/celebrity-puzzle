@@ -111,11 +111,10 @@ export interface IPriceStore {
       triggerThreshold: undefined | number;
       profitThreshold: undefined | number;
       executionMinute: undefined | number;
-      // netProfitPercentage: undefined | number;
       get netProfitPercentage(): number | undefined;
     },
     priceCssSelector: () => HTMLElement | Node,
-    get currentPrice(): number,
+    get currentPrice(): IPrice | undefined,
   };
   set yesterdayClosePrice(): void;
   set openPrice(): void;
@@ -216,7 +215,7 @@ export interface IStockVision {
   cssSelectors: {
     [key:string]: {
       [key]: Function;
-      price: () => HTMLElement | Node;
+      price: (code?: string) => HTMLElement | Node;
     }
   };
   constants: {};

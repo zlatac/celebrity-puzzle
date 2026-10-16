@@ -627,6 +627,7 @@ class ProjectStockVision {
              */
             intraTargetedThresholdMet(mutationEpochDate) {
                 const [exitRangeStart, exitRangeEnd] = PriceAnalysis.tinyExitTime(this._isCrypto)
+                const intraStartTime = new Date().setHours(...PriceAnalysis.tinyStartTime(this._isCrypto))
                 const firstExitDate = new Date().setHours(...exitRangeStart,0)
                 const marketHighLowRange = window.idaStockVision.priceStore.marketHighLowRange
 
@@ -635,6 +636,7 @@ class ProjectStockVision {
                     || this._currentPosition === undefined 
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || mutationEpochDate > firstExitDate
+                    || mutationEpochDate <= intraStartTime
                 ) {
                     return false
                 }
@@ -647,7 +649,7 @@ class ProjectStockVision {
 
                 const positionToCurrentPriceIsPositive = Vision.percentageDelta(this._currentPosition.price, this._currentPrice.price, true) > 0
 
-                debugger
+                // debugger
                 return distance >= 0.6 || (distance < 0.1 && positionToCurrentPriceIsPositive)
                 
             }
@@ -1719,6 +1721,8 @@ class ProjectStockVision {
             }
         }
 
+        static devConsole = false
+
         static constants = {
             server: {
                 production: {
@@ -2179,12 +2183,12 @@ class ProjectStockVision {
 
                 switch(true) {
                     case origin.includes('nasdaq'):
-                    case origin.includes('google'):
-                        const websiteName = origin.includes('google') ? 'google' : 'nasdaq'
+                        const websiteName = 'nasdaq'
                         priceSelector = window.idaStockVision.cssSelectors[websiteName].price // needed for manual retrieval of price
                         priceElement = window.idaStockVision.cssSelectors[websiteName].price()
                         priceHighAndLowRangeElement = window.idaStockVision.cssSelectors[websiteName].highLowRange()
-                        prevClosePriceElement = window.idaStockVision.cssSelectors[websiteName].previousClosePrice()
+                        prevClosePriceElement = window.idaStockVision.cssSelectors[websiteName]?.previousClosePrice()
+                        openPriceElement = window.idaStockVision.cssSelectors[websiteName]?.openPrice()
                         if (priceHighAndLowRangeElement !== null) {
                             storeJointHighLowRange(priceHighAndLowRangeElement.innerText)
                             highAndLowMutationObserver = new MutationObserver((mutationArray, observerInstance) => {
@@ -2195,6 +2199,7 @@ class ProjectStockVision {
                             highAndLowMutationObserver.observe(priceHighAndLowRangeElement, observeOptions)
                         }
                         storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
+                        storeGeneral(window.idaStockVision.priceStore, 'openPrice', openPriceElement, true)
                         break
                     case origin.includes('cboe'):
                         priceSelector = window.idaStockVision.cssSelectors.cboe.price
@@ -2214,6 +2219,18 @@ class ProjectStockVision {
                         storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
                         storeGeneral(window.idaStockVision.priceStore, 'openPrice', openPriceElement, true)
                         backFillPrecisionIntervals(window.idaStockVision.cssSelectors.webull.quotes)
+                        break
+                    case origin.includes('google'):
+                        const codeFromUrl = location.pathname.split('/').at(-1).split(':')[0]
+                        priceSelector = () => window.idaStockVision.cssSelectors.google.price(codeFromUrl)
+                        priceElement = window.idaStockVision.cssSelectors.google.price(codeFromUrl)
+                        priceLowRangeElement = window.idaStockVision.cssSelectors.google.lowRange(codeFromUrl)
+                        priceHighRangeElement = window.idaStockVision.cssSelectors.google.highRange(codeFromUrl)
+                        prevClosePriceElement = window.idaStockVision.cssSelectors.google.previousClosePrice(codeFromUrl)
+                        openPriceElement = window.idaStockVision.cssSelectors.google.openPrice(codeFromUrl)
+                        setUpGeneralHighLowRangeMutations()
+                        storeGeneral(window.idaStockVision.priceStore, 'yesterdayClosePrice', prevClosePriceElement, true)
+                        storeGeneral(window.idaStockVision.priceStore, 'openPrice', openPriceElement, true)
                         break
                     case origin.includes('livecoinwatch'):
                         priceSelector = window.idaStockVision.cssSelectors.livecoinwatch.price
@@ -2340,7 +2357,7 @@ class ProjectStockVision {
                                     const anomalyDifference = Vision.percentageDelta(this.preAnchor,this.postAnchor)
                                     const percentageOfProfitToTake = this.profitThreshold * anomalyDifference
                                     const priceAtMaximumProfit = Vision.PriceAnalysis.percentageFinalAmount(this.postAnchor, percentageOfProfitToTake)
-                                    const netProfitPercentage = Vision.percentageDelta(currentPrice, priceAtMaximumProfit, true)
+                                    const netProfitPercentage = Vision.percentageDelta(currentPrice.price, priceAtMaximumProfit, true)
                                     return netProfitPercentage
                                 }
                             },
@@ -2349,10 +2366,12 @@ class ProjectStockVision {
                                 if (typeof this.priceCssSelector !== 'function') {
                                     return
                                 }
+                                const now = new Date()
                                 const priceElement = this.priceCssSelector()
                                 const elementValue = priceElement instanceof HTMLElement ? priceElement.innerText : priceElement.nodeValue
                                 
-                                return Vision.decimalConvert(Vision.sanitizePrice(elementValue))
+                                const price = Vision.decimalConvert(Vision.sanitizePrice(elementValue))
+                                return {price, epochDate: now.getTime(), date: now.toISOString()}
                             }
                         },
                         isUpwardTrendDayToDay: false,
@@ -2498,9 +2517,12 @@ class ProjectStockVision {
                         },
                         google: {
                             // too slow compared to nasdaq
-                            price: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[1]/div[1]/c-wiz/div/div[1]/div/div[1]/div/div[1]/div/span/div/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
-                            preMarketAndAfterHoursPrice: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[1]/div[1]/c-wiz/div/div[1]/div/div[2]/span[1]/span/div/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
-                            highLowRange: () => document.evaluate('//c-wiz[3]/div/div[4]/div/main/div[2]/div[2]/div/div[1]/div[3]/div',document,null,XPathResult.ANY_UNORDERED_NODE_TYPE,null).singleNodeValue,
+                            price: (code) => document.querySelector(`body > c-wiz[data-p*="${code}" i] > div > div > div > div > main > div > div > c-wiz > div > div> c-wiz > div > div > div > div > div > div > div > div > span > span`),
+                            preMarketAndAfterHoursPrice: (code) => document.querySelector(`body > c-wiz[data-p*="${code}" i] > div > div > div > div > main > div > div > c-wiz > div > div > c-wiz > div > div > div > div > div > div:last-child > div > div > span > span`),
+                            lowRange: (code) => document.querySelector(`body > c-wiz[data-p*="${code}" i] > div > div > div > div > main > div > div > c-wiz > div > span > div > div > div:nth-child(2) > span > div > div > div > c-wiz > div > div > div:nth-child(1) > div:nth-child(3) > div:last-child`),
+                            highRange: (code) => document.querySelector(`body > c-wiz[data-p*="${code}" i] > div > div > div > div > main > div > div > c-wiz > div > span > div > div > div:nth-child(2) > span > div > div > div > c-wiz > div > div > div:nth-child(1) > div:nth-child(2) > div:last-child`),
+                            openPrice: (code) => document.querySelector(`body > c-wiz[data-p*="${code}" i] > div > div > div > div > main > div > div > c-wiz > div > span > div > div > div:nth-child(2) > span > div > div > div > c-wiz > div > div > div:nth-child(1) > div:nth-child(1) > div:last-child`),
+                            previousClosePrice: (code) => document.querySelector(`body > c-wiz[data-p*="${code}" i] > div > div > div > div > main > div > div > c-wiz > div > div > c-wiz > div > div > div > div > div > div > div:nth-child(2) > div > span`),
                         },
 
                     },
@@ -2604,7 +2626,7 @@ class ProjectStockVision {
                     window.addEventListener(Vision.PriceAnalysis.EVENT_NAMES.tinyExit, () => {
                         const record = {
                             target: {
-                                nodeValue: String(window.idaStockVision.priceStore.lastPrice.price)
+                                nodeValue: String(window.idaStockVision.priceStore.marketHighLowRange.currentPrice.price)
                             }
                         }
                         if (window.idaStockVision.positionIn[code] === Vision.PriceAnalysis.IN) {
@@ -2873,8 +2895,9 @@ class ProjectStockVision {
          * @param {CurrentPrice} currentPrice 
          * @param {PriceHistory | undefined} peakValleyDetected 
          * @param {IntervalFlags} intervalFlag 
+         * @param {boolean} isIntraOrTiny 
          */
-        updatePrices(currentPrice, peakValleyDetected, intervalFlag) {
+        updatePrices(currentPrice, peakValleyDetected, intervalFlag, isIntraOrTiny = false) {
             try {
                 const priceStore = window.idaStockVision.priceStore
 
@@ -2883,7 +2906,7 @@ class ProjectStockVision {
                     priceStore.lastPrice = currentPrice
                 }
 
-                if (peakValleyDetected !== undefined) {
+                if (peakValleyDetected !== undefined && isIntraOrTiny === false) {
                     priceStore.peakValleyHistory.push(peakValleyDetected)
                     this.addIntervalFlagToPeakValleyDetectedOrCurrentPrice(this.#code, peakValleyDetected, intervalFlag)
                 }
@@ -3273,14 +3296,14 @@ class ProjectStockVision {
                     return 
                 }
                 const intervalKey = intervalForNow.hourMinute
-                const lastPrice = window.idaStockVision.priceStore.lastPrice
+                const currentPrice = window.idaStockVision.priceStore.marketHighLowRange.currentPrice
                 const interval = intervalBag.get(intervalKey)
                 const peakValleyCaptured = [interval.peakCaptured, interval.valleyCaptured].every((item) => item === true)
                 const currentTimePriceExecuted = interval.currentPriceExecuted === true
                 const tradingInterval = window.idaStockVision.settings[code].tradingInterval
                 const record = {
                     target: {
-                        nodeValue: String(lastPrice.price)
+                        nodeValue: String(currentPrice.price)
                     }
                 }
                 
@@ -3858,7 +3881,7 @@ class ProjectStockVision {
             const codeSettings = window.idaStockVision.settings[formattedCode]
             const now = new Date()
             /** @type {CurrentPrice} */
-            const currentPrice = {price: priceStore.marketHighLowRange.currentPrice, epochDate: now.getTime(), date: now.toISOString(), flags: undefined }
+            const currentPrice = {...priceStore.marketHighLowRange.currentPrice, flags: [] }
             
             return new ProjectStockVision.vision.PriceAnalysis(priceStore.peakValleyHistory, currentPrice, priceStore.currentPosition[formattedCode], codeSettings.isCrypto, codeSettings.entryPercentageThreshold, codeSettings.exitPercentageThreshold,codeSettings.tradingInterval,codeSettings.precisionInterval,formattedCode)
         }
@@ -4066,6 +4089,7 @@ class ProjectStockVision {
                 const priceStore = window.idaStockVision.priceStore
                 const currentPosition = priceStore.currentPosition[this.#code]
                 const settings = windowStockVision.settings[this.#code]
+                const isIntraOrTiny = Vision.PriceAnalysis.isTinyOrIntraProfitPursuit(this.#code)
                 /** @type {CurrentPrice} */
                 const currentPrice =  {epochDate: nowEpochDate, date: nowDateISOString, price: targetValue, flags: []}
                 this.#mutationCurrentPrice = currentPrice
@@ -4103,7 +4127,7 @@ class ProjectStockVision {
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
                 if (autoEntryExitMode) {
                     const peakValleyDetected = Vision.PriceAnalysis.peakValleyDetection(currentPrice, priceStore.lastPrice, priceStore.previousLastPrice)
-                    this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval)
+                    this.updatePrices(currentPrice, peakValleyDetected, this.#tradingInterval, isIntraOrTiny)
                     this.runTradingIntervalInspector(this.#code, priceStore.priceTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval], priceStore.precisionTimeIntervalsToday[this.#code], Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#precisionInterval])
                     this.runTinyExitSetup()
                     if (Vision.PriceAnalysis.TRADING_INTERVAL_SECONDS[this.#tradingInterval] !== undefined 
@@ -4254,7 +4278,9 @@ class ProjectStockVision {
                         color = 'blue'
                     }
                 }
-                console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
+                if (Vision.devConsole) {
+                    console.log(`%c ${message}`,`color:white;background-color:${color};padding:50px`)
+                }
             } catch (error) {
                 console.log('Ida Trader Bot - MUTATION OBSERVER CALLBACK ERROR', error)
             }
@@ -4380,7 +4406,7 @@ class ProjectStockVision {
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionIntra(code, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, experiment = true, profit = Infinity, loss, tradingInterval = '1hour', precisionInterval = '3min', isCrypto) {
+    static visionIntra(code, experiment = false, isCrypto, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, profit = Infinity, loss, tradingInterval = '1hour', precisionInterval = '3min') {
         const codeFormatted = String(`${code}_intra`).toUpperCase()
         const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
         const idaStockVision = window.idaStockVision
@@ -5213,6 +5239,24 @@ class StockVisionTrade {
         const position = {
             requestType: 'get',
             url: 'https://api.questrade.com/v1/positions?underlying-security-uuid=515c3938-2281-4122-0285-869320320824&account-product-type=SD',
+            fetch: (accessToken, securityUuid) => fetch(`https://api.questrade.com/v1/positions?underlying-security-uuid=${securityUuid}&account-product-type=SD`, {
+                "headers": {
+                    "accept": "application/json, text/plain, */*",
+                    "accept-language": "en-US,en;q=0.9",
+                    "authorization": `Bearer ${accessToken}`,
+                    "sec-ch-ua": "\"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"138\", \"Google Chrome\";v=\"138\"",
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": "\"Windows\"",
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-site"
+                },
+                "referrer": "https://myportal.questrade.com/",
+                "body": null,
+                "method": "GET",
+                "mode": "cors",
+                "credentials": "include"
+            }),
             response: {
                 "data": [
                     {

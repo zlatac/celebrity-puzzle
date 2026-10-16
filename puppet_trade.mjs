@@ -116,6 +116,7 @@ const setupBrokerage = async () => {
   //     new RegExp(/{orinUrl}.*{specificEndpointName}/).test(response.url()) && response.status() === 200,
   // );
 
+  // although we are not using the nameInputLabelElement it is important to wait for the html form to fully be rendered by the SPA
   const nameInputLabelElement = await page.waitForSelector('[data-qt="txtUserId"] + label[style*="opacity: 1"]')
   const nameInputElement = await page.waitForSelector('[data-qt="txtUserId"]')
   await nameInputElement.hover()

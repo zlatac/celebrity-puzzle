@@ -24,6 +24,7 @@ const stocks = [
     primaryCode: 'ibkr',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
+      ProjectStockVision.visionIntra('ibkr')
       ProjectStockVision.visionAnomaly('ibkr')
     }
   },
@@ -33,6 +34,7 @@ const stocks = [
     primaryCode: 'ndaq',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
+      ProjectStockVision.visionIntra('ndaq')
       ProjectStockVision.visionAnomaly('ndaq')
     }
   },
@@ -42,6 +44,7 @@ const stocks = [
     primaryCode: 'aapl',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
+      ProjectStockVision.visionIntra('aapl')
       ProjectStockVision.visionAnomaly('aapl')
     }
   },
@@ -51,6 +54,7 @@ const stocks = [
     primaryCode: 'amzn',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
+      ProjectStockVision.visionIntra('amzn')
       ProjectStockVision.visionAnomaly('amzn')
     }
   },
@@ -60,6 +64,7 @@ const stocks = [
     primaryCode: 'vz',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
+      ProjectStockVision.visionIntra('vz')
       ProjectStockVision.visionAnomaly('vz')
     }
   },
@@ -69,7 +74,8 @@ const stocks = [
     primaryCode: 'gev',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionLarge('gev',2,2,1.25,false,3,undefined,'1day','5min')
+      // ProjectStockVision.visionLarge('gev',2,2,1.25,false,3,undefined,'1day','5min')
+      ProjectStockVision.visionIntra('gev')
       ProjectStockVision.visionAnomaly('gev')
     }
   },
@@ -79,7 +85,8 @@ const stocks = [
     primaryCode: 'pfe',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
-      ProjectStockVision.visionLarge('pfe_small',0.8,0.5,1.88,false,0.81,undefined,'4hour','5min')
+      // ProjectStockVision.visionLarge('pfe_small',0.8,0.5,1.88,false,0.81,undefined,'4hour','5min')
+      ProjectStockVision.visionIntra('pfe')
       ProjectStockVision.visionAnomaly('pfe')
     }
   },
@@ -89,6 +96,7 @@ const stocks = [
     primaryCode: 'xom',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
+      ProjectStockVision.visionIntra('xom')
       ProjectStockVision.visionAnomaly('xom')
     }
   },
@@ -98,6 +106,7 @@ const stocks = [
     primaryCode: 'chev',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
+      ProjectStockVision.visionIntra('chev')
       ProjectStockVision.visionAnomaly('chev')
     }
   },
@@ -107,6 +116,7 @@ const stocks = [
     primaryCode: 'wmt',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
+      ProjectStockVision.visionIntra('wmt')
       ProjectStockVision.visionAnomaly('wmt')
     }
   },
@@ -116,6 +126,7 @@ const stocks = [
     primaryCode: 'cost',
     exchange: PriceAnalysis.EXCHANGES.NASDAQ,
     script: () => {
+      ProjectStockVision.visionIntra('cost')
       ProjectStockVision.visionAnomaly('cost')
     }
   },
@@ -125,6 +136,7 @@ const stocks = [
     primaryCode: 'jnj',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
+      ProjectStockVision.visionIntra('jnj')
       ProjectStockVision.visionAnomaly('jnj')
     }
   },
@@ -134,6 +146,7 @@ const stocks = [
     primaryCode: 'unp',
     exchange: PriceAnalysis.EXCHANGES.NYSE,
     script: () => {
+      ProjectStockVision.visionIntra('unp')
       ProjectStockVision.visionAnomaly('unp')
     }
   },
@@ -146,6 +159,8 @@ const generateUrl = (website, urlCode, exchange) => {
       return `https://livecoinwatch.com/price/${urlCode}`
     case site.includes(PriceAnalysis.QUOTE_WEBSITES.WEBULL):
       return `https://www.webull.com/quote/${exchange}-${urlCode}`
+    case site.includes(PriceAnalysis.QUOTE_WEBSITES.GOOGLE):
+      return `https://www.google.com/finance/quote/${urlCode.toUpperCase()}:${exchange.toUpperCase()}`
     default:
       return undefined
   }
@@ -167,16 +182,22 @@ const setupStocks = async (stocks) => {
   for(const stock of stocks) {
     try {
       const url = generateUrl(stock.website, stock.urlCode, stock.exchange)
-      const page = await browser.newPage({type: 'window',  windowBounds: {height: 500, width: 800}})
+      const page = await browser.newPage({type: 'window'})
+      await page.setViewport(null);
+      await page.resize({ contentWidth: 1040, contentHeight: 836 })
       await page.goto(url)
-      await page.evaluate(ProjectStockVision.toString())
-      await page.evaluate(stock.script)
       if (stock.website === PriceAnalysis.QUOTE_WEBSITES.WEBULL) {
         const cookieRejectButton = await page.$('[data-i18n-key="H5_BIZ_CONCENT_0005"]')
         if (cookieRejectButton !== null) {
           await cookieRejectButton.click()
         }
       }
+      if (stock.website === PriceAnalysis.QUOTE_WEBSITES.GOOGLE) {
+        const newsContainer = await page.locator('div.rCBCQb.LB5mpd').wait()
+      }
+
+      await page.evaluate(ProjectStockVision.toString())
+      await page.evaluate(stock.script)
       loadedCounter++
     } catch (error) {
       console.error('Setup stocks',error)
