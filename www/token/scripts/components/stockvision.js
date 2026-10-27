@@ -532,8 +532,12 @@ class ProjectStockVision {
             targetedLossAcquired(code) {
                 const lossThreshold = window.idaStockVision.settings[code].lossThreshold
                 const timeToTakeLoss = new Date().setHours(15,35,0,0)
-                const isTinyCode = PriceAnalysis.isTinyProfitPursuit(this._code)
-                const isNotTinyTimeToTakeLoss = isTinyCode && this._currentPrice.epochDate < timeToTakeLoss
+                const intraTimeToTakeLoss = new Date().setHours(10,0,0,0)
+                const intraTimeToNotTakeLoss = new Date().setHours(...PriceAnalysis.tinyExitTime(false)[1],0)
+                const isTinyCodeOnly = PriceAnalysis.isTinyProfitPursuit(this._code)
+                const isIntraCodeOnly = PriceAnalysis.isIntraProfitPursuit(this._code)
+                const isNotTinyTimeToTakeLoss = isTinyCodeOnly && this._currentPrice.epochDate < timeToTakeLoss
+                const isNotIntraTimeToTakeLoss = isIntraCodeOnly && (this._currentPrice.epochDate < intraTimeToTakeLoss || this._currentPrice.epochDate >= intraTimeToNotTakeLoss)
                 // const currentTinyPositionToLowestPointSlope = isTinyCode ? this.priceSlope(this._currentPosition, this.lowestPriceOfTheDay) : undefined
                 // const slopeIsNotNegative = currentTinyPositionToLowestPointSlope === undefined || currentTinyPositionToLowestPointSlope?.negative === false
                 if (typeof lossThreshold !== 'number' 
@@ -541,6 +545,7 @@ class ProjectStockVision {
                     || this._currentPosition.position !== PriceAnalysis.IN
                     || !this.dateExistsForCurrrentPosition
                     || isNotTinyTimeToTakeLoss
+                    || isNotIntraTimeToTakeLoss
                     // || isNotTinyTimeToTakeLoss && slopeIsNotNegative
                 ) {
                     return false
@@ -650,7 +655,7 @@ class ProjectStockVision {
                 const positionToCurrentPriceIsPositive = Vision.percentageDelta(this._currentPosition.price, this._currentPrice.price, true) > 0
 
                 // debugger
-                return distance >= 0.6 || (distance < 0.1 && positionToCurrentPriceIsPositive)
+                return distance >= 0.7 || (distance < 0.1 && positionToCurrentPriceIsPositive)
                 
             }
 
@@ -1348,7 +1353,7 @@ class ProjectStockVision {
                 if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd)) {
                     return output
                 }
-                const range = Array(((end + 1) - start)/increment)
+                const range = Array(Vision.decimalPrecision(((end + 1) - start)/increment, 0))
                 const sign = includeNegativeSign ? '(-)' : ''
                 range.fill(0)
                 range.forEach((item, index) => {
@@ -1504,7 +1509,7 @@ class ProjectStockVision {
                 // Hour, Minute, Seconds
                 return isCrypto 
                     ? [23 + hourOffset, 58 + minuteOffset, 0] 
-                    : [15 + hourOffset, 59 + minuteOffset, 59]
+                    : [15 + hourOffset, 59 + minuteOffset, 0]
             }
 
             static marketStartTime(isCrypto = false) {
@@ -3947,6 +3952,7 @@ class ProjectStockVision {
             let profitableAnomalys = 0
             /** @type {number[]} */
             const profitWindows = []
+            const betweenDaysProfitWindows = []
             const anomalys = []
             // just the date with no time also defaults to midnight that day
             let fromDate = fromDateString !== undefined ? new Date(`${fromDateString},00:00`).getTime() : -Infinity
@@ -4011,6 +4017,7 @@ class ProjectStockVision {
                 max = Math.max(diff, max)
                 min = Math.min(diff, min)
                 profitWindows.push(Vision.percentageDelta(lowPrice, highPrice))
+                betweenDaysProfitWindows.push(diff)
                 if (lowestDropFromPreviousClose <= anomalyThreshold) {
                     anomalys.push(lowestDropFromPreviousClose)
                     const sliceStart = index >= 6 ? index - 6 : 0
@@ -4032,8 +4039,17 @@ class ProjectStockVision {
             const holdReturn =  Vision.percentageDelta(Number(fromDateClose), Number(toDateClose), true)
             const profitWindow = {
                 mean: Vision.decimalPrecision(Vision.PriceAnalysis.mean(profitWindows)),
-                min: Math.min(...profitWindows)
+                min: Math.min(...profitWindows),
+                max: Math.max(...profitWindows),
             }
+            const betweenDaysProfitWindow = {
+                mean: Vision.decimalPrecision(Vision.PriceAnalysis.mean(betweenDaysProfitWindows)),
+                min: Math.min(...betweenDaysProfitWindows),
+                max: Math.max(...betweenDaysProfitWindows),
+                median: Vision.PriceAnalysis.median(betweenDaysProfitWindows),
+            }
+            betweenDaysProfitWindow.mode =  Vision.PriceAnalysis.mode(betweenDaysProfitWindows, undefined, betweenDaysProfitWindow.max)
+            
             const anomaly = {anomalys, success: `${profitableAnomalys}/${anomalys.length}`}
             /* Notes
                 - low, high, open & current price cannot be relied on to absolutely know the shape of the price behaviour
@@ -4045,7 +4061,7 @@ class ProjectStockVision {
                   to minimize losses. although this could limit our profit, it makes sure we do not end up in a loss for the position 
             */
 
-            return {sum, result, positive, negative, min, max, holdReturn, profitWindow, anomaly}
+            return {sum, result, positive, negative, min, max, holdReturn, profitWindow, anomaly, betweenDaysProfitWindow}
         }
 
         /**
@@ -4064,6 +4080,30 @@ class ProjectStockVision {
             const currentPriceDistanceFromLowInPercentage = lowCurrentPriceDiff/lowHighDiff
             return currentPriceDistanceFromLowInPercentage
 
+        }
+
+        /**
+         * 
+         * @param {number} currentPrice 
+         * @param {number} previousClosePrice 
+         * @param {number} openPrice 
+         * @param {number} high
+         * @param {number} threshold 0.6 for reasonable exit profit & give room for more profit. use 0 to deactivate
+         * @param {boolean} currentPositionProfitable
+         * @param {number} mutationEpochDate
+         * @returns {boolean} 
+         */
+        static intraBleedingProfit = (currentPrice, previousClosePrice, openPrice, high, threshold = 0.6, currentPositionProfitable, mutationEpochDate) => {
+            const startBleedingProfit = new Date().setHours(9,45,0,0)
+            const stopBleedingProfit = new Date().setHours(...Vision.PriceAnalysis.tinyExitTime(false)[1],0)
+            if (threshold === 0 || !currentPositionProfitable || previousClosePrice === undefined || mutationEpochDate < startBleedingProfit || mutationEpochDate >= stopBleedingProfit) {
+                return false
+            }
+            
+            const openAndHighPrice = [openPrice, high].map(item => item !== undefined ? item : 0)
+            const max = Math.max(...openAndHighPrice)
+            const distance = Vision.intraCurrentPriceDistanceFromLow(previousClosePrice, max, currentPrice)
+            return distance < threshold
         }
 
         /**
@@ -4122,6 +4162,7 @@ class ProjectStockVision {
                 let downwardVolatilityTrail = undefined
                 let exitByTradingEndTime = false
                 let shouldBeExitingByTradingEndTime = false
+                let enterAfterTradingEndTime = false
                 let isProfitChunkExit = false
                 const otherNotificationQueryParams = {}
                 const autoEntryExitMode = entryPrice === undefined && exitPrice === undefined
@@ -4144,9 +4185,9 @@ class ProjectStockVision {
                     // priceStore.analysis[this.#code] = analysis
                     anchor = analysis.findAnchor()
                     downwardVolatilityTrail = analysis.downwardVolatility()
+                    enterAfterTradingEndTime = analysis.enterAfterTradingEndTime(nowEpochDate)
                     if (analysis.currentPositionOut) {
                         shouldBeExitingByTradingEndTime = analysis.exitByTradingEndTime(nowEpochDate, true)
-                        const enterAfterTradingEndTime = analysis.enterAfterTradingEndTime(nowEpochDate)
                         const entryMultiplier = downwardVolatilityTrail === true ? window.idaStockVision.settings[this.#code].entryMultiplier : undefined
                         const maxTinyEntryPercentage = windowStockVision.settings[this.#code].maxTinyEntryPercentageThreshold
                         const tinyHasPrecedingPeakFromAnchorValley = analysis.tinyHasPrecedingPeakFromAnchorValley(anchor)
@@ -4167,8 +4208,10 @@ class ProjectStockVision {
                         const targetedLossAcquired = analysis.targetedLossAcquired(this.#code)
                         const isIntraProfitPursuitAndEventTriggered = Vision.PriceAnalysis.isIntraProfitPursuit(this.#code) && intraTrigger
                         const intraProfitThresholdMet = analysis.intraTargetedThresholdMet(nowEpochDate)
+                        const isIntraBleedingProfit = Vision.PriceAnalysis.isIntraProfitPursuit(this.#code) 
+                            && Vision.intraBleedingProfit(currentPrice.price, priceStore.yesterdayClosePrice?.price, priceStore.openPrice?.price, priceStore.marketHighLowRange.high?.price, settings.intraBleedingProfitThreshold, positionPriceToCurrentPriceDelta > 0, nowEpochDate)
                         isProfitChunkExit = targetedChunkProfitAcquired && !targetedProfitAcquired
-                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime || isIntraProfitPursuitAndEventTriggered || intraProfitThresholdMet
+                        exitPrice = analysis.isCurrentPositionStuck || targetedProfitAcquired || targetedChunkProfitAcquired || targetedLossAcquired || exitByTradingEndTime || isIntraProfitPursuitAndEventTriggered || intraProfitThresholdMet || isIntraBleedingProfit
                             ? currentPrice.price 
                             : Vision.applyEntryExitThresholdToAnchor(anchor, entryPercentageThreshold, exitPercentageThreshold)
                         // debugger
@@ -4394,21 +4437,22 @@ class ProjectStockVision {
     /**
      * 
      * @param {string} code 
+     * @param {boolean} [experiment] 
+     * @param {number} [profit] 
+     * @param {number} [loss] 
+     * @param {number} [bleedingProfitThreshold] use 0 to deactivate feature
      * @param {number} [lowEntryTime]
      * @param {number} [lowExitTime]
      * @param {number} [highEntryTime]
      * @param {number} [highExitTime]
-     * @param {boolean} [experiment] 
-     * @param {number} [profit] 
-     * @param {number} [loss] 
      * @param {IntervalFlags} [tradingInterval]
      * @param {IntervalFlags} [precisionInterval]
      * @param {boolean} [isCrypto]
      * @returns {string}
      */
-    static visionIntra(code, experiment = false, isCrypto, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, profit = Infinity, loss, tradingInterval = '1hour', precisionInterval = '3min') {
+    static visionIntra(code, experiment = false, profit = 1.45, loss = 0.7, bleedingProfitThreshold, isCrypto, lowEntryTime = 30, lowExitTime = 5, highEntryTime = 2, highExitTime = 15, tradingInterval = '1hour', precisionInterval = '3min') {
         const codeFormatted = String(`${code}_intra`).toUpperCase()
-        const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, profit, loss, tradingInterval, precisionInterval, isCrypto)
+        const output = ProjectStockVision.visionLarge(codeFormatted, Infinity, Infinity, undefined, experiment, 1.45, loss, tradingInterval, precisionInterval, isCrypto, 'none')
         const idaStockVision = window.idaStockVision
         if (!(codeFormatted in idaStockVision.settings)) {
             throw new Error(`settings not found for ${codeFormatted}. Please destroy and restart`)
@@ -4419,6 +4463,7 @@ class ProjectStockVision {
         idaStockVision.settings[codeFormatted].intraHighEntry = highEntryTime
         idaStockVision.settings[codeFormatted].intraHighExit = highExitTime
         idaStockVision.settings[codeFormatted].intraTimeoutInstance = undefined
+        idaStockVision.settings[codeFormatted].intraBleedingProfitThreshold = bleedingProfitThreshold
         
         return output
     }

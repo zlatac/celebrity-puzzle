@@ -206,6 +206,7 @@ export interface IStockVision {
       intraHighEntry?: undefined | number;
       intraHighExit?: undefined | number;
       intraTimeoutInstance?: undefined | number;
+      intraBleedingProfitThreshold?: undefined | number;
     };
   };
   server: {

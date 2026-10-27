@@ -128,11 +128,11 @@ const setupBrokerage = async () => {
   await page.focus(passInputElement)
   await page.type(passInputElement, girl)
   
-  const submitNamePassButtonElement = '[data-qt="btnLogin"]'
-  await page.hover(submitNamePassButtonElement)
+  const submitNamePassButtonElement = await page.waitForSelector('[data-qt="btnLogin"]')
+  await submitNamePassButtonElement.hover()
   await Promise.all([
     page.waitForNavigation(), // must be called before the click as the documentation shows
-    page.click(submitNamePassButtonElement),
+    submitNamePassButtonElement.click(),
   ])
 
   // next form
@@ -165,13 +165,16 @@ const setupBrokerage = async () => {
   // Do not use evaluateOnNewDocument cause every new page will have the javascript logic executed
   // await page.evaluateOnNewDocument(`${ProjectStockVision.toString()}${StockVisionTrade.toString()}`)
   await page.waitForSelector('shell-root shell-header button')
+  await page.waitForSelector('investing-shell-root >>> trading-root >>> button[data-qt="nav-symbol-search-btn"]')
   await page.evaluate(`
     ${ProjectStockVision.toString()};
     ${StockVisionTrade.toString()};
     localStorage.setItem('${StockVisionTrade.constants.localStorageName}', '${storage}');
-    StockVisionTrade.start()
-    console.log('ida for the gyal them')
+    StockVisionTrade.start();
+    console.log('ida for the gyal them');
   `)
+
+  // document.querySelector('investing-shell-root').shadowRoot.querySelector('trading-root').shadowRoot.querySelector('button[data-qt="nav-symbol-search-btn"]')
 
   console.log(`will restart by ${new Date(futureTime).toString()}`)
 
